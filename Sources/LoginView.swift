@@ -65,7 +65,7 @@ struct LoginView: View {
         Image("LoginLogo")
             .resizable()
             .scaledToFit()
-            .frame(maxWidth: 280)
+            .frame(maxWidth: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: 18))
     }
 
