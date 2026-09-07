@@ -49,10 +49,17 @@ struct CongViecListView: View {
                     Spacer()
                     Text("\(items.filter { !$0.daHoanThanh }.count) việc").font(.headline)
                 }
-                .padding()
+                .padding(.horizontal)
+                .padding(.vertical, 8)
             }
             .navigationTitle("Công việc")
             .navigationBarTitleDisplayMode(.inline)
+            // Màn hình con có nav bar riêng (không dùng header tự vẽ như các tab chính) — tô luôn
+            // nav bar màu brandPrimary + chữ trắng để khớp tông màu gradient của các tab khác, thay
+            // vì chồng thêm 1 lớp gradient riêng gây đụng độ 2 header.
+            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button { showAdd = true } label: {
@@ -102,6 +109,9 @@ private struct AddCongViecSheet: View {
             }
             .navigationTitle("Thêm công việc")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Huỷ") { dismiss() }
@@ -150,6 +160,7 @@ private struct CongViecRowView: View {
             .padding(12)
             .background((item.daHoanThanh ? Color.successColor : Color.textMuted).pastelBackground())
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
         }
         .buttonStyle(.plain)
     }
