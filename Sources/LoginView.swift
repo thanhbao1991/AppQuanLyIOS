@@ -63,19 +63,13 @@ struct LoginView: View {
 
     private var logoHeader: some View {
         VStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(Color.brandPrimary)
-                    .frame(width: 76, height: 76)
-                Image(systemName: "cup.and.saucer.fill")
-                    .font(.system(size: 32))
-                    .foregroundColor(.white)
-            }
-            .shadow(color: Color.brandPrimary.opacity(0.35), radius: 10, y: 6)
+            Image("LoginLogo")
+                .resizable()
+                .scaledToFill()
+                .frame(width: 76, height: 76)
+                .clipShape(RoundedRectangle(cornerRadius: 18))
+                .shadow(color: Color.brandPrimary.opacity(0.35), radius: 10, y: 6)
 
-            Text("ĐENN")
-                .font(.system(size: 34, weight: .bold))
-                .tracking(4)
             Text("Quản lý bán hàng")
                 .font(.footnote)
                 .foregroundColor(.secondary)
