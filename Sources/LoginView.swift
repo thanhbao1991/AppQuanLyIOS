@@ -62,18 +62,11 @@ struct LoginView: View {
     }
 
     private var logoHeader: some View {
-        VStack(spacing: 12) {
-            Image("LoginLogo")
-                .resizable()
-                .scaledToFill()
-                .frame(width: 76, height: 76)
-                .clipShape(RoundedRectangle(cornerRadius: 18))
-                .shadow(color: Color.brandPrimary.opacity(0.35), radius: 10, y: 6)
-
-            Text("Quản lý bán hàng")
-                .font(.footnote)
-                .foregroundColor(.secondary)
-        }
+        Image("LoginLogo")
+            .resizable()
+            .scaledToFit()
+            .frame(maxWidth: 280)
+            .clipShape(RoundedRectangle(cornerRadius: 18))
     }
 
     private var manualForm: some View {

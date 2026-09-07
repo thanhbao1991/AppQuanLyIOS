@@ -16,18 +16,22 @@ struct DeviceSessionsView: View {
                 VStack { Spacer(); Text("Không có thiết bị nào").foregroundColor(.textMuted); Spacer() }
             } else {
                 List {
-                    ForEach(sessions) { session in
-                        SessionRowView(session: session)
-                            .listRowInsets(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12))
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-                            .swipeActions(edge: .trailing) {
-                                Button(role: .destructive) {
-                                    Task { await revoke(session) }
-                                } label: {
-                                    Label("Gỡ", systemImage: "trash")
-                                }
+                    ForEach(groupedSessions, id: \.platform) { group in
+                        Section(group.label) {
+                            ForEach(group.sessions) { session in
+                                SessionRowView(session: session)
+                                    .listRowInsets(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12))
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
+                                    .swipeActions(edge: .trailing) {
+                                        Button(role: .destructive) {
+                                            Task { await revoke(session) }
+                                        } label: {
+                                            Label("Gỡ", systemImage: "trash")
+                                        }
+                                    }
                             }
+                        }
                     }
                 }
                 .listStyle(.plain)
@@ -39,6 +43,26 @@ struct DeviceSessionsView: View {
         .navigationTitle("Thiết bị đăng nhập")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
+    }
+
+    // Thứ tự cố định iOS → Máy tính → Android → khác, ghim thiết bị hiện tại lên đầu nhóm của nó,
+    // trong mỗi nhóm sắp theo tên tài khoản rồi tên thiết bị — tránh lộn xộn khi nhiều tài khoản
+    // cùng đăng nhập nhiều loại máy như trong ảnh user gửi.
+    private var groupedSessions: [(platform: String, label: String, sessions: [PhienDangNhapDto])] {
+        let order: [String: Int] = ["iOS": 0, "Desktop": 1, "Android": 2]
+        let labels: [String: String] = ["iOS": "iPhone", "Desktop": "Máy tính", "Android": "Android"]
+        let platforms = Set(sessions.map { $0.nenTang ?? "" })
+        return platforms.sorted { (order[$0] ?? 99) < (order[$1] ?? 99) }.map { platform in
+            let group = sessions
+                .filter { ($0.nenTang ?? "") == platform }
+                .sorted { a, b in
+                    if a.laThietBiHienTai != b.laThietBiHienTai { return a.laThietBiHienTai }
+                    let ta = a.tenTaiKhoan ?? "", tb = b.tenTaiKhoan ?? ""
+                    if ta != tb { return ta < tb }
+                    return (a.thietBi ?? "") < (b.thietBi ?? "")
+                }
+            return (platform, labels[platform] ?? "Khác", group)
+        }
     }
 
     private func load() async {
