@@ -175,7 +175,13 @@ private struct MoreMenuView: View {
                     Text("Phiên bản \(appVersionString)")
                 }
             }
-            .navigationBarHidden(true)
+            // Trước đây ẩn hẳn nav bar khiến tab Menu thiếu vùng top màu như 5 tab kia — đổi sang
+            // nav bar thường (tiêu đề "Menu") tô brandPrimary, khớp mọi màn hình con đã chuẩn hoá.
+            .navigationTitle("Menu")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .tint(.brandPrimary)
             .alert("Đồng bộ danh bạ", isPresented: Binding(get: { syncResultMessage != nil }, set: { if !$0 { syncResultMessage = nil } })) {
                 Button("OK") { syncResultMessage = nil }
