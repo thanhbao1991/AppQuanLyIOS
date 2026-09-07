@@ -71,6 +71,10 @@ struct HoaDonCreateFormView: View {
     @State private var ghiChuDon = ""
     @State private var saving = false
     @State private var errorMessage: String?
+    /// true cho tới khi applyPresets() (gọi getKhachHangById cho preset "Bắt đơn App"/"Đơn 7h") xong
+    /// — khoá nút "Tạo đơn" trong lúc này, tránh bấm lưu quá nhanh trước khi selectedKhach kịp gán
+    /// (đơn App tạo ra thiếu KhachHangId, xem incident 7/9).
+    @State private var applyingPresets = true
 
     private struct PickerTarget: Identifiable {
         let index: Int?  // nil = thêm mới, có giá trị = sửa items[index]
@@ -138,14 +142,16 @@ struct HoaDonCreateFormView: View {
                     Button("Đóng") { dismiss() }.disabled(saving)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(saving ? "Đang tạo..." : "Tạo đơn") { Task { await save() } }
-                        .disabled(saving || items.isEmpty)
+                    Button(saving ? "Đang tạo..." : (applyingPresets ? "Đang tải..." : "Tạo đơn")) { Task { await save() } }
+                        .disabled(saving || applyingPresets || items.isEmpty)
                 }
             }
         }
         .task {
-            await loadCatalog()
+            async let catalog: Void = loadCatalog()
             await applyPresets()
+            applyingPresets = false
+            await catalog
             if selectedKhach == nil && (phanLoai == "Mh" || phanLoai == "Ship") {
                 khachSearchFocused = true
             }
