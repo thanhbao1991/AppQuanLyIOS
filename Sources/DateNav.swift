@@ -28,6 +28,13 @@ enum DateNavFormat {
     }()
 }
 
+/// Kích thước dùng chung cho MỌI thanh header đầu tab (DaySearchBar/DayDateBar) — ép cùng 1 chiều
+/// cao bất kể tab đó có ô tìm kiếm hay không, để list bên dưới không nhảy vị trí khi chuyển tab.
+enum HeaderBarMetrics {
+    static let rowHeight: CGFloat = 38
+    static let verticalPadding: CGFloat = 10
+}
+
 /// Gộp chọn ngày + ô tìm kiếm chung 1 dòng — thay cho DayNavBar+SearchBar 2 dòng riêng, bỏ hẳn 2 nút
 /// chevron điều hướng (chỉ còn bấm vào ngày để mở DatePicker).
 struct DaySearchBar: View {
@@ -64,8 +71,12 @@ struct DaySearchBar: View {
 
             if let trailing { trailing }
         }
+        // Chiều cao cố định khớp DayDateBar (ThongKeView không có ô tìm kiếm nên hàng thấp hơn nếu
+        // không ép cùng 1 giá trị) — lệch chiều cao 2 thanh header là nguyên nhân bị nháy/giật khi
+        // chuyển qua lại giữa các tab (nội dung bên dưới nhảy vị trí theo).
+        .frame(height: HeaderBarMetrics.rowHeight)
         .padding(.horizontal)
-        .padding(.vertical, 10)
+        .padding(.vertical, HeaderBarMetrics.verticalPadding)
         .background(
             Group {
                 if tinted {
@@ -127,8 +138,11 @@ struct DayDateBar: View {
 
             if let trailing { trailing }
         }
+        // Cùng chiều cao với DaySearchBar (xem HeaderBarMetrics) dù không có ô tìm kiếm — tránh
+        // header 2 tab lệch chiều cao gây nháy/giật nội dung khi vuốt/chuyển qua lại.
+        .frame(height: HeaderBarMetrics.rowHeight)
         .padding(.horizontal)
-        .padding(.vertical, 10)
+        .padding(.vertical, HeaderBarMetrics.verticalPadding)
         .background(
             Group {
                 if tinted {
