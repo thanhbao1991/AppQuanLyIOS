@@ -10,19 +10,39 @@ struct CongNoListView: View {
     @State private var hasLoaded = false
     @State private var selectedId: String?
     @State private var searchText = ""
+    /// Lọc theo ngày ghi nợ (ngayNo) — nil = "Tất cả" (mặc định, khớp hành vi cũ trước khi có filter
+    /// này). Khác Hoá đơn/Thanh toán (luôn bắt buộc 1 ngày, query lại server mỗi lần đổi) — Công nợ
+    /// tải hết 1 lần (API không nhận tham số ngày) rồi lọc client-side, nên "không chọn ngày" vẫn
+    /// là trạng thái hợp lệ và là mặc định.
+    @State private var selectedDate: Date?
 
     private var sortedItems: [HoaDonListDto] {
         items
             // Bắt buộc gõ ĐÚNG dấu — khác mọi tab khác (tìm không dấu vẫn khớp) — vì đây là danh sách
             // nợ, khớp nhầm 2 khách tên gần giống nhau (khác dấu) có thể thu/gửi bill nhầm người.
             .filter { anyMatchesSearch(searchText, diacriticInsensitive: false, $0.tenKhachHangText, $0.tenBan, $0.ghiChu, $0.tenMonSummary) }
+            .filter { item in
+                guard let selectedDate else { return true }
+                let dayStr = DateNavFormat.queryDate.string(from: selectedDate)
+                return (item.ngayNo ?? "").hasPrefix(dayStr)
+            }
             .sorted { ($0.ngayNo ?? "") > ($1.ngayNo ?? "") }
     }
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                SearchBar(text: $searchText, placeholder: "Tìm có dấu: khách, món, ghi chú...", tinted: true)
+                HStack(spacing: 8) {
+                    CongNoDateFilterBar(date: $selectedDate)
+                    SearchFieldRow(text: $searchText, placeholder: "Tìm có dấu: khách, món, ghi chú...")
+                }
+                .frame(height: HeaderBarMetrics.rowHeight)
+                .padding(.horizontal)
+                .padding(.vertical, HeaderBarMetrics.verticalPadding)
+                .background(
+                    LinearGradient(colors: [Color.brandPrimary, Color.brandPrimary.opacity(0.85)], startPoint: .top, endPoint: .bottom)
+                        .ignoresSafeArea(edges: .top)
+                )
 
                 if !hasLoaded {
                     Spacer(); ProgressView(); Spacer()
@@ -76,6 +96,62 @@ struct CongNoListView: View {
         items = await APIClient.shared.getCongNoList()
         loading = false
         hasLoaded = true
+    }
+}
+
+/// Nút chọn ngày lọc cho tab Công nợ — khác `DaySearchBar` (Hoá đơn/Thanh toán) ở chỗ cho phép
+/// trạng thái "Tất cả" (date == nil), vì Công nợ không bắt buộc phải xem theo từng ngày như 2 tab
+/// kia. Dùng Menu thay vì bấm mở thẳng DatePicker để chèn 2 lối tắt "Hôm nay"/"Hôm qua" (khớp yêu
+/// cầu) mà không phải tự vẽ lại UI chọn ngày kiểu Hoá đơn.
+private struct CongNoDateFilterBar: View {
+    @Binding var date: Date?
+    @State private var showPicker = false
+    @State private var pickerDate = Date()
+
+    private var label: String {
+        guard let date else { return "Tất cả" }
+        return DateNavFormat.dayTitle.string(from: date)
+    }
+
+    var body: some View {
+        Menu {
+            Button("Hôm nay") { date = Date() }
+            Button("Hôm qua") { date = Calendar.current.date(byAdding: .day, value: -1, to: Date()) }
+            Button("Chọn ngày khác…") {
+                pickerDate = date ?? Date()
+                showPicker = true
+            }
+            if date != nil {
+                Divider()
+                Button("Tất cả", role: .destructive) { date = nil }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "calendar")
+                Text(label)
+            }
+            .font(.subheadline.bold())
+            .foregroundColor(.white)
+        }
+        .fixedSize()
+        .sheet(isPresented: $showPicker) {
+            NavigationStack {
+                DatePicker("Chọn ngày", selection: $pickerDate, displayedComponents: .date)
+                    .datePickerStyle(.graphical)
+                    .labelsHidden()
+                    .padding()
+                    .navigationBarTitleDisplayMode(.inline)
+                    // Chọn 1 ô là đóng luôn, khớp hành vi DaySearchBar — chỉ đổi tháng/năm hiển thị
+                    // trong lịch không kích hoạt vì chưa đổi giá trị pickerDate.
+                    .onChange(of: pickerDate) { newValue in
+                        showPicker = false
+                        date = newValue
+                    }
+                Spacer()
+            }
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
+        }
     }
 }
 
