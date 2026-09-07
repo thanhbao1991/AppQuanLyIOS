@@ -201,6 +201,9 @@ private struct ChiTieuDetailSheet: View {
             .padding()
             .navigationTitle("Chi tiết chi tiêu")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Đóng") { dismiss() }
@@ -289,6 +292,9 @@ private struct EditExpenseSheet: View {
             }
             .navigationTitle("Sửa chi tiêu")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Huỷ") { dismiss() }
@@ -469,6 +475,9 @@ struct AddExpenseSheet: View {
             }
             .navigationTitle("Thêm chi tiêu")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Huỷ") { dismiss() }

@@ -42,6 +42,9 @@ struct DeviceSessionsView: View {
         }
         .navigationTitle("Thiết bị đăng nhập")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
         .task { await load() }
     }
 

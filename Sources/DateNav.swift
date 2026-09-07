@@ -162,6 +162,9 @@ struct DayDateBar: View {
 /// sheet riêng (MonthYearPickerSheet).
 struct MonthDateBar: View {
     @Binding var date: Date
+    /// True khi đặt trong toolbar đã tô nền brandPrimary (ThongKeThangView) — đổi chữ trắng cho
+    /// tương phản, khớp DaySearchBar/DayDateBar(tinted:).
+    var tinted: Bool = false
     var onChange: () -> Void
     @State private var showPicker = false
 
@@ -172,7 +175,7 @@ struct MonthDateBar: View {
                 Text(DateNavFormat.monthTitle.string(from: date))
             }
             .font(.subheadline.bold())
-            .foregroundColor(.brandPrimary)
+            .foregroundColor(tinted ? .white : .brandPrimary)
         }
         .buttonStyle(.plain)
         .sheet(isPresented: $showPicker) {

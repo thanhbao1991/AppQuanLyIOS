@@ -35,6 +35,9 @@ struct HoaDonDetailView: View {
             }
             .navigationTitle("Chi tiết hoá đơn")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Đóng") { dismiss() }

@@ -39,6 +39,9 @@ struct ThongBaoQuanListView: View {
         }
         .navigationTitle("Thông báo/Khuyến mãi")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button { showAdd = true } label: { Image(systemName: "plus") }
@@ -157,6 +160,9 @@ private struct ThongBaoQuanEditSheet: View {
             }
             .navigationTitle(existing == nil ? "Thêm thông báo" : "Sửa thông báo")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Huỷ") { dismiss() }

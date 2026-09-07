@@ -19,6 +19,9 @@ struct GamificationConfigView: View {
         }
         .navigationTitle("Cấu hình Ưu đãi")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(saving ? "Đang lưu..." : "Lưu") {

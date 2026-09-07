@@ -37,6 +37,9 @@ struct SanPhamHinhAnhListView: View {
         .searchable(text: $query, prompt: "Tìm món...")
         .navigationTitle("Ảnh menu")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
         .task { await load() }
         .alert("Đổi ảnh thất bại", isPresented: Binding(
             get: { errorMessage != nil },

@@ -636,6 +636,9 @@ private struct AddHoaDonSheet: View {
             }
             .navigationTitle("Thêm hoá đơn")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Đóng") { dismiss() }
@@ -724,6 +727,9 @@ private struct AppOrderPickerSheet: View {
             }
             .navigationTitle("Bắt đơn App")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Đóng") { dismiss() }
@@ -807,6 +813,9 @@ private struct KhachGoiSomSheet: View {
             }
             .navigationTitle("Khách hay gọi trước 7h")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Đóng") { dismiss() }

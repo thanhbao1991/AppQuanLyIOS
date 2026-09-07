@@ -122,9 +122,12 @@ struct ThongKeThangView: View {
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    MonthDateBar(date: $currentDate) { Task { await load() } }
+                    MonthDateBar(date: $currentDate, tinted: true) { Task { await load() } }
                 }
             }
         }
@@ -256,6 +259,9 @@ struct ChiTieuThangDetailSheet: View {
             .listStyle(.plain)
             .navigationTitle(ten)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Đóng") { dismiss() }
@@ -309,6 +315,9 @@ struct KhachHangNoDetailSheet: View {
             }
             .navigationTitle(tenKhachHang)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Đóng") { dismiss() }
@@ -381,6 +390,9 @@ struct ThanhToanChiTietSheet: View {
             }
             .navigationTitle(ten)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Đóng") { dismiss() }
@@ -473,6 +485,9 @@ struct DoanhThuChiTietSheet: View {
             }
             .navigationTitle(ten)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Đóng") { dismiss() }
@@ -553,6 +568,9 @@ struct GiamGiaChiTietSheet: View {
             .listStyle(.plain)
             .navigationTitle(label)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Đóng") { dismiss() }

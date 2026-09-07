@@ -130,6 +130,9 @@ struct HoaDonCreateFormView: View {
             }
             .navigationTitle(HoaDonFormatting.phanLoaiLabel(phanLoai))
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Đóng") { dismiss() }.disabled(saving)

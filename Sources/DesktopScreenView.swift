@@ -87,6 +87,9 @@ struct DesktopScreenView: View {
                 .background(Color(.systemBackground))
                 .navigationTitle("Xem màn hình")
                 .navigationBarTitleDisplayMode(.inline)
+                .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+                .toolbarBackground(.visible, for: .navigationBar)
+                .toolbarColorScheme(.dark, for: .navigationBar)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Đóng") { dismiss() }
