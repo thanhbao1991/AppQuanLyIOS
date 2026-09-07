@@ -134,7 +134,6 @@ struct ThanhToanListView: View {
                             .font(.caption2).foregroundColor(.brandPrimary)
                     }
                     HStack {
-                        Text("Tổng thu").font(.subheadline).foregroundColor(.textMuted)
                         Spacer()
                         Text(totalText).font(.headline)
                     }
