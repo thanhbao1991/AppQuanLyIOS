@@ -81,11 +81,15 @@ struct LoginView: View {
     }
 
     private var logoHeader: some View {
-        Image("LoginLogo")
-            .resizable()
-            .scaledToFit()
-            .frame(maxWidth: 260)
-            .shadow(color: .black.opacity(0.2), radius: 16, x: 0, y: 8)
+        VStack(spacing: 8) {
+            Text("Đenn Coffee")
+                .font(.system(size: 34, weight: .bold, design: .rounded))
+            Text("Quán nhỏ cảm ơn to")
+                .font(.subheadline.weight(.medium))
+                .opacity(0.85)
+        }
+        .foregroundColor(.white)
+        .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
     }
 
     private var manualForm: some View {
