@@ -7,7 +7,8 @@ struct CongViecListView: View {
     @State private var loading = false
     @State private var hasLoaded = false
     @State private var searchText = ""
-    @State private var showAdd = false
+    @State private var adding = false
+    @State private var errorMessage: String?
 
     private var sortedItems: [CongViecNoiBoDto] {
         items
@@ -24,10 +25,30 @@ struct CongViecListView: View {
                 } else {
                     List {
                         if sortedItems.isEmpty {
-                            Text("Chưa có việc nào")
-                                .foregroundColor(.textMuted)
-                                .frame(maxWidth: .infinity)
-                                .listRowSeparator(.hidden)
+                            if items.isEmpty {
+                                Text("Chưa có việc nào")
+                                    .foregroundColor(.textMuted)
+                                    .frame(maxWidth: .infinity)
+                                    .listRowSeparator(.hidden)
+                            } else {
+                                // Gõ tên không khớp việc nào có sẵn — cho thêm mới ngay bằng chính
+                                // chuỗi đang tìm, khớp pattern "Thêm nguyên liệu mới" bên tab Chi tiêu
+                                // (AddExpenseSheet), thay cho nút "+" ở toolbar trước đây.
+                                let ten = searchText.trimmingCharacters(in: .whitespaces)
+                                if !ten.isEmpty {
+                                    Button {
+                                        Task { await addCongViec(ten: ten) }
+                                    } label: {
+                                        if adding {
+                                            ProgressView()
+                                        } else {
+                                            Label("Thêm việc mới \"\(ten)\"", systemImage: "plus.circle")
+                                        }
+                                    }
+                                    .disabled(adding)
+                                    .listRowSeparator(.hidden)
+                                }
+                            }
                         } else {
                             ForEach(sortedItems) { item in
                                 CongViecRowView(item: item) { toggled in
@@ -61,18 +82,14 @@ struct CongViecListView: View {
             .toolbarBackground(Color.brandPrimary, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button { showAdd = true } label: {
-                        Image(systemName: "plus")
-                    }
-                }
-            }
             .task { await load() }
-            .sheet(isPresented: $showAdd) {
-                AddCongViecSheet {
-                    Task { await load() }
-                }
+            .alert("Thêm việc thất bại", isPresented: Binding(
+                get: { errorMessage != nil },
+                set: { if !$0 { errorMessage = nil } }
+            )) {
+                Button("OK") {}
+            } message: {
+                Text(errorMessage ?? "")
             }
     }
 
@@ -88,53 +105,16 @@ struct CongViecListView: View {
         await load()
     }
 
-}
-
-private struct AddCongViecSheet: View {
-    let onSaved: () -> Void
-
-    @Environment(\.dismiss) private var dismiss
-    @State private var ten = ""
-    @State private var saving = false
-    @State private var errorMessage: String?
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("Việc cần làm") {
-                    TextField("Nội dung...", text: $ten)
-                }
-                if let errorMessage {
-                    Text(errorMessage).foregroundColor(.dangerColor)
-                }
-            }
-            .navigationTitle("Thêm công việc")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Huỷ") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(saving ? "Đang lưu..." : "Lưu") {
-                        Task { await save() }
-                    }
-                    .disabled(ten.trimmingCharacters(in: .whitespaces).isEmpty || saving)
-                }
-            }
-        }
-    }
-
-    private func save() async {
-        saving = true
+    /// Thêm việc mới ngay từ ô tìm kiếm khi gõ tên chưa có việc nào khớp — khớp pattern "Thêm nguyên
+    /// liệu mới" bên tab Chi tiêu, thay cho sheet/nút "+" riêng ở toolbar trước đây.
+    private func addCongViec(ten: String) async {
+        adding = true
         errorMessage = nil
-        let result = await APIClient.shared.createCongViec(ten: ten.trimmingCharacters(in: .whitespaces))
-        saving = false
+        let result = await APIClient.shared.createCongViec(ten: ten)
+        adding = false
         if result.success {
-            onSaved()
-            dismiss()
+            searchText = ""
+            await load()
         } else {
             errorMessage = result.message ?? "Không thêm được công việc."
         }
