@@ -159,6 +159,9 @@ struct HoaDonListView: View {
                         }
                     }
                     .listStyle(.plain)
+                    // +4pt để khớp khoảng cách header→card đầu tiên bên tab Thống kê (12pt) — mặc
+                    // định List chỉ có 8pt từ listRowInsets top của dòng đầu.
+                    .padding(.top, 4)
                     .refreshable { await load() }
                 }
 

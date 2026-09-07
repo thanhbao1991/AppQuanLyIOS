@@ -57,6 +57,7 @@ struct ChiTieuListView: View {
                         }
                     }
                     .listStyle(.plain)
+                    .padding(.top, 4)
                     .refreshable { await load() }
                 }
 
