@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Công việc nội bộ — GET/PUT /api/CongViecNoiBo. Chỉ tick hoàn thành, không thêm/xoá/cảnh báo
-/// (NgayCanhBao, XNgayCanhBao) — đơn giản hoá cho bản mobile, footer chỉ hiện số việc còn lại.
+/// (NgayCanhBao, XNgayCanhBao) — đơn giản hoá cho bản mobile. Không có footer, khớp màn Ảnh menu.
 struct CongViecListView: View {
     @State private var items: [CongViecNoiBoDto] = []
     @State private var loading = false
@@ -61,15 +61,6 @@ struct CongViecListView: View {
                     .padding(.top, 4)
                     .refreshable { await load() }
                 }
-
-                Divider()
-                HStack {
-                    Text("Chưa làm").font(.subheadline).foregroundColor(.textMuted)
-                    Spacer()
-                    Text("\(items.filter { !$0.daHoanThanh }.count) việc").font(.headline)
-                }
-                .padding(.horizontal)
-                .padding(.vertical, 8)
             }
             .navigationTitle("Công việc")
             .navigationBarTitleDisplayMode(.inline)
