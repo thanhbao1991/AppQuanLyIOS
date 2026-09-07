@@ -187,7 +187,8 @@ struct HoaDonListView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .trailing)
                 }
-                .padding()
+                .padding(.horizontal)
+                .padding(.vertical, 8)
             }
         }
         .task {
