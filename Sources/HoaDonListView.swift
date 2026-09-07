@@ -116,23 +116,24 @@ struct HoaDonListView: View {
                         } label: {
                             Image(systemName: activeFilter == nil ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
                                 .font(.title2)
-                                .foregroundColor(activeFilter == nil ? .textMuted : .brandPrimary)
+                                .foregroundColor(.white.opacity(activeFilter == nil ? 0.75 : 1))
                                 // Badge tròn góc trên-phải, giống badge thông báo — chỉ hiện khi đang lọc,
                                 // vì Menu native không cho style số đếm trong text item (xem trong menu).
                                 .overlay(alignment: .topTrailing) {
                                     if activeFilter != nil {
                                         Text("\(sortedItems.count)")
                                             .font(.caption2.bold())
-                                            .foregroundColor(.white)
+                                            .foregroundColor(.brandPrimary)
                                             .padding(4)
                                             .frame(minWidth: 18, minHeight: 18)
-                                            .background(Color.brandPrimary)
+                                            .background(Color.white)
                                             .clipShape(Circle())
                                             .offset(x: 8, y: -8)
                                     }
                                 }
                         }
-                    )
+                    ),
+                    tinted: true
                 ) { Task { await load() } }
 
                 if !hasLoaded {

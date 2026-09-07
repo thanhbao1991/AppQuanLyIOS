@@ -38,6 +38,10 @@ struct DaySearchBar: View {
     var leading: AnyView? = nil
     /// Nút phụ (vd icon lọc nhanh) đặt bên phải cùng, sau ô tìm kiếm.
     var trailing: AnyView? = nil
+    /// Tô nền gradient brandPrimary (khớp LoginView) + chữ nút ngày đổi trắng — đang thử nghiệm
+    /// riêng cho tab Hoá đơn trước khi quyết định lan sang Thanh toán/Chi tiêu (2 tab còn lại
+    /// cũng dùng chung component này).
+    var tinted: Bool = false
     var onChange: () -> Void
     @State private var showPicker = false
 
@@ -51,7 +55,7 @@ struct DaySearchBar: View {
                     Text(DateNavFormat.dayTitle.string(from: date))
                 }
                 .font(.subheadline.bold())
-                .foregroundColor(.brandPrimary)
+                .foregroundColor(tinted ? .white : .brandPrimary)
             }
             .buttonStyle(.plain)
             .fixedSize()
@@ -61,7 +65,14 @@ struct DaySearchBar: View {
             if let trailing { trailing }
         }
         .padding(.horizontal)
-        .padding(.vertical, 8)
+        .padding(.vertical, 10)
+        .background(
+            Group {
+                if tinted {
+                    LinearGradient(colors: [Color.brandPrimary, Color.brandPrimary.opacity(0.85)], startPoint: .top, endPoint: .bottom)
+                }
+            }
+        )
         .sheet(isPresented: $showPicker) {
             NavigationStack {
                 DatePicker("Chọn ngày", selection: $date, displayedComponents: .date)
