@@ -558,6 +558,9 @@ private struct HoaDonRowView: View {
         .padding(12)
         .background(HoaDonFormatting.phanLoaiBgColor(item.phanLoai))
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        // Shadow nhẹ để mỗi dòng nổi thành "card" giống khung form ở LoginView, thay vì phẳng dán
+        // liền nền list như trước.
+        .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
     }
 }
 

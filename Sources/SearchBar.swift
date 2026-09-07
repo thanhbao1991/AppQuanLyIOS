@@ -20,14 +20,20 @@ struct SearchBar: View {
 struct SearchFieldRow: View {
     @Binding var text: String
     var placeholder: String = "Tìm..."
+    // Focus border xanh brandPrimary khớp ô nhập ở LoginView — dùng chung component này ở hầu hết
+    // các tab (Hoá đơn/Thanh toán/Công nợ/Chi tiêu...) nên đổi 1 chỗ là đồng bộ style toàn app.
+    @FocusState private var isFocused: Bool
 
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: "magnifyingglass").foregroundColor(.textMuted).font(.system(size: 14))
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(isFocused ? .brandPrimary : .textMuted)
+                .font(.system(size: 14))
             TextField(placeholder, text: $text)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
                 .submitLabel(.search)
+                .focused($isFocused)
                 .onSubmit {
                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 }
@@ -39,10 +45,14 @@ struct SearchFieldRow: View {
                 }
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-        .background(Color.textMuted.opacity(0.12))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .strokeBorder(isFocused ? Color.brandPrimary : Color(.separator).opacity(0.4), lineWidth: isFocused ? 1.5 : 1)
+        )
+        .animation(.easeInOut(duration: 0.15), value: isFocused)
     }
 }
 
