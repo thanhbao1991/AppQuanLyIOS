@@ -7,25 +7,30 @@ import XCTest
 final class MockURLProtocol: URLProtocol {
     struct Captured { let path: String; let authHeader: String? }
 
-    private static let lock = NSLock()
+    // NSCondition thay vì NSLock+Thread.sleep polling (10ms/lần) — poll từng bị fail trên runner CI
+    // macos-26 với refreshCalls đếm ra 0 (không request nào tới kịp /api/auth/refresh), nghi do
+    // polling 10ms không đủ nhanh/đáng tin khi runner bận. broadcast() đánh thức các waiter NGAY khi
+    // có request mới tới thay vì đợi tới lượt poll kế tiếp, không phụ thuộc lịch polling nữa.
+    private static let condition = NSCondition()
     private static var _captured: [Captured] = []
     /// Trả (statusCode, body) cho 1 request — set lại mỗi test.
     static var handler: ((URLRequest) -> (Int, Data))?
-    /// > 0: startLoading() busy-wait tới khi đã nhận đủ N request rồi mới trả lời TẤT CẢ — ép buộc
-    /// race thật giữa nhiều request đang dùng CÙNG token cũ, thay vì trông chờ vào lịch trình ngẫu
-    /// nhiên của actor scheduler (không ép thì dễ flaky: request đầu có thể refresh xong trước khi
-    /// request 2/3 kịp build với token cũ, làm bài test không còn kiểm tra được race thật).
+    /// > 0: startLoading() chờ (qua NSCondition, không polling) tới khi đã nhận đủ N request rồi
+    /// mới trả lời TẤT CẢ — ép buộc race thật giữa nhiều request đang dùng CÙNG token cũ, thay vì
+    /// trông chờ vào lịch trình ngẫu nhiên của actor scheduler (không ép thì dễ flaky: request đầu
+    /// có thể refresh xong trước khi request 2/3 kịp build với token cũ, làm bài test không còn
+    /// kiểm tra được race thật).
     static var awaitRequestCount = 0
 
     static var captured: [Captured] {
-        lock.lock(); defer { lock.unlock() }
+        condition.lock(); defer { condition.unlock() }
         return _captured
     }
 
     static func reset() {
-        lock.lock()
+        condition.lock()
         _captured = []
-        lock.unlock()
+        condition.unlock()
         handler = nil
         awaitRequestCount = 0
     }
@@ -43,21 +48,18 @@ final class MockURLProtocol: URLProtocol {
         let path = request.url?.path ?? ""
         let auth = request.value(forHTTPHeaderField: "Authorization")
 
-        MockURLProtocol.lock.lock()
+        MockURLProtocol.condition.lock()
         MockURLProtocol._captured.append(.init(path: path, authHeader: auth))
         let target = MockURLProtocol.awaitRequestCount
-        MockURLProtocol.lock.unlock()
+        MockURLProtocol.condition.broadcast()
 
         if target > 0 {
             let deadline = Date().addingTimeInterval(5)
-            while Date() < deadline {
-                MockURLProtocol.lock.lock()
-                let count = MockURLProtocol._captured.count
-                MockURLProtocol.lock.unlock()
-                if count >= target { break }
-                Thread.sleep(forTimeInterval: 0.01)
+            while MockURLProtocol._captured.count < target {
+                if !MockURLProtocol.condition.wait(until: deadline) { break }
             }
         }
+        MockURLProtocol.condition.unlock()
 
         guard let handler = MockURLProtocol.handler,
               let url = request.url else {
