@@ -93,8 +93,16 @@ struct MainTabView: View {
             }
         }
         .padding(.top, 6)
-        .padding(.bottom, 4)
+        // Root view ignoresSafeArea(edges: .bottom) (AppMobileIOSApp.swift) nên tab bar không tự
+        // được đẩy lên khỏi thanh vuốt home indicator — cộng tay safe area đáy vào đây.
+        .padding(.bottom, max(4, Self.bottomSafeAreaInset))
         .background(.bar)
+    }
+
+    private static var bottomSafeAreaInset: CGFloat {
+        UIApplication.shared.connectedScenes
+            .compactMap { ($0 as? UIWindowScene)?.windows.first { $0.isKeyWindow } }
+            .first?.safeAreaInsets.bottom ?? 0
     }
 }
 
