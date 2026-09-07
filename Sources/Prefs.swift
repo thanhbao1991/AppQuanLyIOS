@@ -6,6 +6,17 @@ extension Notification.Name {
     static let sessionExpired = Notification.Name("sessionExpired")
 }
 
+/// Host app THẬT được khởi động khi chạy unit test (bundle test được "inject" vào app để
+/// @testable import hoạt động) — nghĩa là mọi .task/logic UI bình thường (vd LoginView tự
+/// doLogin() bằng tài khoản hardcode) vẫn chạy thật, âm thầm bắn network + ghi đè Prefs bất kỳ
+/// lúc nào trong lúc test đang chạy, không đồng bộ với setUp/tearDown của bài test nào cả — đã
+/// từng gây APIClientRefreshTests fail ngẫu nhiên vì token lạ ("t1" từ 1 test khác) lọt vào Prefs
+/// giữa chừng lúc bài test này đang assert. Dùng cờ này để tắt hẳn các hành vi tự động đó khi
+/// chạy dưới XCTest.
+enum RuntimeEnv {
+    static let isRunningUnitTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+}
+
 enum Prefs {
     static let apiBase = "https://api.denncoffee.uk"
     // ĐÃ THỬ 1 domain gốc "denncoffee.uk" riêng (không "api.") cho link SMS 2026-08-22 nhưng

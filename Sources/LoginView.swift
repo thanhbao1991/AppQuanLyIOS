@@ -55,7 +55,7 @@ struct LoginView: View {
             }
         }
         .task {
-            if !manualMode {
+            if !manualMode && !RuntimeEnv.isRunningUnitTests {
                 await doLogin()
             }
         }
