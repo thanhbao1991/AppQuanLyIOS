@@ -22,7 +22,7 @@ struct CongNoListView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                SearchBar(text: $searchText, placeholder: "Tìm có dấu: khách, món, ghi chú...")
+                SearchBar(text: $searchText, placeholder: "Tìm có dấu: khách, món, ghi chú...", tinted: true)
 
                 if !hasLoaded {
                     Spacer(); ProgressView(); Spacer()
@@ -147,7 +147,8 @@ struct CongNoFooterView: View {
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
         }
-        .padding()
+        .padding(.horizontal)
+        .padding(.vertical, 8)
         .overlay { if payingAll { ProgressView() } }
         .alert(items.count > 1 ? "Xác nhận thanh toán toàn bộ nợ" : "Xác nhận thanh toán", isPresented: $showPayAllConfirm) {
             // Chỉ bắt gõ lại số tiền khi thu GỘP nhiều hoá đơn cùng lúc — rủi ro bấm nhầm hàng loạt.
@@ -336,6 +337,7 @@ struct CongNoRowView: View {
         .padding(12)
         .background(Color.dangerColor.pastelBackground())
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
         .contentShape(Rectangle())
         .onTapGesture { onSelect?() }
     }

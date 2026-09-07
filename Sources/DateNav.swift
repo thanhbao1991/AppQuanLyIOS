@@ -105,6 +105,8 @@ struct DayDateBar: View {
     /// Nút phụ (vd link "Thống kê tháng") đặt bên phải cùng — khớp pattern `trailing` của DaySearchBar.
     /// Khai báo TRƯỚC onChange vì onChange truyền qua trailing-closure ở call site (phải là param cuối).
     var trailing: AnyView? = nil
+    /// Tô nền gradient brandPrimary tràn lên status bar, khớp DaySearchBar(tinted:) — xem lý do ở đó.
+    var tinted: Bool = false
     var onChange: () -> Void
     @State private var showPicker = false
 
@@ -116,7 +118,7 @@ struct DayDateBar: View {
                     Text(DateNavFormat.dayTitle.string(from: date))
                 }
                 .font(.subheadline.bold())
-                .foregroundColor(.brandPrimary)
+                .foregroundColor(tinted ? .white : .brandPrimary)
             }
             .buttonStyle(.plain)
             .fixedSize()
@@ -126,7 +128,15 @@ struct DayDateBar: View {
             if let trailing { trailing }
         }
         .padding(.horizontal)
-        .padding(.vertical, 8)
+        .padding(.vertical, 10)
+        .background(
+            Group {
+                if tinted {
+                    LinearGradient(colors: [Color.brandPrimary, Color.brandPrimary.opacity(0.85)], startPoint: .top, endPoint: .bottom)
+                        .ignoresSafeArea(edges: .top)
+                }
+            }
+        )
         .sheet(isPresented: $showPicker) {
             NavigationStack {
                 DatePicker("Chọn ngày", selection: $date, displayedComponents: .date)

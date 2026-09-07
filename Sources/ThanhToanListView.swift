@@ -81,21 +81,22 @@ struct ThanhToanListView: View {
                         } label: {
                             Image(systemName: activeFilter == nil ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
                                 .font(.title2)
-                                .foregroundColor(activeFilter == nil ? .textMuted : .brandPrimary)
+                                .foregroundColor(.white.opacity(activeFilter == nil ? 0.75 : 1))
                                 .overlay(alignment: .topTrailing) {
                                     if activeFilter != nil {
                                         Text("\(filteredItems.count)")
                                             .font(.caption2.bold())
-                                            .foregroundColor(.white)
+                                            .foregroundColor(.brandPrimary)
                                             .padding(4)
                                             .frame(minWidth: 18, minHeight: 18)
-                                            .background(Color.brandPrimary)
+                                            .background(Color.white)
                                             .clipShape(Circle())
                                             .offset(x: 8, y: -8)
                                     }
                                 }
                         }
-                    )
+                    ),
+                    tinted: true
                 ) { Task { await load() } }
 
                 if !hasLoaded {
@@ -137,7 +138,8 @@ struct ThanhToanListView: View {
                         Text(totalText).font(.headline)
                     }
                 }
-                .padding()
+                .padding(.horizontal)
+                .padding(.vertical, 8)
             }
         }
         .task { await load() }
@@ -242,6 +244,7 @@ private struct ThanhToanRowView: View {
         .padding(12)
         .background(borderColor.pastelBackground())
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
     }
 }
 

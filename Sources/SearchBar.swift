@@ -7,11 +7,21 @@ import UIKit
 struct SearchBar: View {
     @Binding var text: String
     var placeholder: String = "Tìm..."
+    /// Tô nền gradient brandPrimary tràn lên status bar, khớp DaySearchBar(tinted:) — xem lý do ở đó.
+    var tinted: Bool = false
 
     var body: some View {
         SearchFieldRow(text: $text, placeholder: placeholder)
             .padding(.horizontal)
-            .padding(.vertical, 8)
+            .padding(.vertical, 10)
+            .background(
+                Group {
+                    if tinted {
+                        LinearGradient(colors: [Color.brandPrimary, Color.brandPrimary.opacity(0.85)], startPoint: .top, endPoint: .bottom)
+                            .ignoresSafeArea(edges: .top)
+                    }
+                }
+            )
     }
 }
 

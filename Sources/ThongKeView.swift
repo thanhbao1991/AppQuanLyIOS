@@ -53,9 +53,10 @@ struct ThongKeView: View {
                                 Image(systemName: "chevron.right")
                             }
                             .font(.subheadline.bold())
-                            .foregroundColor(.brandPrimary)
+                            .foregroundColor(.white)
                         }
-                    )
+                    ),
+                    tinted: true
                 ) { Task { await load() } }
 
                 if !hasLoaded {
@@ -335,6 +336,7 @@ struct StatCard<Content: View>: View {
         }
         .background(color.opacity(0.08))
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
     }
 }
 
