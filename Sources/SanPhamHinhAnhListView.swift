@@ -18,9 +18,11 @@ struct SanPhamHinhAnhListView: View {
     }
 
     var body: some View {
-        Group {
+        VStack(spacing: 0) {
+            SearchBar(text: $query, placeholder: "Tìm món...")
+
             if loading {
-                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+                Spacer(); ProgressView(); Spacer()
             } else {
                 List {
                     ForEach(filtered) { sp in
@@ -32,9 +34,9 @@ struct SanPhamHinhAnhListView: View {
                     }
                 }
                 .listStyle(.plain)
+                .padding(.top, 4)
             }
         }
-        .searchable(text: $query, prompt: "Tìm món...")
         .navigationTitle("Ảnh menu")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color.brandPrimary, for: .navigationBar)
