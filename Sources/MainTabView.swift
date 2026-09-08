@@ -31,6 +31,9 @@ enum MainTab: CaseIterable {
         case .menu: "ellipsis.circle"
         }
     }
+
+    /// Bản .fill cùng tên — hiện khi tab đang được chọn, để khớp cảm giác native TabView.
+    var iconFilled: String { "\(icon).fill" }
 }
 
 struct MainTabView: View {
@@ -81,7 +84,7 @@ struct MainTabView: View {
                     selection = tab
                 } label: {
                     VStack(spacing: 3) {
-                        Image(systemName: tab.icon)
+                        Image(systemName: selection == tab ? tab.iconFilled : tab.icon)
                             .font(.system(size: 20))
                         Text(tab.label)
                             .font(.system(size: 10, weight: .medium))
