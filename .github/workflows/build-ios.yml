@@ -29,18 +29,9 @@ jobs:
         # runner). Tự dò 1 simulator iPhone có sẵn (bất kỳ) trên máy thay vì hardcode tên.
         run: |
           set -e
-          UDID=$(xcrun simctl list devices available -j \
-            | python3 -c "
-import json,sys
-d=json.load(sys.stdin)
-for runtime,devs in d['devices'].items():
-    if 'iOS' not in runtime:
-        continue
-    for dev in devs:
-        if dev['name'].startswith('iPhone'):
-            print(dev['udid'])
-            sys.exit(0)
-")
+          UDID=$(xcrun simctl list devices available \
+            | grep -m1 -E 'iPhone [0-9]+ \(' \
+            | grep -oE '[0-9A-F]{8}-([0-9A-F]{4}-){3}[0-9A-F]{12}')
           if [ -z "$UDID" ]; then
             echo "Khong tim thay simulator iPhone nao kha dung"
             xcrun simctl list devices available
