@@ -24,11 +24,33 @@ jobs:
         run: xcodegen generate
 
       - name: Run unit tests (iOS Simulator)
+        # Không chỉ đích danh model ("iPhone 16") — GitHub âm thầm đổi simulator mặc định trên
+        # image macos-15 theo thời gian (2026-09-08 từng gãy CI vì "iPhone 16" biến mất khỏi
+        # runner). Tự dò 1 simulator iPhone có sẵn (bất kỳ) trên máy thay vì hardcode tên.
         run: |
+          set -e
+          UDID=$(xcrun simctl list devices available -j \
+            | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+for runtime,devs in d['devices'].items():
+    if 'iOS' not in runtime:
+        continue
+    for dev in devs:
+        if dev['name'].startswith('iPhone'):
+            print(dev['udid'])
+            sys.exit(0)
+")
+          if [ -z "$UDID" ]; then
+            echo "Khong tim thay simulator iPhone nao kha dung"
+            xcrun simctl list devices available
+            exit 1
+          fi
+          echo "Dung simulator: $UDID"
           xcodebuild test \
             -project AppMobileIOS.xcodeproj \
             -scheme AppMobileIOS \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -destination "id=$UDID" \
             CODE_SIGNING_ALLOWED=NO
 
   build:
