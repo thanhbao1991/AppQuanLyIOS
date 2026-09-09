@@ -23,6 +23,7 @@ struct ThongKeView: View {
     @State private var expandedCards: Set<ThongKeCard> = []
     @State private var selectedNoKhachHang: TongNoItemDto?
     @State private var selectedChiTieuTen: String?
+    @State private var selectedChiTieuNguyenLieuId: String?
     @State private var selectedThanhToanTen: String?
     @State private var selectedDoanhThuTen: String?
     @State private var selectedHoaDonId: String?
@@ -135,13 +136,19 @@ struct ThongKeView: View {
                                     ForEach(chiTieu.danhSachChiTieuNgay) { item in
                                         AmountRow(label: item.ten, value: item.soTien)
                                             .contentShape(Rectangle())
-                                            .onTapGesture { selectedChiTieuTen = item.ten }
+                                            .onTapGesture {
+                                                selectedChiTieuTen = item.ten
+                                                selectedChiTieuNguyenLieuId = item.nguyenLieuId
+                                            }
                                     }
                                     SubTotalRow(label: "Chi tiêu tháng", value: chiTieu.chiTieuThang, color: .thongKeRed)
                                     ForEach(chiTieu.danhSachChiTieuThang) { item in
                                         AmountRow(label: item.ten, value: item.soTien)
                                             .contentShape(Rectangle())
-                                            .onTapGesture { selectedChiTieuTen = item.ten }
+                                            .onTapGesture {
+                                                selectedChiTieuTen = item.ten
+                                                selectedChiTieuNguyenLieuId = item.nguyenLieuId
+                                            }
                                     }
                                 }
                             }
@@ -186,7 +193,10 @@ struct ThongKeView: View {
         )) { selection in
             ChiTieuThangDetailSheet(
                 ten: selection.ten,
-                items: chiTieuDayItems.filter { $0.ten.caseInsensitiveCompare(selection.ten) == .orderedSame }
+                items: chiTieuDayItems.filter {
+                    if let id = selectedChiTieuNguyenLieuId { return $0.nguyenLieuId.caseInsensitiveCompare(id) == .orderedSame }
+                    return $0.ten.caseInsensitiveCompare(selection.ten) == .orderedSame
+                }
             )
         }
         .sheet(item: Binding(

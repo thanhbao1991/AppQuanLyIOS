@@ -307,6 +307,9 @@ struct GamificationConfigDto: Codable {
 struct NamedAmountDto: Decodable, Identifiable {
     let ten: String
     let soTien: Double
+    /// Khoá gộp thật (ChiTieuItemDto.NguyenLieuId ở backend) — dùng để khớp lại đúng nhóm khi bấm
+    /// xem chi tiết, KHÔNG so bằng `ten` (chữ tự do, có thể lệch hoa/thường giữa các lần nhập).
+    var nguyenLieuId: String? = nil
     var id: String { ten }
 }
 

@@ -20,6 +20,7 @@ struct ThongKeThangView: View {
     @State private var hasLoaded = false
     @State private var expandedCards: Set<ThongKeThangCard> = []
     @State private var selectedChiTieuTen: String?
+    @State private var selectedChiTieuNguyenLieuId: String?
     @State private var selectedHoaDonId: String?
     @State private var selectedNoKhachHang: TongNoItemDto?
     @State private var selectedThanhToanTen: String?
@@ -68,7 +69,10 @@ struct ThongKeThangView: View {
                                     ForEach(mergedChiTieu(chiTieu)) { item in
                                         AmountRow(label: item.ten, value: item.soTien)
                                             .contentShape(Rectangle())
-                                            .onTapGesture { selectedChiTieuTen = item.ten }
+                                            .onTapGesture {
+                                                selectedChiTieuTen = item.ten
+                                                selectedChiTieuNguyenLieuId = item.nguyenLieuId
+                                            }
                                     }
                                 }
                             }
@@ -138,7 +142,10 @@ struct ThongKeThangView: View {
         )) { selection in
             ChiTieuThangDetailSheet(
                 ten: selection.ten,
-                items: chiTieuMonthItems.filter { $0.ten.caseInsensitiveCompare(selection.ten) == .orderedSame }
+                items: chiTieuMonthItems.filter {
+                    if let id = selectedChiTieuNguyenLieuId { return $0.nguyenLieuId.caseInsensitiveCompare(id) == .orderedSame }
+                    return $0.ten.caseInsensitiveCompare(selection.ten) == .orderedSame
+                }
             )
         }
         .sheet(item: Binding(
@@ -169,16 +176,23 @@ struct ThongKeThangView: View {
         }
     }
 
+    /// Gộp theo nguyenLieuId (khoá thật, khớp backend GROUP BY c.NguyenLieuId) - KHÔNG gộp theo ten
+    /// nữa, vì ten là bản chụp/tên hiển thị, có thể khác nhau dù cùng 1 danh mục.
     private func mergedChiTieu(_ chiTieu: ThongKeChiTieuDto) -> [NamedAmountDto] {
         let all = chiTieu.danhSachChiTieuNgay + chiTieu.danhSachChiTieuThang
-        var totalByTen: [String: Double] = [:]
+        var totalById: [String: NamedAmountDto] = [:]
         var order: [String] = []
         for item in all {
-            if totalByTen[item.ten] == nil { order.append(item.ten) }
-            totalByTen[item.ten, default: 0] += item.soTien
+            let key = item.nguyenLieuId ?? item.ten
+            if let existing = totalById[key] {
+                totalById[key] = NamedAmountDto(ten: existing.ten, soTien: existing.soTien + item.soTien, nguyenLieuId: existing.nguyenLieuId)
+            } else {
+                order.append(key)
+                totalById[key] = item
+            }
         }
         return order
-            .map { NamedAmountDto(ten: $0, soTien: totalByTen[$0]!) }
+            .map { totalById[$0]! }
             .sorted { $0.soTien > $1.soTien }
     }
 
