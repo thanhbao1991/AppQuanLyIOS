@@ -1,3 +1,4 @@
+import Charts
 import SwiftUI
 
 /// Công cụ tính lương shipper (Menu > Công cụ) — không lưu gì lên server, chỉ đọc doanh thu đơn ship/
@@ -21,6 +22,10 @@ struct TinhLuongView: View {
     @State private var tiLeText = "40"
     @State private var luongHienTaiText = Self.formatThousands("10000000")
     @State private var selectedDetail: LuongDetailKind?
+    /// Dữ liệu thô 6 tháng gần đây (kết thúc ở currentDate) — giữ raw luong thay vì tính sẵn ketQua
+    /// để biểu đồ tự cập nhật theo tiLe/luongHienTai đang gõ, giống cách ketQua (tháng hiện tại) đã
+    /// recompute live mỗi lần input đổi.
+    @State private var luong6ThangRaw: [(thang: Int, nam: Int, luong: LuongShipperDto)] = []
 
     /// Cùng 3 NguyenLieuId cố định như backend (ThongKeService.XangNguyenLieuId/UngNguyenLieuId) — dò
     /// 1 lần qua SSH ngày 2026-09-09. KHÔNG lọc theo Ten (chữ tự do, đã phát hiện 2 dòng "Xăng (Khánh)"/
@@ -49,10 +54,26 @@ struct TinhLuongView: View {
         return HoaDonFormatting.moneyFormatter.string(from: NSNumber(value: value)) ?? digits
     }
 
-    private var ketQua: Double? {
-        guard let luong else { return nil }
+    private func tinhKetQua(_ luong: LuongShipperDto) -> Double {
         if isNha { return luongHienTai - (luong.chiUng + luong.chiXang) }
         return luong.doanhThuShip * tiLe - (luongHienTai + luong.chiXang)
+    }
+
+    private var ketQua: Double? {
+        guard let luong else { return nil }
+        return tinhKetQua(luong)
+    }
+
+    fileprivate struct ThangKetQua: Identifiable {
+        let thang: Int
+        let nam: Int
+        let ketQua: Double
+        var id: String { "\(nam)-\(thang)" }
+        var label: String { "\(thang)/\(nam % 100)" }
+    }
+
+    private var bieuDo6Thang: [ThangKetQua] {
+        luong6ThangRaw.map { ThangKetQua(thang: $0.thang, nam: $0.nam, ketQua: tinhKetQua($0.luong)) }
     }
 
     var body: some View {
@@ -113,6 +134,14 @@ struct TinhLuongView: View {
                         }
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets())
+
+                        if !bieuDo6Thang.isEmpty {
+                            Section {
+                                KetQua6ThangChart(items: bieuDo6Thang)
+                            } header: {
+                                Text("Kết quả 6 tháng gần đây")
+                            }
+                        }
                     }
                 }
             }
@@ -149,6 +178,34 @@ struct TinhLuongView: View {
         async let b = APIClient.shared.getChiTieuByMonth(year: nam, month: thang)
         (luong, chiTieuMonthItems) = await (a, b)
         hasLoaded = true
+
+        await load6Thang()
+    }
+
+    /// 6 tháng gần đây tính tới currentDate (đang chọn) — gọi song song qua TaskGroup, giữ đúng thứ
+    /// tự tăng dần theo thời gian cho biểu đồ dù các request hoàn tất không theo thứ tự.
+    private func load6Thang() async {
+        let cal = Calendar.current
+        let thangNamList: [(thang: Int, nam: Int)] = (0..<6).reversed().compactMap { offset in
+            guard let d = cal.date(byAdding: .month, value: -offset, to: currentDate) else { return nil }
+            return (cal.component(.month, from: d), cal.component(.year, from: d))
+        }
+
+        let results = await withTaskGroup(of: (Int, Int, Int, LuongShipperDto?).self) { group in
+            for (index, tn) in thangNamList.enumerated() {
+                group.addTask {
+                    let luong = await APIClient.shared.getLuongShipperThang(ten: shipperTen, thang: tn.thang, nam: tn.nam)
+                    return (index, tn.thang, tn.nam, luong)
+                }
+            }
+            var collected: [(Int, Int, Int, LuongShipperDto?)] = []
+            for await item in group { collected.append(item) }
+            return collected.sorted { $0.0 < $1.0 }
+        }
+
+        luong6ThangRaw = results.compactMap { _, thang, nam, luong in
+            luong.map { (thang: thang, nam: nam, luong: $0) }
+        }
     }
 }
 
@@ -231,6 +288,39 @@ private struct DoanhThuShipperChiTietSheet: View {
             HoaDonDetailView(hoaDonId: wrapped.value) {}
         }
         .presentationDragIndicator(.visible)
+    }
+}
+
+/// Đường xu hướng kết quả 6 tháng gần đây — mỗi điểm tô màu theo lời/lỗ giống KetQuaCard, đường
+/// nối dùng màu trung tính (brandPrimary) vì bản thân đường không mang nghĩa lời/lỗ, chỉ nối các
+/// điểm cho dễ nhìn xu hướng tăng/giảm.
+private struct KetQua6ThangChart: View {
+    let items: [TinhLuongView.ThangKetQua]
+
+    var body: some View {
+        Chart(items) { item in
+            LineMark(x: .value("Tháng", item.label), y: .value("Kết quả", item.ketQua))
+                .foregroundStyle(Color.brandPrimary)
+            PointMark(x: .value("Tháng", item.label), y: .value("Kết quả", item.ketQua))
+                .foregroundStyle(item.ketQua >= 0 ? Color.successColor : Color.dangerColor)
+                .symbolSize(60)
+            RuleMark(y: .value("Hoà vốn", 0))
+                .foregroundStyle(Color.textMuted.opacity(0.3))
+                .lineStyle(StrokeStyle(dash: [4, 4]))
+        }
+        .chartXAxis { AxisMarks(values: .automatic) { AxisValueLabel().font(.caption2) } }
+        .chartYAxis {
+            AxisMarks(position: .leading) { value in
+                AxisGridLine()
+                AxisValueLabel {
+                    if let d = value.as(Double.self) {
+                        Text(HoaDonFormatting.moneyShort(d)).font(.caption2)
+                    }
+                }
+            }
+        }
+        .frame(height: 160)
+        .padding(.vertical, 8)
     }
 }
 
