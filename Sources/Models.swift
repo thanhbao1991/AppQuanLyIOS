@@ -384,6 +384,11 @@ struct ThongKeTraNoNgayDto: Decodable {
     let traNoShipper: [KhachTienDto]
 }
 
+struct LuongShipperDto: Decodable {
+    let doanhThuShip: Double
+    let chiXang: Double
+}
+
 struct ThongKeDonChuaThanhToanDto: Decodable {
     let tongChuaThanhToan: Double
     let danhSach: [DonChuaThanhToanItemDto]

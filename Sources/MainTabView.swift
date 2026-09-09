@@ -141,6 +141,19 @@ private struct MoreMenuView: View {
                     }
                 }
 
+                Section("Công cụ") {
+                    NavigationLink {
+                        TinhLuongView(shipperTen: "Khánh")
+                    } label: {
+                        Label("Tính lương Khánh", systemImage: "fuelpump")
+                    }
+                    NavigationLink {
+                        TinhLuongView(shipperTen: "Nhã")
+                    } label: {
+                        Label("Tính lương Nhã", systemImage: "fuelpump")
+                    }
+                }
+
                 Section {
                     Button {
                         Task { await syncContacts() }
