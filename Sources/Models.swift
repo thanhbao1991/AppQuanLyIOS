@@ -320,6 +320,7 @@ struct DoanhThuItemDto: Decodable, Identifiable {
 }
 
 struct KhachTienDto: Decodable, Identifiable {
+    let khachHangId: String?
     let tenKhachHang: String
     let soTien: Double
     var id: String { tenKhachHang }

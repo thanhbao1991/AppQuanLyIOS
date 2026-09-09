@@ -361,6 +361,7 @@ struct ThanhToanChiTietSheet: View {
     let currentDate: Date
     var ngayFilter: Int? = nil
     var traNoIsShipper: Bool? = nil
+    var traNoKhachHangId: String? = nil
 
     @Environment(\.dismiss) private var dismiss
     @State private var items: [ThanhToanChiTietItemDto] = []
@@ -421,7 +422,8 @@ struct ThanhToanChiTietSheet: View {
                     thang: cal.component(.month, from: currentDate),
                     nam: cal.component(.year, from: currentDate),
                     ten: ten,
-                    isShipper: traNoIsShipper
+                    isShipper: traNoIsShipper,
+                    khachHangId: traNoKhachHangId
                 )
             } else {
                 fetched = await APIClient.shared.getThanhToanChiTietThang(

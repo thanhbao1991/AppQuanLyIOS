@@ -118,13 +118,13 @@ struct ThongKeView: View {
                                     ForEach(traNo.traNoTaiQuan) { item in
                                         AmountRow(label: item.tenKhachHang, value: item.soTien)
                                             .contentShape(Rectangle())
-                                            .onTapGesture { selectedTraNoKhach = TraNoKhachSelection(ten: item.tenKhachHang, isShipper: false) }
+                                            .onTapGesture { selectedTraNoKhach = TraNoKhachSelection(ten: item.tenKhachHang, khachHangId: item.khachHangId, isShipper: false) }
                                     }
                                     SubTotalRow(label: "Trả nợ shipper", value: traNo.tongTraNoShipper, color: .thongKePurple)
                                     ForEach(traNo.traNoShipper) { item in
                                         AmountRow(label: item.tenKhachHang, value: item.soTien)
                                             .contentShape(Rectangle())
-                                            .onTapGesture { selectedTraNoKhach = TraNoKhachSelection(ten: item.tenKhachHang, isShipper: true) }
+                                            .onTapGesture { selectedTraNoKhach = TraNoKhachSelection(ten: item.tenKhachHang, khachHangId: item.khachHangId, isShipper: true) }
                                     }
                                 }
                             }
@@ -232,7 +232,8 @@ struct ThongKeView: View {
                 ten: selection.ten,
                 currentDate: currentDate,
                 ngayFilter: Calendar.current.component(.day, from: currentDate),
-                traNoIsShipper: selection.isShipper
+                traNoIsShipper: selection.isShipper,
+                traNoKhachHangId: selection.khachHangId
             )
         }
     }
@@ -273,6 +274,7 @@ struct ThongKeView: View {
 /// cùng 1 tên khách có thể xuất hiện độc lập ở cả 2 nhóm tại quán/shipper trong cùng ngày.
 private struct TraNoKhachSelection: Identifiable {
     let ten: String
+    let khachHangId: String?
     let isShipper: Bool
     var id: String { ten + (isShipper ? "-ship" : "-taiquan") }
 }
