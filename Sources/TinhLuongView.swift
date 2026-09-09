@@ -58,7 +58,7 @@ struct TinhLuongView: View {
                                     .contentShape(Rectangle())
                                     .onTapGesture { selectedDetail = .ung }
                             } else {
-                                AmountRow(label: "Doanh thu đơn ship \(shipperTen)", value: luong?.doanhThuShip ?? 0)
+                                AmountRow(label: "Đơn \(shipperTen) ship", value: luong?.doanhThuShip ?? 0)
                                     .contentShape(Rectangle())
                                     .onTapGesture { selectedDetail = .doanhThu }
                             }
@@ -95,7 +95,7 @@ struct TinhLuongView: View {
                         } footer: {
                             Text(isNha
                                  ? "Kết quả = Lương hiện tại − (Ứng \(shipperTen) + Chi xăng)"
-                                 : "Kết quả = Doanh thu ship × tỉ lệ − (Lương hiện tại + Chi xăng)")
+                                 : "Kết quả = Đơn ship × tỉ lệ − (Lương hiện tại + Chi xăng)")
                         }
 
                         Section {
@@ -194,7 +194,7 @@ private struct DoanhThuShipperChiTietSheet: View {
                     .listStyle(.plain)
                 }
             }
-            .navigationTitle("Doanh thu đơn ship \(shipperTen)")
+            .navigationTitle("Đơn \(shipperTen) ship")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Color.brandPrimary, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
