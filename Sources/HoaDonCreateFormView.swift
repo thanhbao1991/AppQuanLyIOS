@@ -101,65 +101,66 @@ struct HoaDonCreateFormView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            NavigationStack {
-                ScrollView {
-                    VStack(spacing: 14) {
-                        if let errorMessage {
-                            Text(errorMessage).foregroundColor(.dangerColor).font(.footnote)
-                        }
-                        if let giaRiengBanner {
-                            Text("Đã áp giá riêng:\n\(giaRiengBanner)")
-                                .font(.footnote).foregroundColor(.brandPrimary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(10)
-                                .background(Color.brandPrimary.opacity(0.1))
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
-                        }
-                        if let presetWarningBanner {
-                            Text("Lưu ý khi bắt đơn:\n\(presetWarningBanner)")
-                                .font(.footnote).foregroundColor(.warningColor)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(10)
-                                .background(Color.warningColor.opacity(0.12))
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
-                        }
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 14) {
+                    if let errorMessage {
+                        Text(errorMessage).foregroundColor(.dangerColor).font(.footnote)
+                    }
+                    if let giaRiengBanner {
+                        Text("Đã áp giá riêng:\n\(giaRiengBanner)")
+                            .font(.footnote).foregroundColor(.brandPrimary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(10)
+                            .background(Color.brandPrimary.opacity(0.1))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
+                    if let presetWarningBanner {
+                        Text("Lưu ý khi bắt đơn:\n\(presetWarningBanner)")
+                            .font(.footnote).foregroundColor(.warningColor)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(10)
+                            .background(Color.warningColor.opacity(0.12))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
 
-                        if phanLoai == "Tại Chỗ" { tenBanCard }
-                        khachHangCard
-                        monCard
-                        summaryCard
-                        discountCard
-                    }
-                    .padding()
+                    if phanLoai == "Tại Chỗ" { tenBanCard }
+                    khachHangCard
+                    monCard
+                    summaryCard
+                    discountCard
                 }
-                .navigationTitle(HoaDonFormatting.phanLoaiLabel(phanLoai))
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbarBackground(Color.brandPrimary, for: .navigationBar)
-                .toolbarBackground(.visible, for: .navigationBar)
-                .toolbarColorScheme(.dark, for: .navigationBar)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Đóng") { dismiss() }.disabled(saving)
-                    }
+                .padding()
+            }
+            .navigationTitle(HoaDonFormatting.phanLoaiLabel(phanLoai))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Đóng") { dismiss() }.disabled(saving)
                 }
             }
-
-            Button {
-                Task { await save() }
-            } label: {
-                Text(saving ? "Đang tạo..." : (applyingPresets ? "Đang tải..." : "Tạo đơn"))
-                    .fontWeight(.bold)
-                    .frame(maxWidth: .infinity)
+            // safeAreaInset (không phải VStack + Button sibling) để hợp tác đúng với keyboard
+            // avoidance — sibling VStack từng làm nút nhấp nháy mỗi lần gõ phím.
+            .safeAreaInset(edge: .bottom) {
+                Button {
+                    Task { await save() }
+                } label: {
+                    Text(saving ? "Đang tạo..." : (applyingPresets ? "Đang tải..." : "Tạo đơn"))
+                        .fontWeight(.bold)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.brandPrimary)
+                .controlSize(.large)
+                .disabled(saving || applyingPresets || items.isEmpty)
+                .padding(.horizontal, 16)
+                .padding(.top, 10)
+                .padding(.bottom, 8)
+                .background(.bar)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(.brandPrimary)
-            .controlSize(.large)
-            .disabled(saving || applyingPresets || items.isEmpty)
-            .padding(.horizontal, 16)
-            .padding(.top, 10)
-            .padding(.bottom, 8)
-            .background(.bar)
         }
         .task {
             async let catalog: Void = loadCatalog()

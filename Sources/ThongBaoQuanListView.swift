@@ -142,51 +142,50 @@ private struct ThongBaoQuanEditSheet: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            NavigationStack {
-                Form {
-                    Section("Tiêu đề") {
-                        TextField("Vd: Flash Sale cuối tuần", text: $tieude)
-                    }
-                    Section("Nội dung") {
-                        TextField("Nội dung hiện cho khách...", text: $noiDung, axis: .vertical)
-                            .lineLimit(3...8)
-                    }
-                    Section {
-                        Toggle("Đang hoạt động (hiện cho khách)", isOn: $dangHoatDong)
-                    }
-                    if let errorMessage {
-                        Text(errorMessage).foregroundColor(.dangerColor)
-                    }
+        NavigationStack {
+            Form {
+                Section("Tiêu đề") {
+                    TextField("Vd: Flash Sale cuối tuần", text: $tieude)
                 }
-                .navigationTitle(existing == nil ? "Thêm thông báo" : "Sửa thông báo")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbarBackground(Color.brandPrimary, for: .navigationBar)
-                .toolbarBackground(.visible, for: .navigationBar)
-                .toolbarColorScheme(.dark, for: .navigationBar)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Huỷ") { dismiss() }
-                    }
+                Section("Nội dung") {
+                    TextField("Nội dung hiện cho khách...", text: $noiDung, axis: .vertical)
+                        .lineLimit(3...8)
+                }
+                Section {
+                    Toggle("Đang hoạt động (hiện cho khách)", isOn: $dangHoatDong)
+                }
+                if let errorMessage {
+                    Text(errorMessage).foregroundColor(.dangerColor)
                 }
             }
-
-            Button {
-                Task { await save() }
-            } label: {
-                Text(saving ? "Đang lưu..." : "Lưu")
-                    .fontWeight(.bold)
-                    .frame(maxWidth: .infinity)
+            .navigationTitle(existing == nil ? "Thêm thông báo" : "Sửa thông báo")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Huỷ") { dismiss() }
+                }
             }
-            .buttonStyle(.borderedProminent)
-            .tint(.brandPrimary)
-            .controlSize(.large)
-            .disabled(tieude.trimmingCharacters(in: .whitespaces).isEmpty
-                || noiDung.trimmingCharacters(in: .whitespaces).isEmpty || saving)
-            .padding(.horizontal, 16)
-            .padding(.top, 10)
-            .padding(.bottom, 8)
-            .background(.bar)
+            .safeAreaInset(edge: .bottom) {
+                Button {
+                    Task { await save() }
+                } label: {
+                    Text(saving ? "Đang lưu..." : "Lưu")
+                        .fontWeight(.bold)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.brandPrimary)
+                .controlSize(.large)
+                .disabled(tieude.trimmingCharacters(in: .whitespaces).isEmpty
+                    || noiDung.trimmingCharacters(in: .whitespaces).isEmpty || saving)
+                .padding(.horizontal, 16)
+                .padding(.top, 10)
+                .padding(.bottom, 8)
+                .background(.bar)
+            }
         }
     }
 

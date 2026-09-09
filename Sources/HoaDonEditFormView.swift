@@ -80,75 +80,78 @@ struct HoaDonEditFormView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            NavigationStack {
-                Group {
-                    if loading {
-                        ProgressView()
-                    } else if let loadError {
-                        Text(loadError).foregroundColor(.dangerColor)
-                    } else {
-                        ScrollView {
-                            VStack(spacing: 14) {
-                                if let errorMessage {
-                                    Text(errorMessage).foregroundColor(.dangerColor).font(.footnote)
-                                }
-                                if let giaRiengBanner {
-                                    Text("Đã áp giá riêng:\n\(giaRiengBanner)")
-                                        .font(.footnote).foregroundColor(.brandPrimary)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .padding(10)
-                                        .background(Color.brandPrimary.opacity(0.1))
-                                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                                }
-                                if !unmatchedNames.isEmpty {
-                                    Text("Không khớp được món trong catalog hiện tại, giữ nguyên không sửa được:\n\(unmatchedNames.joined(separator: ", "))")
-                                        .font(.footnote).foregroundColor(.warningColor)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .padding(10)
-                                        .background(Color.warningColor.opacity(0.12))
-                                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                                }
-
-                                if phanLoai == "Tại Chỗ" { tenBanCard }
-                                khachHangCard
-                                monCard
-                                summaryCard
-                                discountCard
+        NavigationStack {
+            Group {
+                if loading {
+                    ProgressView()
+                } else if let loadError {
+                    Text(loadError).foregroundColor(.dangerColor)
+                } else {
+                    ScrollView {
+                        VStack(spacing: 14) {
+                            if let errorMessage {
+                                Text(errorMessage).foregroundColor(.dangerColor).font(.footnote)
                             }
-                            .padding()
-                        }
-                        .disabled(saving)
-                        .overlay { if saving { ProgressView() } }
-                    }
-                }
-                .navigationTitle("Sửa hoá đơn")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbarBackground(Color.brandPrimary, for: .navigationBar)
-                .toolbarBackground(.visible, for: .navigationBar)
-                .toolbarColorScheme(.dark, for: .navigationBar)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Đóng") { dismiss() }.disabled(saving)
-                    }
-                }
-            }
+                            if let giaRiengBanner {
+                                Text("Đã áp giá riêng:\n\(giaRiengBanner)")
+                                    .font(.footnote).foregroundColor(.brandPrimary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(10)
+                                    .background(Color.brandPrimary.opacity(0.1))
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                            }
+                            if !unmatchedNames.isEmpty {
+                                Text("Không khớp được món trong catalog hiện tại, giữ nguyên không sửa được:\n\(unmatchedNames.joined(separator: ", "))")
+                                    .font(.footnote).foregroundColor(.warningColor)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(10)
+                                    .background(Color.warningColor.opacity(0.12))
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                            }
 
-            Button {
-                Task { await save() }
-            } label: {
-                Text(saving ? "Đang lưu..." : "Lưu")
-                    .fontWeight(.bold)
-                    .frame(maxWidth: .infinity)
+                            if phanLoai == "Tại Chỗ" { tenBanCard }
+                            khachHangCard
+                            monCard
+                            summaryCard
+                            discountCard
+                        }
+                        .padding()
+                    }
+                    .disabled(saving)
+                    .overlay { if saving { ProgressView() } }
+                    // safeAreaInset (không phải VStack + Button sibling) để hợp tác đúng với
+                    // keyboard avoidance — sibling VStack từng làm nút Lưu nhấp nháy mỗi lần gõ
+                    // phím vì ScrollView bên trong NavigationStack và VStack ngoài cùng tranh nhau
+                    // né bàn phím.
+                    .safeAreaInset(edge: .bottom) {
+                        Button {
+                            Task { await save() }
+                        } label: {
+                            Text(saving ? "Đang lưu..." : "Lưu")
+                                .fontWeight(.bold)
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.brandPrimary)
+                        .controlSize(.large)
+                        .disabled(saving || items.isEmpty)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 10)
+                        .padding(.bottom, 8)
+                        .background(.bar)
+                    }
+                }
             }
-            .buttonStyle(.borderedProminent)
-            .tint(.brandPrimary)
-            .controlSize(.large)
-            .disabled(saving || items.isEmpty || loading || loadError != nil)
-            .padding(.horizontal, 16)
-            .padding(.top, 10)
-            .padding(.bottom, 8)
-            .background(.bar)
+            .navigationTitle("Sửa hoá đơn")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Đóng") { dismiss() }.disabled(saving)
+                }
+            }
         }
         .task { await load() }
     }
