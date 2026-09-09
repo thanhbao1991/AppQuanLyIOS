@@ -16,9 +16,17 @@ struct TinhLuongView: View {
 
     @State private var currentDate = Date()
     @State private var luong: LuongShipperDto?
+    @State private var chiTieuMonthItems: [ChiTieuHangNgayDto] = []
     @State private var hasLoaded = false
     @State private var tiLeText = "40"
     @State private var luongHienTaiText = Self.formatThousands("10000000")
+    @State private var selectedDetail: LuongDetailKind?
+
+    /// Cùng logic LIKE '%từ khoá%' + '%tên shipper%' như backend (GetLuongShipperThangAsync) — khớp
+    /// không phân biệt hoa/thường/dấu để không lệch với số tổng server đã tính.
+    private func items(matching keyword: String) -> [ChiTieuHangNgayDto] {
+        chiTieuMonthItems.filter { $0.ten.matchesSearch(keyword) && $0.ten.matchesSearch(shipperTen) }
+    }
 
     private var tiLe: Double { (Double(tiLeText) ?? 0) / 100 }
     private var luongHienTai: Double { Double(luongHienTaiText.filter(\.isNumber)) ?? 0 }
@@ -47,10 +55,14 @@ struct TinhLuongView: View {
                         Section {
                             if isNha {
                                 AmountRow(label: "Ứng \(shipperTen)", value: luong?.chiUng ?? 0)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture { selectedDetail = .ung }
                             } else {
                                 AmountRow(label: "Doanh thu đơn ship \(shipperTen)", value: luong?.doanhThuShip ?? 0)
                             }
                             AmountRow(label: "Chi xăng \(shipperTen)", value: luong?.chiXang ?? 0)
+                                .contentShape(Rectangle())
+                                .onTapGesture { selectedDetail = .xang }
                         }
 
                         Section {
@@ -104,17 +116,31 @@ struct TinhLuongView: View {
             }
         }
         .task { await load() }
+        .sheet(item: $selectedDetail) { kind in
+            switch kind {
+            case .xang:
+                ChiTieuThangDetailSheet(ten: "Chi xăng \(shipperTen)", items: items(matching: "xăng"))
+            case .ung:
+                ChiTieuThangDetailSheet(ten: "Ứng \(shipperTen)", items: items(matching: "ứng"))
+            }
+        }
     }
 
     private func load() async {
         let cal = Calendar.current
-        luong = await APIClient.shared.getLuongShipperThang(
-            ten: shipperTen,
-            thang: cal.component(.month, from: currentDate),
-            nam: cal.component(.year, from: currentDate)
-        )
+        let thang = cal.component(.month, from: currentDate)
+        let nam = cal.component(.year, from: currentDate)
+
+        async let a = APIClient.shared.getLuongShipperThang(ten: shipperTen, thang: thang, nam: nam)
+        async let b = APIClient.shared.getChiTieuByMonth(year: nam, month: thang)
+        (luong, chiTieuMonthItems) = await (a, b)
         hasLoaded = true
     }
+}
+
+private enum LuongDetailKind: String, Identifiable {
+    case xang, ung
+    var id: String { rawValue }
 }
 
 /// 3 trạng thái riêng: dương = có lời (thẻ xanh, ăn mừng icon nảy nhẹ), 0 = hoà vốn (thẻ vàng, điềm
