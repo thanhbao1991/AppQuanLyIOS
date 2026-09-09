@@ -417,6 +417,14 @@ actor APIClient {
         return env.data
     }
 
+    func getDoanhThuShipperChiTietThang(ten: String, thang: Int, nam: Int) async -> [HoaDonListDto] {
+        let tenEncoded = ten.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ten
+        let req = makeRequest("/api/ThongKe/doanh-thu-shipper-chi-tiet-thang?ten=\(tenEncoded)&thang=\(thang)&nam=\(nam)")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[HoaDonListDto]>.self, from: data), env.isSuccess else { return [] }
+        return env.data ?? []
+    }
+
     /// Proxy VietQR qua Backend (bank config chỉ sống ở BankQrConfig phía server — Desktop/Mobile
     /// dùng chung, iOS gọi qua đây nên đổi tài khoản 1 chỗ là mọi client ra cùng 1 mã QR).
     /// Ảnh HoaDonGrid mới nhất từ máy Desktop `label` (2026-08-27: đổi từ SignalR push sang HTTP

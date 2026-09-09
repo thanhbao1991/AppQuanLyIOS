@@ -59,6 +59,8 @@ struct TinhLuongView: View {
                                     .onTapGesture { selectedDetail = .ung }
                             } else {
                                 AmountRow(label: "Doanh thu đơn ship \(shipperTen)", value: luong?.doanhThuShip ?? 0)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture { selectedDetail = .doanhThu }
                             }
                             AmountRow(label: "Chi xăng \(shipperTen)", value: luong?.chiXang ?? 0)
                                 .contentShape(Rectangle())
@@ -122,6 +124,8 @@ struct TinhLuongView: View {
                 ChiTieuThangDetailSheet(ten: "Chi xăng \(shipperTen)", items: items(matching: "xăng"))
             case .ung:
                 ChiTieuThangDetailSheet(ten: "Ứng \(shipperTen)", items: items(matching: "ứng"))
+            case .doanhThu:
+                DoanhThuShipperChiTietSheet(shipperTen: shipperTen, currentDate: currentDate)
             }
         }
     }
@@ -139,8 +143,85 @@ struct TinhLuongView: View {
 }
 
 private enum LuongDetailKind: String, Identifiable {
-    case xang, ung
+    case xang, ung, doanhThu
     var id: String { rawValue }
+}
+
+/// Danh sách hoá đơn của dòng "Doanh thu đơn ship" — khớp layout DoanhThuChiTietSheet (MainTabView.swift)
+/// nhưng gọi endpoint riêng lọc theo NguoiShip thay vì theo PhânLoại/tên hạng mục.
+private struct DoanhThuShipperChiTietSheet: View {
+    let shipperTen: String
+    let currentDate: Date
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var items: [HoaDonListDto] = []
+    @State private var hasLoaded = false
+    @State private var selectedHoaDonId: String?
+
+    private var total: Double { items.reduce(0) { $0 + $1.thanhTien } }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if !hasLoaded {
+                    ProgressView()
+                } else {
+                    List {
+                        Section {
+                            HStack {
+                                Text("Tổng cộng").foregroundColor(.textMuted)
+                                Spacer()
+                                Text(HoaDonFormatting.money(total)).font(.headline).monospacedDigit()
+                            }
+                        }
+                        ForEach(items) { item in
+                            Button {
+                                selectedHoaDonId = item.id
+                            } label: {
+                                HStack {
+                                    Text(item.tenKhachHangText?.isEmpty == false ? item.tenKhachHangText! : (item.tenBan.map { "Bàn \($0)" } ?? "Khách lẻ"))
+                                        .font(.subheadline.weight(.medium))
+                                        .foregroundColor(.primary)
+                                        .lineLimit(1)
+                                    Spacer()
+                                    Text(HoaDonFormatting.money(item.thanhTien))
+                                        .font(.subheadline.weight(.semibold))
+                                        .monospacedDigit()
+                                }
+                            }
+                        }
+                    }
+                    .listStyle(.plain)
+                }
+            }
+            .navigationTitle("Doanh thu đơn ship \(shipperTen)")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Đóng") { dismiss() }
+                }
+            }
+        }
+        .task {
+            let cal = Calendar.current
+            items = await APIClient.shared.getDoanhThuShipperChiTietThang(
+                ten: shipperTen,
+                thang: cal.component(.month, from: currentDate),
+                nam: cal.component(.year, from: currentDate)
+            )
+            hasLoaded = true
+        }
+        .sheet(item: Binding(
+            get: { selectedHoaDonId.map { IdentifiableId($0) } },
+            set: { selectedHoaDonId = $0?.value }
+        )) { wrapped in
+            HoaDonDetailView(hoaDonId: wrapped.value) {}
+        }
+        .presentationDragIndicator(.visible)
+    }
 }
 
 /// 3 trạng thái riêng: dương = có lời (thẻ xanh, ăn mừng icon nảy nhẹ), 0 = hoà vốn (thẻ vàng, điềm
