@@ -177,38 +177,52 @@ private struct ReceiptReviewSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    Toggle("Bill tháng", isOn: $billThang)
-                } footer: {
-                    Text("Áp dụng chung cho tất cả dòng bên dưới.")
-                }
-
-                ForEach($lines) { $line in
+        VStack(spacing: 0) {
+            NavigationStack {
+                Form {
                     Section {
-                        lineRow($line)
+                        Toggle("Bill tháng", isOn: $billThang)
+                    } footer: {
+                        Text("Áp dụng chung cho tất cả dòng bên dưới.")
+                    }
+
+                    ForEach($lines) { $line in
+                        Section {
+                            lineRow($line)
+                        }
+                    }
+
+                    if let errorMessage {
+                        Text(errorMessage).foregroundColor(.dangerColor)
                     }
                 }
+                .navigationTitle("Duyệt hoá đơn")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+                .toolbarBackground(.visible, for: .navigationBar)
+                .toolbarColorScheme(.dark, for: .navigationBar)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Huỷ") { dismiss() }.disabled(saving)
+                    }
+                }
+            }
 
-                if let errorMessage {
-                    Text(errorMessage).foregroundColor(.dangerColor)
-                }
+            Button {
+                Task { await save() }
+            } label: {
+                Text(saving ? "Đang lưu..." : "Lưu (\(totalText))")
+                    .fontWeight(.bold)
+                    .frame(maxWidth: .infinity)
             }
-            .navigationTitle("Duyệt hoá đơn")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Huỷ") { dismiss() }.disabled(saving)
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(saving ? "Đang lưu..." : "Lưu (\(totalText))") { Task { await save() } }
-                        .disabled(!canSave || saving)
-                }
-            }
+            .buttonStyle(.borderedProminent)
+            .tint(.brandPrimary)
+            .controlSize(.large)
+            .disabled(!canSave || saving)
+            .padding(.horizontal, 16)
+            .padding(.top, 10)
+            .padding(.bottom, 8)
+            .background(.bar)
         }
         .task { nguyenLieuList = await APIClient.shared.getNguyenLieu() }
     }

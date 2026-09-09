@@ -276,37 +276,49 @@ private struct EditExpenseSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("Số lượng & đơn giá") {
-                    QuantityPriceRow(soLuong: $soLuong, donGia: $donGia, thanhTien: thanhTien)
-                }
-
-                Section(item.ten) {
-                    TextField("Ghi chú", text: $ghiChu)
-                    Toggle("Bill tháng", isOn: $billThang)
-                }
-
-                if let errorMessage {
-                    Text(errorMessage).foregroundColor(.dangerColor)
-                }
-            }
-            .navigationTitle("Sửa chi tiêu")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Huỷ") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(saving ? "Đang lưu..." : "Lưu") {
-                        Task { await save() }
+        VStack(spacing: 0) {
+            NavigationStack {
+                Form {
+                    Section("Số lượng & đơn giá") {
+                        QuantityPriceRow(soLuong: $soLuong, donGia: $donGia, thanhTien: thanhTien)
                     }
-                    .disabled(donGia <= 0 || saving)
+
+                    Section(item.ten) {
+                        TextField("Ghi chú", text: $ghiChu)
+                        Toggle("Bill tháng", isOn: $billThang)
+                    }
+
+                    if let errorMessage {
+                        Text(errorMessage).foregroundColor(.dangerColor)
+                    }
+                }
+                .navigationTitle("Sửa chi tiêu")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+                .toolbarBackground(.visible, for: .navigationBar)
+                .toolbarColorScheme(.dark, for: .navigationBar)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Huỷ") { dismiss() }
+                    }
                 }
             }
+
+            Button {
+                Task { await save() }
+            } label: {
+                Text(saving ? "Đang lưu..." : "Lưu")
+                    .fontWeight(.bold)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.brandPrimary)
+            .controlSize(.large)
+            .disabled(donGia <= 0 || saving)
+            .padding(.horizontal, 16)
+            .padding(.top, 10)
+            .padding(.bottom, 8)
+            .background(.bar)
         }
     }
 
@@ -421,7 +433,8 @@ struct AddExpenseSheet: View {
     private var thanhTien: Double { soLuong * donGia }
 
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            NavigationStack {
             Form {
                 Section("Nguyên liệu") {
                     TextField("Tìm nguyên liệu...", text: $searchText)
@@ -483,13 +496,24 @@ struct AddExpenseSheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Huỷ") { dismiss() }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(saving ? "Đang lưu..." : "Lưu") {
-                        Task { await save() }
-                    }
-                    .disabled(selected == nil || donGia <= 0 || saving)
-                }
             }
+            }
+
+            Button {
+                Task { await save() }
+            } label: {
+                Text(saving ? "Đang lưu..." : "Lưu")
+                    .fontWeight(.bold)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.brandPrimary)
+            .controlSize(.large)
+            .disabled(selected == nil || donGia <= 0 || saving)
+            .padding(.horizontal, 16)
+            .padding(.top, 10)
+            .padding(.bottom, 8)
+            .background(.bar)
         }
         .task { nguyenLieuList = await APIClient.shared.getNguyenLieu() }
     }
