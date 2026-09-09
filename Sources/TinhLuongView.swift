@@ -102,16 +102,23 @@ struct TinhLuongView: View {
     }
 }
 
-/// Dương = đang có lời -> thẻ xanh ăn mừng kèu icon nảy nhẹ. Âm/0 = đang lỗ/hoà vốn -> thẻ đỏ điềm
-/// tĩnh hơn, không ăn mừng khi đang lỗ.
+/// 3 trạng thái riêng: dương = có lời (thẻ xanh, ăn mừng icon nảy nhẹ), 0 = hoà vốn (thẻ vàng, điềm
+/// tĩnh), âm = lỗ vốn (thẻ đỏ, không ăn mừng).
 private struct KetQuaCard: View {
     let ketQua: Double?
     @State private var bounce = false
 
+    private var trangThai: (emoji: String, text: String, color: Color)? {
+        guard let ketQua else { return nil }
+        if ketQua > 0 { return ("🎉🥳🎊", "Đang có lời, ăn mừng thôi ahihi!", .successColor) }
+        if ketQua == 0 { return ("⚖️", "Hoà vốn, huề nhau nhé!", .warningColor) }
+        return ("😥", "Đang lỗ vốn, ráng lên nào 💪", .dangerColor)
+    }
+
     var body: some View {
         VStack(spacing: 8) {
-            if let ketQua {
-                Text(ketQua > 0 ? "🎉🥳🎊" : "😥")
+            if let ketQua, let trangThai {
+                Text(trangThai.emoji)
                     .font(.system(size: 40))
                     .scaleEffect(bounce ? 1.15 : 1.0)
                     .onAppear {
@@ -123,7 +130,7 @@ private struct KetQuaCard: View {
                 Text(HoaDonFormatting.money(ketQua))
                     .font(.system(size: 30, weight: .heavy))
                     .monospacedDigit()
-                Text(ketQua > 0 ? "Đang có lời, ăn mừng thôi ahihi!" : "Đang lỗ/hoà vốn, ráng lên nào 💪")
+                Text(trangThai.text)
                     .font(.subheadline.weight(.semibold))
             } else {
                 ProgressView()
@@ -131,10 +138,8 @@ private struct KetQuaCard: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 20)
-        .background(
-            ((ketQua ?? 0) > 0 ? Color.successColor : Color.dangerColor).opacity(0.12)
-        )
-        .foregroundColor((ketQua ?? 0) > 0 ? .successColor : .dangerColor)
+        .background((trangThai?.color ?? .textMuted).opacity(0.12))
+        .foregroundColor(trangThai?.color ?? .textMuted)
         .cornerRadius(16)
     }
 }
