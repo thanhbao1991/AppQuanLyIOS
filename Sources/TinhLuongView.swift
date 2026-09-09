@@ -1,12 +1,18 @@
 import SwiftUI
 
-/// Công cụ tính lương shipper (Menu > Công cụ) — không lưu gì lên server, chỉ đọc doanh thu đơn ship
-/// + chi xăng của shipper trong 1 tháng (GET /api/ThongKe/luong-shipper-thang), phần tỉ lệ lợi nhuận
-/// và lương hiện tại là input tại chỗ để thử nhiều kịch bản. Công thức:
-///   kết quả = doanhThuShip * tỉLệ - (lươngHiệnTại + chiXăng)
+/// Công cụ tính lương shipper (Menu > Công cụ) — không lưu gì lên server, chỉ đọc doanh thu đơn ship/
+/// chi xăng/chi ứng của shipper trong 1 tháng (GET /api/ThongKe/luong-shipper-thang), phần tỉ lệ lợi
+/// nhuận và lương hiện tại là input tại chỗ để thử nhiều kịch bản.
+/// 2 shipper tính KHÁC công thức hẳn nhau (không phải cùng 1 công thức đổi tham số):
+///   - Khánh: doanhThuShip * tỉLệ - (lươngHiệnTại + chiXăng)  — Khánh ứng trước lương/tỉ lệ, đối
+///     soát bằng doanh thu ship trừ lại phần đã ứng.
+///   - Nhã:   lươngHiệnTại - (chiỨng + chiXăng)               — không liên quan doanh thu ship, không
+///     có tỉ lệ lợi nhuận, chỉ trừ khoản đã ứng + xăng khỏi lương cố định.
 /// Dùng chung 1 view cho cả "Tính lương Khánh"/"Tính lương Nhã", chỉ khác `shipperTen` truyền vào.
 struct TinhLuongView: View {
     let shipperTen: String
+
+    private var isNha: Bool { shipperTen == "Nhã" }
 
     @State private var currentDate = Date()
     @State private var luong: LuongShipperDto?
@@ -27,6 +33,7 @@ struct TinhLuongView: View {
 
     private var ketQua: Double? {
         guard let luong else { return nil }
+        if isNha { return luongHienTai - (luong.chiUng + luong.chiXang) }
         return luong.doanhThuShip * tiLe - (luongHienTai + luong.chiXang)
     }
 
@@ -38,19 +45,25 @@ struct TinhLuongView: View {
                 } else {
                     Form {
                         Section {
-                            AmountRow(label: "Doanh thu đơn ship \(shipperTen)", value: luong?.doanhThuShip ?? 0)
+                            if isNha {
+                                AmountRow(label: "Ứng \(shipperTen)", value: luong?.chiUng ?? 0)
+                            } else {
+                                AmountRow(label: "Doanh thu đơn ship \(shipperTen)", value: luong?.doanhThuShip ?? 0)
+                            }
                             AmountRow(label: "Chi xăng \(shipperTen)", value: luong?.chiXang ?? 0)
                         }
 
                         Section {
-                            HStack {
-                                Text("Tỉ lệ lợi nhuận")
-                                Spacer()
-                                TextField("40", text: $tiLeText)
-                                    .keyboardType(.numberPad)
-                                    .multilineTextAlignment(.trailing)
-                                    .frame(width: 70)
-                                Text("%").foregroundColor(.textMuted)
+                            if !isNha {
+                                HStack {
+                                    Text("Tỉ lệ lợi nhuận")
+                                    Spacer()
+                                    TextField("40", text: $tiLeText)
+                                        .keyboardType(.numberPad)
+                                        .multilineTextAlignment(.trailing)
+                                        .frame(width: 70)
+                                    Text("%").foregroundColor(.textMuted)
+                                }
                             }
                             HStack {
                                 Text("Lương hiện tại")
@@ -66,7 +79,9 @@ struct TinhLuongView: View {
                                 Text("đ").foregroundColor(.textMuted)
                             }
                         } footer: {
-                            Text("Kết quả = Doanh thu ship × tỉ lệ − (Lương hiện tại + Chi xăng)")
+                            Text(isNha
+                                 ? "Kết quả = Lương hiện tại − (Ứng \(shipperTen) + Chi xăng)"
+                                 : "Kết quả = Doanh thu ship × tỉ lệ − (Lương hiện tại + Chi xăng)")
                         }
 
                         Section {

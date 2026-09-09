@@ -387,6 +387,7 @@ struct ThongKeTraNoNgayDto: Decodable {
 struct LuongShipperDto: Decodable {
     let doanhThuShip: Double
     let chiXang: Double
+    let chiUng: Double
 }
 
 struct ThongKeDonChuaThanhToanDto: Decodable {
