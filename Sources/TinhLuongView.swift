@@ -12,10 +12,18 @@ struct TinhLuongView: View {
     @State private var luong: LuongShipperDto?
     @State private var hasLoaded = false
     @State private var tiLeText = "40"
-    @State private var luongHienTaiText = "10000000"
+    @State private var luongHienTaiText = Self.formatThousands("10000000")
 
     private var tiLe: Double { (Double(tiLeText) ?? 0) / 100 }
-    private var luongHienTai: Double { Double(luongHienTaiText) ?? 0 }
+    private var luongHienTai: Double { Double(luongHienTaiText.filter(\.isNumber)) ?? 0 }
+
+    /// Gõ tới đâu format dấu chấm ngăn cách tới đó (kiểu "10.000.000") — chỉ giữ lại chữ số rồi
+    /// nhóm lại bằng chính moneyFormatter đang dùng chung toàn app, không tạo formatter riêng.
+    private static func formatThousands(_ raw: String) -> String {
+        let digits = raw.filter(\.isNumber)
+        guard let value = Int(digits) else { return "" }
+        return HoaDonFormatting.moneyFormatter.string(from: NSNumber(value: value)) ?? digits
+    }
 
     private var ketQua: Double? {
         guard let luong else { return nil }
@@ -47,10 +55,14 @@ struct TinhLuongView: View {
                             HStack {
                                 Text("Lương hiện tại")
                                 Spacer()
-                                TextField("10000000", text: $luongHienTaiText)
+                                TextField("10.000.000", text: $luongHienTaiText)
                                     .keyboardType(.numberPad)
                                     .multilineTextAlignment(.trailing)
-                                    .frame(width: 110)
+                                    .frame(width: 130)
+                                    .onChange(of: luongHienTaiText) { newValue in
+                                        let formatted = Self.formatThousands(newValue)
+                                        if formatted != newValue { luongHienTaiText = formatted }
+                                    }
                                 Text("đ").foregroundColor(.textMuted)
                             }
                         } footer: {
