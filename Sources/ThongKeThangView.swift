@@ -138,7 +138,7 @@ struct ThongKeThangView: View {
         )) { selection in
             ChiTieuThangDetailSheet(
                 ten: selection.ten,
-                items: chiTieuMonthItems.filter { $0.ten == selection.ten }
+                items: chiTieuMonthItems.filter { $0.ten.caseInsensitiveCompare(selection.ten) == .orderedSame }
             )
         }
         .sheet(item: Binding(
