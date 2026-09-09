@@ -22,10 +22,20 @@ struct TinhLuongView: View {
     @State private var luongHienTaiText = Self.formatThousands("10000000")
     @State private var selectedDetail: LuongDetailKind?
 
-    /// Cùng logic LIKE '%từ khoá%' + '%tên shipper%' như backend (GetLuongShipperThangAsync) — khớp
-    /// không phân biệt hoa/thường/dấu để không lệch với số tổng server đã tính.
-    private func items(matching keyword: String) -> [ChiTieuHangNgayDto] {
-        chiTieuMonthItems.filter { $0.ten.matchesSearch(keyword) && $0.ten.matchesSearch(shipperTen) }
+    /// Cùng 3 NguyenLieuId cố định như backend (ThongKeService.XangNguyenLieuId/UngNguyenLieuId) — dò
+    /// 1 lần qua SSH ngày 2026-09-09. KHÔNG lọc theo Ten (chữ tự do, đã phát hiện 2 dòng "Xăng (Khánh)"/
+    /// "Xăng (KHÁNH)" cùng NguyenLieuId nhưng khác hoa/thường làm lệch số giữa 2 nơi hiển thị).
+    private static let xangNguyenLieuId: [String: String] = [
+        "Khánh": "8602845A-8DD3-4799-ADFD-C25529D02170",
+        "Nhã": "C9E6D37B-2344-4D54-B9E8-40E303441B0A",
+    ]
+    private static let ungNguyenLieuId: [String: String] = [
+        "Nhã": "7995B334-44D1-4768-89C7-280E6B0413AE",
+    ]
+
+    private func items(nguyenLieuId: String?) -> [ChiTieuHangNgayDto] {
+        guard let nguyenLieuId else { return [] }
+        return chiTieuMonthItems.filter { $0.nguyenLieuId.caseInsensitiveCompare(nguyenLieuId) == .orderedSame }
     }
 
     private var tiLe: Double { (Double(tiLeText) ?? 0) / 100 }
@@ -121,9 +131,9 @@ struct TinhLuongView: View {
         .sheet(item: $selectedDetail) { kind in
             switch kind {
             case .xang:
-                ChiTieuThangDetailSheet(ten: "Chi xăng \(shipperTen)", items: items(matching: "xăng"))
+                ChiTieuThangDetailSheet(ten: "Chi xăng \(shipperTen)", items: items(nguyenLieuId: Self.xangNguyenLieuId[shipperTen]))
             case .ung:
-                ChiTieuThangDetailSheet(ten: "Ứng \(shipperTen)", items: items(matching: "ứng"))
+                ChiTieuThangDetailSheet(ten: "Ứng \(shipperTen)", items: items(nguyenLieuId: Self.ungNguyenLieuId[shipperTen]))
             case .doanhThu:
                 DoanhThuShipperChiTietSheet(shipperTen: shipperTen, currentDate: currentDate)
             }
