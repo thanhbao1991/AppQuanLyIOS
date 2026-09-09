@@ -90,21 +90,6 @@ struct TinhLuongView: View {
     }
 }
 
-/// Không private — trùng tên/layout AmountRow đã dùng ở ThongKeView, nhưng đây là bản riêng để
-/// tránh phụ thuộc ngược vào file đó chỉ vì 1 struct nhỏ.
-private struct AmountRow: View {
-    let label: String
-    let value: Double
-
-    var body: some View {
-        HStack {
-            Text(label)
-            Spacer()
-            Text(HoaDonFormatting.money(value)).monospacedDigit()
-        }
-    }
-}
-
 /// Dương = đang có lời -> thẻ xanh ăn mừng kèu icon nảy nhẹ. Âm/0 = đang lỗ/hoà vốn -> thẻ đỏ điềm
 /// tĩnh hơn, không ăn mừng khi đang lỗ.
 private struct KetQuaCard: View {
