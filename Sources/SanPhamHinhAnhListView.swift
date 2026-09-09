@@ -84,7 +84,7 @@ private struct SanPhamHinhAnhRow: View {
     let uploading: Bool
     let onPicked: (Data, String) -> Void
 
-    @State private var pickerItem: PhotosPickerItem?
+    @State private var showPicker = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -92,7 +92,9 @@ private struct SanPhamHinhAnhRow: View {
             Text(sanPham.ten)
                 .font(.subheadline)
             Spacer()
-            PhotosPicker(selection: $pickerItem, matching: .images) {
+            Button {
+                showPicker = true
+            } label: {
                 if uploading {
                     ProgressView().frame(width: 28, height: 28)
                 } else {
@@ -102,16 +104,11 @@ private struct SanPhamHinhAnhRow: View {
                 }
             }
             .disabled(uploading)
-            .onChange(of: pickerItem) { item in
-                guard let item else { return }
-                Task {
-                    defer { pickerItem = nil }
-                    // Ảnh gốc từ thư viện có thể vài MB (HEIC/JPEG full-res) — crop 3:4 + resize về
-                    // đúng 200x267 (khớp hệt 92 ảnh seed ban đầu) trước khi upload, vì thumbnail chỉ
-                    // hiển thị 48x48/64x64, tránh upload chậm và ảnh nặng làm cả danh sách tải lâu.
-                    guard let raw = try? await item.loadTransferable(type: Data.self),
-                          let image = UIImage(data: raw),
-                          let data = image.resizedForMenuUpload().jpegData(compressionQuality: 0.75) else { return }
+            // Mở thẳng vào album Yêu thích — xem FavoritesImagePicker để biết lý do không dùng
+            // PhotosPicker mặc định (Apple không cho chọn album ban đầu, luôn mở Recents).
+            .sheet(isPresented: $showPicker) {
+                FavoritesImagePicker { data in
+                    showPicker = false
                     onPicked(data, "image/jpeg")
                 }
             }
@@ -145,7 +142,7 @@ private struct SanPhamHinhAnhRow: View {
     }
 }
 
-private extension UIImage {
+extension UIImage {
     /// Center-crop về tỉ lệ 3:4 rồi resize đúng 200x267 — khớp hệt kích thước 92 ảnh seed ban đầu
     /// (từ AppShippingBackend). Cả 2 nơi hiển thị (ô 48x48, 64x64) đều crop-fit sẵn nên không cần
     /// độ phân giải cao hơn — giữ file nhẹ như ảnh seed thay vì để nguyên full-res từ camera.
