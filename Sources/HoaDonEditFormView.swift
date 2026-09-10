@@ -55,6 +55,42 @@ struct HoaDonEditFormView: View {
     @State private var saving = false
     @State private var errorMessage: String?
 
+    /// Snapshot dữ liệu ngay sau load() — so với currentSnapshot để biết người dùng đã sửa gì chưa,
+    /// đổi màu nút Lưu gây chú ý (nil trong lúc đang tải/lỗi thì hasChanges luôn false).
+    @State private var initialSnapshot: FormSnapshot?
+
+    private struct ItemSnapshot: Equatable {
+        let sanPhamBienTheId: String
+        let soLuong: Int
+        let donGia: Double
+        let noteText: String
+        let toppings: [DraftTopping]
+    }
+
+    private struct FormSnapshot: Equatable {
+        let tenBan: String
+        let khachId: String?
+        let giamGia: Double
+        let items: [ItemSnapshot]
+    }
+
+    private var currentSnapshot: FormSnapshot {
+        FormSnapshot(
+            tenBan: tenBan,
+            khachId: selectedKhach?.id,
+            giamGia: giamGia,
+            items: items.map {
+                ItemSnapshot(sanPhamBienTheId: $0.sanPhamBienTheId, soLuong: $0.soLuong,
+                             donGia: $0.donGia, noteText: $0.noteText, toppings: $0.toppings)
+            }
+        )
+    }
+
+    private var hasChanges: Bool {
+        guard let initialSnapshot else { return false }
+        return currentSnapshot != initialSnapshot
+    }
+
     private struct PickerTarget: Identifiable {
         let index: Int?
         var id: String { index.map(String.init) ?? "new" }
@@ -127,12 +163,17 @@ struct HoaDonEditFormView: View {
                         Button {
                             Task { await save() }
                         } label: {
-                            Text(saving ? "Đang lưu..." : "Lưu")
+                            Text(saving ? "Đang lưu..." : (hasChanges ? "Lưu thay đổi" : "Lưu"))
                                 .fontWeight(.bold)
                                 .frame(maxWidth: .infinity)
+                                // warningColor sáng, chữ trắng mặc định của borderedProminent khó
+                                // đọc — ép đen khi đang ở trạng thái highlight này.
+                                .foregroundColor(hasChanges && !saving ? .black : .white)
                         }
                         .buttonStyle(.borderedProminent)
-                        .tint(.brandPrimary)
+                        // Đổi màu warningColor khi có sửa đổi chưa lưu để gây chú ý, so với
+                        // brandPrimary mặc định lúc chưa đụng gì tới hoá đơn.
+                        .tint(hasChanges ? .warningColor : .brandPrimary)
                         .controlSize(.large)
                         .disabled(saving || items.isEmpty)
                         .padding(.horizontal, 16)
@@ -621,6 +662,7 @@ struct HoaDonEditFormView: View {
             selectKhach(kh)
         }
 
+        initialSnapshot = currentSnapshot
         loading = false
     }
 
