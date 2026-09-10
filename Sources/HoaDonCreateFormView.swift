@@ -890,7 +890,7 @@ struct DraftTopping: Identifiable, Hashable {
 }
 
 struct DraftChiTiet: Identifiable {
-    let id: String = UUID().uuidString
+    var id: String = UUID().uuidString
     var sanPhamBienTheId: String
     var tenSanPham: String
     var tenBienThe: String
@@ -1014,6 +1014,30 @@ struct ProductPickerPanel: View {
             preloadEditing()
             if editingItem == nil && autoFocusSearchOnAppear { searchFocused = true }
         }
+        // Đang sửa món có sẵn (onSaveEdit != nil) — áp mọi chỉnh sửa vào items[] ngay khi thay đổi,
+        // khỏi cần bấm "Lưu" trong panel rồi lại bấm "Lưu thay đổi" ở cuối form mới ghi nhận. Không
+        // áp cho món MỚI (onSaveEdit nil) — món nửa vời chưa cấu hình xong không nên lọt vào đơn.
+        .onChange(of: soLuong) { _ in liveSyncIfEditing() }
+        .onChange(of: donGia) { _ in liveSyncIfEditing() }
+        .onChange(of: noteText) { _ in liveSyncIfEditing() }
+        .onChange(of: toppingQty) { _ in liveSyncIfEditing() }
+        .onChange(of: picking?.id) { _ in liveSyncIfEditing() }
+    }
+
+    private func liveSyncIfEditing() {
+        guard let onSaveEdit, let editingItem, let sp = pickingSanPham, let bt = picking else { return }
+        let toppings = toppingList.compactMap { top -> DraftTopping? in
+            let qty = toppingQty[top.id] ?? 0
+            guard qty > 0 else { return nil }
+            return DraftTopping(toppingId: top.id, ten: top.ten, gia: top.gia, soLuong: qty)
+        }
+        // Giữ nguyên id gốc — DraftChiTiet.id mặc định tự sinh UUID mới mỗi lần khởi tạo, nếu để
+        // vậy thì mỗi lần sync (mỗi keystroke ghi chú) sẽ đổi identity của dòng trong ForEach, làm
+        // SwiftUI coi như xoá/thêm dòng mới thay vì cập nhật tại chỗ.
+        onSaveEdit(DraftChiTiet(
+            id: editingItem.id, sanPhamBienTheId: bt.id, tenSanPham: sp.ten, tenBienThe: bt.tenBienThe,
+            soLuong: soLuong, donGia: donGia, noteText: noteText, toppings: toppings
+        ))
     }
 
     private var productListSection: some View {
@@ -1078,10 +1102,11 @@ struct ProductPickerPanel: View {
                     }
                     .buttonStyle(.borderedProminent)
                 } else {
-                    Button("Lưu") {
-                        confirmAdd(sp, picking ?? bt)
-                    }
-                    .buttonStyle(.borderedProminent)
+                    // Đang sửa món có sẵn — mọi chỉnh sửa đã tự áp live vào items[] qua
+                    // liveSyncIfEditing() (xem .onChange bên dưới), nút này chỉ đóng panel, KHÔNG
+                    // phải bấm "Lưu" rồi còn phải bấm "Lưu thay đổi" ở cuối form mới thấy hiệu lực.
+                    Button("Đóng") { onClose() }
+                        .buttonStyle(.borderedProminent)
                 }
             }
 
@@ -1264,6 +1289,8 @@ struct ProductPickerPanel: View {
         detailTab = toppingQty.values.contains(where: { $0 > 0 }) ? 1 : 0
     }
 
+    /// Chỉ dùng cho món MỚI (nút "Xong") — sửa món có sẵn giờ tự áp live qua liveSyncIfEditing(),
+    /// "Đóng" chỉ gọi onClose() chứ không còn đi qua hàm này.
     private func confirmAdd(_ sp: SanPhamDto, _ bt: SanPhamBienTheDto) {
         let toppings = toppingList.compactMap { top -> DraftTopping? in
             let qty = toppingQty[top.id] ?? 0
@@ -1274,19 +1301,13 @@ struct ProductPickerPanel: View {
             sanPhamBienTheId: bt.id, tenSanPham: sp.ten, tenBienThe: bt.tenBienThe,
             soLuong: soLuong, donGia: donGia, noteText: noteText, toppings: toppings
         )
-
-        if let onSaveEdit {
-            onSaveEdit(draft)
-            onClose()
-        } else {
-            onAdd(draft)
-            // Quay lại danh sách để chọn thêm món tiếp — khớp Desktop (SanPhamSearch.Clear+Focus
-            // sau AddChiTiet), không đóng panel để nhân viên lên đơn nhiều món liên tiếp không cần
-            // mở lại "Thêm món" mỗi lần.
-            pickingSanPham = nil
-            picking = nil
-            searchText = ""
-            searchFocused = true
-        }
+        onAdd(draft)
+        // Quay lại danh sách để chọn thêm món tiếp — khớp Desktop (SanPhamSearch.Clear+Focus
+        // sau AddChiTiet), không đóng panel để nhân viên lên đơn nhiều món liên tiếp không cần
+        // mở lại "Thêm món" mỗi lần.
+        pickingSanPham = nil
+        picking = nil
+        searchText = ""
+        searchFocused = true
     }
 }
