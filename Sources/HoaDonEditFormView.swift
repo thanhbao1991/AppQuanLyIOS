@@ -54,6 +54,7 @@ struct HoaDonEditFormView: View {
 
     @State private var saving = false
     @State private var errorMessage: String?
+    @State private var showDiscardConfirm = false
 
     /// Snapshot dữ liệu ngay sau load() — so với currentSnapshot để biết người dùng đã sửa gì chưa,
     /// đổi màu nút Lưu gây chú ý (nil trong lúc đang tải/lỗi thì hasChanges luôn false).
@@ -194,9 +195,19 @@ struct HoaDonEditFormView: View {
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Đóng") { dismiss() }.disabled(saving)
+                    Button("Đóng") {
+                        if hasChanges { showDiscardConfirm = true } else { dismiss() }
+                    }
+                    .disabled(saving)
                 }
             }
+        }
+        // Có thay đổi chưa lưu (nút Lưu đang vàng) thì chặn vuốt xuống để đóng — bắt phải bấm
+        // "Đóng" (rơi vào confirmationDialog xác nhận huỷ) hoặc bấm "Lưu" tường minh.
+        .interactiveDismissDisabled(hasChanges)
+        .confirmationDialog("Huỷ thay đổi chưa lưu?", isPresented: $showDiscardConfirm, titleVisibility: .visible) {
+            Button("Thoát không lưu", role: .destructive) { dismiss() }
+            Button("Tiếp tục sửa", role: .cancel) {}
         }
         .task { await load() }
     }
