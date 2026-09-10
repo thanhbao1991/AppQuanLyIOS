@@ -34,7 +34,6 @@ struct HoaDonEditFormView: View {
     @State private var khachSearchResults: [KhachHangDto] = []
     @State private var khachSearchTask: Task<Void, Never>?
     @State private var khachInfo: KhachHangInfoDto?
-    @State private var giaRiengBanner: String?
     @State private var showEditKhachHang = false
     @State private var showNewKhachForm = false
     @State private var newKhachTen = ""
@@ -132,14 +131,6 @@ struct HoaDonEditFormView: View {
                         VStack(spacing: 14) {
                             if let errorMessage {
                                 Text(errorMessage).foregroundColor(.dangerColor).font(.footnote)
-                            }
-                            if let giaRiengBanner {
-                                Text("Đã áp giá riêng:\n\(giaRiengBanner)")
-                                    .font(.footnote).foregroundColor(.brandPrimary)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(10)
-                                    .background(Color.brandPrimary.opacity(0.1))
-                                    .clipShape(RoundedRectangle(cornerRadius: 10))
                             }
                             if !unmatchedNames.isEmpty {
                                 Text("Không khớp được món trong catalog hiện tại, giữ nguyên không sửa được:\n\(unmatchedNames.joined(separator: ", "))")
@@ -515,7 +506,8 @@ struct HoaDonEditFormView: View {
                 ProductPickerPanel(
                     sanPhamList: sanPhamList,
                     toppingList: toppingList,
-                    giaRiengMap: giaRiengMap,
+                    // Sửa đơn không tự áp giá riêng khi thêm/đổi món — giá riêng chỉ áp lúc tạo đơn mới.
+                    giaRiengMap: [:],
                     editingItem: pickerTarget.index.map { items[$0] },
                     autoFocusSearchOnAppear: false,
                     onAdd: { draft in
@@ -723,7 +715,6 @@ struct HoaDonEditFormView: View {
         khachSearchText = ""
         khachSearchResults = []
         khachInfo = nil
-        applyGiaRiengToExistingItems()
         Task { khachInfo = await APIClient.shared.getKhachHangInfo(khachHangId: kh.id, excludeHoaDonId: hoaDonId) }
     }
 
@@ -782,27 +773,8 @@ struct HoaDonEditFormView: View {
             diaChi = updated.addresses.first(where: { $0.id == previousAddrId })?.diaChi
                 ?? updated.addresses.first?.diaChi ?? ""
             showEditKhachHang = false
-            applyGiaRiengToExistingItems()
         } else {
             editError = result.message ?? "Lưu thất bại."
-        }
-    }
-
-    private func applyGiaRiengToExistingItems() {
-        let map = giaRiengMap
-        guard !map.isEmpty else { return }
-        var changed: [String] = []
-        for i in items.indices {
-            if let gia = map[items[i].sanPhamBienTheId], gia != items[i].donGia {
-                changed.append("\(items[i].tenSanPham): \(HoaDonFormatting.money(items[i].donGia)) → \(HoaDonFormatting.money(gia))")
-                items[i].donGia = gia
-            }
-        }
-        guard !changed.isEmpty else { return }
-        giaRiengBanner = changed.joined(separator: "\n")
-        Task {
-            try? await Task.sleep(nanoseconds: 4_000_000_000)
-            giaRiengBanner = nil
         }
     }
 
@@ -812,8 +784,7 @@ struct HoaDonEditFormView: View {
             ?? sp.bienThe.first(where: { $0.macDinh })
             ?? sp.bienThe.first
         guard let bt else { return }
-        var draft = DraftChiTiet(sanPhamBienTheId: bt.id, tenSanPham: sp.ten, tenBienThe: bt.tenBienThe, soLuong: 1, donGia: bt.giaBan)
-        if let gia = giaRiengMap[bt.id], gia != bt.giaBan { draft.donGia = gia }
+        let draft = DraftChiTiet(sanPhamBienTheId: bt.id, tenSanPham: sp.ten, tenBienThe: bt.tenBienThe, soLuong: 1, donGia: bt.giaBan)
         items.append(draft)
     }
 
