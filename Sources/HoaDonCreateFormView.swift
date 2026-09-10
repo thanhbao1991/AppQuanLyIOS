@@ -1104,9 +1104,10 @@ struct ProductPickerPanel: View {
                 } else {
                     // Đang sửa món có sẵn — mọi chỉnh sửa đã tự áp live vào items[] qua
                     // liveSyncIfEditing() (xem .onChange bên dưới), nút này chỉ đóng panel, KHÔNG
-                    // phải bấm "Lưu" rồi còn phải bấm "Lưu thay đổi" ở cuối form mới thấy hiệu lực.
+                    // phải bấm "Lưu" rồi còn phải bấm "Lưu thay đổi" ở cuối form mới thấy hiệu lực —
+                    // không phải hành động chính nên để dạng chữ thường, không nổi bật như "Xong".
                     Button("Đóng") { onClose() }
-                        .buttonStyle(.borderedProminent)
+                        .font(.subheadline)
                 }
             }
 
