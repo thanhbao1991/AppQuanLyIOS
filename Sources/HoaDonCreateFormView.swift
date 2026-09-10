@@ -1118,7 +1118,10 @@ struct ProductPickerPanel: View {
                             let active = variant.id == bt.id
                             Button("\(variant.tenBienThe) \(HoaDonFormatting.moneyShort(variant.giaBan))") {
                                 picking = variant
-                                donGia = variant.giaBan
+                                // Khớp resetDetailState (chọn sản phẩm MỚI) — đổi size cũng phải tự
+                                // áp Giá riêng nếu có, tránh đổi qua đổi lại size ra giá không nhất
+                                // quán với giá gốc trên hoá đơn.
+                                donGia = giaRiengMap[variant.id] ?? variant.giaBan
                             }
                             .font(.caption.bold())
                             .padding(.horizontal, 10).padding(.vertical, 6)
