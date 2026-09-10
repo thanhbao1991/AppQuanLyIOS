@@ -348,11 +348,10 @@ struct HoaDonDetailView: View {
                 }
             }
 
-            // 3 hàng x 2 cột, thứ tự ưu tiên nút hay xuất hiện lên trên (Sửa/Xoá gần như luôn có →
-            // Ship/Ghi nợ → Đổi phương thức/Hoàn tác chỉ có khi đã thu đủ). Trong 1 hàng, nút không áp
-            // dụng để chỗ trống (Color.clear) chứ không bỏ khỏi grid, giữ đúng vị trí cột của từng nút
-            // giữa các đơn khác nhau; CHỈ khi CẢ HAI ô trong hàng đều trống mới bỏ hẳn cả hàng đó (đỡ
-            // tốn khoảng trống dọc) — bỏ cả hàng không ảnh hưởng vị trí vì hàng đó vốn không có nút nào.
+            // 6 ô cố định 3 hàng x 2 cột, LUÔN hiển thị đủ ở mọi hoá đơn — nút nào không áp dụng thì
+            // mờ đi + không bấm được (disabled) thay vì ẩn/để trống, vừa giữ đúng vị trí từng nút vừa
+            // không còn chỗ trống trong grid. Thứ tự ưu tiên nút hay áp dụng lên trên: Sửa/Xoá → Ship/
+            // Ghi nợ → Đổi phương thức/Hoàn tác (2 nút cuối chỉ áp dụng khi đã thu đủ).
             let showSua = canEdit
             // Đơn đã ghi nợ tuyệt đối không cho xoá cứng — chỉ còn Hoàn tác (rollback, wipe hết thanh
             // toán/ship/nợ về trạng thái mới) là lựa chọn an toàn duy nhất. Khớp guard NgayNo bên
@@ -365,64 +364,29 @@ struct HoaDonDetailView: View {
             let showGhiNo = d.conLai > 0 && chuaGhiNo && d.khachHangId != nil
             let showDoiPhuongThuc = d.conLai <= 0 && singlePaymentBank != nil
             let showHoanTac = d.conLai <= 0
+            let doiPhuongThucCaption = singlePaymentBank.map { $0 ? "Đổi sang Tiền mặt" : "Đổi sang Chuyển khoản" } ?? "Đổi phương thức TT"
+            let doiPhuongThucColor: Color = singlePaymentBank == true ? .successColor : .brandPrimary
 
             LazyVGrid(columns: twoColumns, spacing: 10) {
-                if showSua || showXoa {
-                    if showSua {
-                        ActionButtonView(icon: "pencil", code: nil, caption: "Sửa đơn", color: .warningColor) {
-                            showEditForm = true
-                        }
-                    } else {
-                        Color.clear
-                    }
-
-                    if showXoa {
-                        ActionButtonView(icon: "trash", code: "Del", caption: "Xoá đơn", color: .dangerColor) {
-                            pendingAction = .xoa
-                        }
-                    } else {
-                        Color.clear
-                    }
+                ActionButtonView(icon: "pencil", code: nil, caption: "Sửa đơn", color: .warningColor, disabled: !showSua) {
+                    showEditForm = true
+                }
+                ActionButtonView(icon: "trash", code: "Del", caption: "Xoá đơn", color: .dangerColor, disabled: !showXoa) {
+                    pendingAction = .xoa
                 }
 
-                if showShip || showGhiNo {
-                    if showShip {
-                        ActionButtonView(icon: "scooter", code: "Esc", caption: "Đi Ship", color: .pinkColor) {
-                            showShipperPicker = true
-                        }
-                    } else {
-                        Color.clear
-                    }
-
-                    if showGhiNo {
-                        ActionButtonView(icon: "exclamationmark.circle", code: "F12", caption: "Ghi nợ", color: .dangerColor) {
-                            pendingAction = .ghiNo
-                        }
-                    } else {
-                        Color.clear
-                    }
+                ActionButtonView(icon: "scooter", code: "Esc", caption: "Đi Ship", color: .pinkColor, disabled: !showShip) {
+                    showShipperPicker = true
+                }
+                ActionButtonView(icon: "exclamationmark.circle", code: "F12", caption: "Ghi nợ", color: .dangerColor, disabled: !showGhiNo) {
+                    pendingAction = .ghiNo
                 }
 
-                if showDoiPhuongThuc || showHoanTac {
-                    if showDoiPhuongThuc, let singlePaymentBank {
-                        ActionButtonView(
-                            icon: "arrow.left.arrow.right", code: nil,
-                            caption: singlePaymentBank ? "Đổi sang Tiền mặt" : "Đổi sang Chuyển khoản",
-                            color: singlePaymentBank ? .successColor : .brandPrimary
-                        ) {
-                            pendingAction = .doiPhuongThuc
-                        }
-                    } else {
-                        Color.clear
-                    }
-
-                    if showHoanTac {
-                        ActionButtonView(icon: "arrow.uturn.backward.circle", code: nil, caption: "Hoàn tác thanh toán", color: .warningColor) {
-                            pendingAction = .rollback
-                        }
-                    } else {
-                        Color.clear
-                    }
+                ActionButtonView(icon: "arrow.left.arrow.right", code: nil, caption: doiPhuongThucCaption, color: doiPhuongThucColor, disabled: !showDoiPhuongThuc) {
+                    pendingAction = .doiPhuongThuc
+                }
+                ActionButtonView(icon: "arrow.uturn.backward.circle", code: nil, caption: "Hoàn tác thanh toán", color: .warningColor, disabled: !showHoanTac) {
+                    pendingAction = .rollback
                 }
             }
         }
@@ -828,14 +792,18 @@ struct ActionButtonView: View {
     let caption: String
     let color: Color
     var prominent: Bool = false
+    /// Nút không áp dụng cho hoá đơn hiện tại vẫn HIỂN THỊ (mờ đi) thay vì ẩn hẳn — giữ đúng vị trí
+    /// 6 ô cố định trong actionButtons(), tránh chỗ trống trong grid mà vẫn không bấm được.
+    var disabled: Bool = false
     let action: () -> Void
 
-    init(icon: String, code: String?, caption: String, color: Color, prominent: Bool = false, action: @escaping () -> Void) {
+    init(icon: String, code: String?, caption: String, color: Color, prominent: Bool = false, disabled: Bool = false, action: @escaping () -> Void) {
         self.icon = icon
         self.code = code
         self.caption = caption
         self.color = color
         self.prominent = prominent
+        self.disabled = disabled
         self.action = action
     }
 
@@ -858,12 +826,14 @@ struct ActionButtonView: View {
             Button(action: action) { label }
                 .buttonStyle(.borderedProminent)
                 .buttonBorderShape(.roundedRectangle(radius: 12))
-                .tint(color)
+                .tint(disabled ? .gray : color)
+                .disabled(disabled)
         } else {
             Button(action: action) { label }
                 .buttonStyle(.bordered)
                 .buttonBorderShape(.roundedRectangle(radius: 12))
-                .tint(color)
+                .tint(disabled ? .gray : color)
+                .disabled(disabled)
         }
     }
 }
