@@ -348,27 +348,63 @@ struct HoaDonDetailView: View {
                 }
             }
 
-            // Thứ tự cố định: Del luôn cuối cùng, Sửa đơn ngay trước Del, Hoàn tác ngay trước Sửa,
-            // Đổi phương thức ngay trước Hoàn tác (4 nút cuối) — Ship/Ghi nợ (nếu có) xếp trước,
-            // không đụng vị trí các nút này.
+            // 3 hàng x 2 cột, thứ tự ưu tiên nút hay xuất hiện lên trên (Sửa/Xoá gần như luôn có →
+            // Ship/Ghi nợ → Đổi phương thức/Hoàn tác chỉ có khi đã thu đủ). Trong 1 hàng, nút không áp
+            // dụng để chỗ trống (Color.clear) chứ không bỏ khỏi grid, giữ đúng vị trí cột của từng nút
+            // giữa các đơn khác nhau; CHỈ khi CẢ HAI ô trong hàng đều trống mới bỏ hẳn cả hàng đó (đỡ
+            // tốn khoảng trống dọc) — bỏ cả hàng không ảnh hưởng vị trí vì hàng đó vốn không có nút nào.
+            let showSua = canEdit
+            // Đơn đã ghi nợ tuyệt đối không cho xoá cứng — chỉ còn Hoàn tác (rollback, wipe hết thanh
+            // toán/ship/nợ về trạng thái mới) là lựa chọn an toàn duy nhất. Khớp guard NgayNo bên
+            // Desktop (DeleteAsync).
+            let showXoa = chuaGhiNo
+            // AppDatHang cùng cần gán shipper y hệt Ship — thiếu điều kiện này thì staff KHÔNG GÁN
+            // ĐƯỢC SHIPPER cho đơn app khách qua mobile (mirror bug đã sửa ở Desktop
+            // HoaDonTabControl.Actions.cs EscAsync).
+            let showShip = d.phanLoai == "Ship" || d.phanLoai == "AppDatHang"
+            let showGhiNo = d.conLai > 0 && chuaGhiNo && d.khachHangId != nil
+            let showDoiPhuongThuc = d.conLai <= 0 && singlePaymentBank != nil
+            let showHoanTac = d.conLai <= 0
+
             LazyVGrid(columns: twoColumns, spacing: 10) {
-                // AppDatHang cùng cần gán shipper y hệt Ship — thiếu điều kiện này thì staff KHÔNG
-                // GÁN ĐƯỢC SHIPPER cho đơn app khách qua mobile (mirror bug đã sửa ở Desktop
-                // HoaDonTabControl.Actions.cs EscAsync).
-                if d.phanLoai == "Ship" || d.phanLoai == "AppDatHang" {
-                    ActionButtonView(icon: "scooter", code: "Esc", caption: "Đi Ship", color: .pinkColor) {
-                        showShipperPicker = true
+                if showSua || showXoa {
+                    if showSua {
+                        ActionButtonView(icon: "pencil", code: nil, caption: "Sửa đơn", color: .warningColor) {
+                            showEditForm = true
+                        }
+                    } else {
+                        Color.clear
+                    }
+
+                    if showXoa {
+                        ActionButtonView(icon: "trash", code: "Del", caption: "Xoá đơn", color: .dangerColor) {
+                            pendingAction = .xoa
+                        }
+                    } else {
+                        Color.clear
                     }
                 }
 
-                if d.conLai > 0 && chuaGhiNo && d.khachHangId != nil {
-                    ActionButtonView(icon: "exclamationmark.circle", code: "F12", caption: "Ghi nợ", color: .dangerColor) {
-                        pendingAction = .ghiNo
+                if showShip || showGhiNo {
+                    if showShip {
+                        ActionButtonView(icon: "scooter", code: "Esc", caption: "Đi Ship", color: .pinkColor) {
+                            showShipperPicker = true
+                        }
+                    } else {
+                        Color.clear
+                    }
+
+                    if showGhiNo {
+                        ActionButtonView(icon: "exclamationmark.circle", code: "F12", caption: "Ghi nợ", color: .dangerColor) {
+                            pendingAction = .ghiNo
+                        }
+                    } else {
+                        Color.clear
                     }
                 }
 
-                if d.conLai <= 0 {
-                    if let singlePaymentBank {
+                if showDoiPhuongThuc || showHoanTac {
+                    if showDoiPhuongThuc, let singlePaymentBank {
                         ActionButtonView(
                             icon: "arrow.left.arrow.right", code: nil,
                             caption: singlePaymentBank ? "Đổi sang Tiền mặt" : "Đổi sang Chuyển khoản",
@@ -376,25 +412,16 @@ struct HoaDonDetailView: View {
                         ) {
                             pendingAction = .doiPhuongThuc
                         }
+                    } else {
+                        Color.clear
                     }
 
-                    ActionButtonView(icon: "arrow.uturn.backward.circle", code: nil, caption: "Hoàn tác thanh toán", color: .warningColor) {
-                        pendingAction = .rollback
-                    }
-                }
-
-                if canEdit {
-                    ActionButtonView(icon: "pencil", code: nil, caption: "Sửa đơn", color: .warningColor) {
-                        showEditForm = true
-                    }
-                }
-
-                // Đơn đã ghi nợ tuyệt đối không cho xoá cứng — chỉ còn Hoàn tác (rollback, wipe hết
-                // thanh toán/ship/nợ về trạng thái mới) là lựa chọn an toàn duy nhất. Khớp guard
-                // NgayNo bên Desktop (DeleteAsync).
-                if chuaGhiNo {
-                    ActionButtonView(icon: "trash", code: "Del", caption: "Xoá đơn", color: .dangerColor) {
-                        pendingAction = .xoa
+                    if showHoanTac {
+                        ActionButtonView(icon: "arrow.uturn.backward.circle", code: nil, caption: "Hoàn tác thanh toán", color: .warningColor) {
+                            pendingAction = .rollback
+                        }
+                    } else {
+                        Color.clear
                     }
                 }
             }
