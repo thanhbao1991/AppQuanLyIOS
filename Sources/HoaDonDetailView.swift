@@ -310,7 +310,7 @@ struct HoaDonDetailView: View {
         let chuaGhiNo = d.ngayNo?.isEmpty ?? true
         let payments = d.payments ?? []
         let singlePaymentBank = payments.count == 1 ? payments[0].phuongThucThanhToanId.lowercased() == PaymentMethod.chuyenKhoanId : nil
-        let twoColumns = [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
+        let twoColumns = [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)]
 
         // "Gửi SMS" luôn hiện kể cả hoá đơn không có SĐT — soạn sẵn nội dung, nhân viên tự chọn
         // người nhận trong app Tin nhắn. Chỉ ẩn khi máy không hỗ trợ gửi SMS thật (không SIM/không
@@ -321,8 +321,8 @@ struct HoaDonDetailView: View {
         // hôm nay thì server chặn sửa món/tiền — ẩn nút thay vì để bấm xong mới báo lỗi.
         let canEdit = payments.isEmpty || (d.ngayGio?.hasPrefix(DateNavFormat.queryDate.string(from: Date())) ?? true)
 
-        return VStack(spacing: 10) {
-            HStack(spacing: 10) {
+        return VStack(spacing: 8) {
+            HStack(spacing: 8) {
                 ActionButtonView(
                     icon: copiedFeedback ? "checkmark" : "doc.on.doc", code: nil,
                     caption: copiedFeedback ? "Đã copy" : "Gửi Bill", color: .brandPrimary
@@ -338,7 +338,7 @@ struct HoaDonDetailView: View {
             }
 
             if d.conLai > 0 {
-                HStack(spacing: 10) {
+                HStack(spacing: 8) {
                     ActionButtonView(icon: "banknote", code: "F1", caption: "Tiền mặt", color: .successColor, prominent: true) {
                         pendingAction = .tienMat
                     }
@@ -367,7 +367,7 @@ struct HoaDonDetailView: View {
             let doiPhuongThucCaption = singlePaymentBank.map { $0 ? "Đổi sang Tiền mặt" : "Đổi sang Chuyển khoản" } ?? "Đổi phương thức TT"
             let doiPhuongThucColor: Color = singlePaymentBank == true ? .successColor : .brandPrimary
 
-            LazyVGrid(columns: twoColumns, spacing: 10) {
+            LazyVGrid(columns: twoColumns, spacing: 8) {
                 ActionButtonView(icon: "pencil", code: nil, caption: "Sửa đơn", color: .warningColor, disabled: !showSua) {
                     showEditForm = true
                 }
@@ -808,17 +808,18 @@ struct ActionButtonView: View {
     }
 
     private var label: some View {
-        VStack(spacing: 2) {
+        VStack(spacing: 1) {
             HStack(spacing: 4) {
                 Image(systemName: icon)
                 if let code {
                     Text(code).fontWeight(.bold)
                 }
             }
+            .font(.footnote)
             Text(caption).font(.caption2)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
+        .padding(.vertical, 4)
     }
 
     var body: some View {
