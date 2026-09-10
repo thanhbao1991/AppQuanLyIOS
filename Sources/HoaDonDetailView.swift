@@ -362,8 +362,13 @@ struct HoaDonDetailView: View {
             // HoaDonTabControl.Actions.cs EscAsync).
             let showShip = d.phanLoai == "Ship" || d.phanLoai == "AppDatHang"
             let showGhiNo = d.conLai > 0 && chuaGhiNo && d.khachHangId != nil
-            let showDoiPhuongThuc = d.conLai <= 0 && singlePaymentBank != nil
-            let showHoanTac = d.conLai <= 0
+            // Có dòng SePay webhook tự thu (tuDongLuc != nil) thì KHÔNG cho đổi phương thức lẫn
+            // hoàn tác — cả hai đều xoá/đổi dòng thanh toán, làm lệch đối soát với tiền thật đã vào
+            // tài khoản ngân hàng. Khớp guard Backend HoaDonTrangThaiService.RollbackAsync và
+            // ChiTietHoaDonThanhToanService.DoiPhuongThucAsync.
+            let coTuDong = payments.contains { $0.tuDongLuc != nil }
+            let showDoiPhuongThuc = d.conLai <= 0 && singlePaymentBank != nil && !coTuDong
+            let showHoanTac = d.conLai <= 0 && !coTuDong
             let doiPhuongThucCaption = singlePaymentBank.map { $0 ? "Đổi sang Tiền mặt" : "Đổi sang Chuyển khoản" } ?? "Đổi phương thức TT"
             let doiPhuongThucColor: Color = singlePaymentBank == true ? .successColor : .brandPrimary
 
