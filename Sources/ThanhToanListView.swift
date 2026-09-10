@@ -19,8 +19,13 @@ struct ThanhToanListView: View {
         items.filter { anyMatchesSearch(searchText, $0.ten, $0.ghiChu, $0.tenMonSummary, $0.loaiThanhToan) }
     }
 
-    private var filteredItems: [ChiTietHoaDonThanhToanDto] {
-        searchFilteredItems.filter { activeFilter?.matches($0) ?? true }
+    // filteredItems bị đọc 6 lần mỗi lần body vẽ lại (count, isEmpty, ForEach, totalText,
+    // totalTienMat, totalChuyenKhoan) — computed property nên mỗi lần đọc chạy lại search+filter từ
+    // đầu, khớp lỗi đã sửa bên HoaDonListView (cachedSorted). Cache lại, chỉ tính khi thực sự đổi.
+    @State private var filteredItems: [ChiTietHoaDonThanhToanDto] = []
+
+    private func recomputeFiltered() {
+        filteredItems = searchFilteredItems.filter { activeFilter?.matches($0) ?? true }
     }
 
     private func coloredMenuIcon(_ systemName: String, _ color: Color) -> Image {
@@ -144,6 +149,8 @@ struct ThanhToanListView: View {
         }
         .task { await load() }
         .onEntityChanged(["HoaDon", "ChiTietHoaDonThanhToan"], tab: .thanhToan) { Task { await load() } }
+        .onChange(of: searchText) { _ in recomputeFiltered() }
+        .onChange(of: activeFilter) { _ in recomputeFiltered() }
         .sheet(item: Binding(
             get: { selectedId.map { IdentifiableId($0) } },
             set: { selectedId = $0?.value }
@@ -161,6 +168,7 @@ struct ThanhToanListView: View {
         items = await APIClient.shared.getThanhToanByDay(DateNavFormat.queryDate.string(from: currentDate))
         loading = false
         hasLoaded = true
+        recomputeFiltered()
     }
 }
 

@@ -129,11 +129,21 @@ private struct EntityChangeListener: ViewModifier {
     let action: () -> Void
     @ObservedObject private var bus = EntityChangeBus.shared
     @ObservedObject private var activeTab = ActiveTab.shared
+    /// Debounce: giờ cao điểm nhiều hoá đơn/thanh toán dồn dập bắn liên tiếp nhiều signal, mỗi signal
+    /// trước đây gọi action() (thường là load() — 1 lượt fetch + rebuild toàn bộ list) riêng lẻ, gây
+    /// giật khi nhân viên đang thao tác trên tab đó. Gộp các signal đến trong vòng 1.2s thành 1 lần
+    /// gọi action() duy nhất (huỷ hẹn giờ cũ, đặt lại mỗi lần có signal mới).
+    @State private var debounceTask: Task<Void, Never>?
 
     func body(content: Content) -> some View {
         content.onChange(of: bus.lastEvent) { event in
             guard let event, entityNames.contains(event.entityName), activeTab.tab == tab else { return }
-            action()
+            debounceTask?.cancel()
+            debounceTask = Task {
+                try? await Task.sleep(nanoseconds: 1_200_000_000)
+                guard !Task.isCancelled else { return }
+                action()
+            }
         }
     }
 }

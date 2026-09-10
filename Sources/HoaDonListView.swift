@@ -25,8 +25,15 @@ struct HoaDonListView: View {
         items.filter { anyMatchesSearch(searchText, $0.tenKhachHangText, $0.tenBan, $0.ghiChu, $0.ghiChuShipper, $0.tenMonSummary, $0.nguoiShip) }
     }
 
-    private var sortedItems: [HoaDonListDto] {
-        searchFilteredItems
+    /// sortedItems là computed property nên MỖI LẦN được đọc lại chạy lại toàn bộ filter+search+sort —
+    /// trước đây bị đọc 3 lần riêng biệt mỗi lần body vẽ lại (ForEach + totalText + phanLoaiTotals),
+    /// kể cả khi chỉ đồng hồ `now` tick 20s (không đổi items/searchText/activeFilter). Cache lại 1 lần
+    /// vào cachedSorted, chỉ tính lại đúng lúc items/searchText/activeFilter thực sự đổi — đỡ giật khi
+    /// danh sách dài (list hay bị coi "chậm" ở máy nhân viên là do việc này).
+    @State private var cachedSorted: [HoaDonListDto] = []
+
+    private func recomputeSorted() {
+        cachedSorted = searchFilteredItems
             .filter { item in activeFilter?.matches(item) ?? true }
             .sorted {
                 let p0 = HoaDonFormatting.sortPriority($0)
@@ -37,20 +44,20 @@ struct HoaDonListView: View {
     }
 
     private var totalText: String {
-        HoaDonFormatting.money(sortedItems.reduce(0) { $0 + $1.thanhTien })
+        HoaDonFormatting.money(cachedSorted.reduce(0) { $0 + $1.thanhTien })
     }
 
     /// Tổng tiền theo từng phân loại đơn, gộp trên 1 dòng gọn — icon thay chữ để đỡ tốn ngang, khỏi
     /// bị xuống 2 dòng như bản text cũ ("Ship 203k, T.chỗ 230k...").
     private var phanLoaiTotals: [(phanLoai: String, icon: String, color: Color, text: String)] {
         // Thiếu AppDatHang ở đây thì doanh thu đơn app khách biến mất khỏi thanh tổng, dù vẫn còn
-        // trong sortedItems — mirror đúng lỗi đã sửa ở ThongKeService (Backend, thêm nhãn "Đặt qua app").
+        // trong cachedSorted — mirror đúng lỗi đã sửa ở ThongKeService (Backend, thêm nhãn "Đặt qua app").
         let order: [(code: String, icon: String)] = [
             ("Ship", "scooter"), ("AppDatHang", "iphone.gen3"), ("Tại Chỗ", "chair.fill"), ("Mv", "bag.fill"),
             ("Mh", "hand.raised.fill"), ("App", "iphone"),
         ]
         return order.compactMap { entry in
-            let total = sortedItems.filter { $0.phanLoai == entry.code }.reduce(0) { $0 + $1.thanhTien }
+            let total = cachedSorted.filter { $0.phanLoai == entry.code }.reduce(0) { $0 + $1.thanhTien }
             guard total > 0 else { return nil }
             let text = "\(Int((total / 1000).rounded()))"
             return (entry.code, entry.icon, HoaDonFormatting.phanLoaiColor(entry.code), text)
@@ -121,7 +128,7 @@ struct HoaDonListView: View {
                                 // vì Menu native không cho style số đếm trong text item (xem trong menu).
                                 .overlay(alignment: .topTrailing) {
                                     if activeFilter != nil {
-                                        Text("\(sortedItems.count)")
+                                        Text("\(cachedSorted.count)")
                                             .font(.caption2.bold())
                                             .foregroundColor(.brandPrimary)
                                             .padding(4)
@@ -142,13 +149,13 @@ struct HoaDonListView: View {
                     Spacer()
                 } else {
                     List {
-                        if sortedItems.isEmpty {
+                        if cachedSorted.isEmpty {
                             Text("Không có hoá đơn nào")
                                 .foregroundColor(.textMuted)
                                 .frame(maxWidth: .infinity)
                                 .listRowSeparator(.hidden)
                         } else {
-                            ForEach(sortedItems) { item in
+                            ForEach(cachedSorted) { item in
                                 HoaDonRowView(item: item, now: now)
                                     .contentShape(Rectangle())
                                     .onTapGesture { selectedId = item.id }
@@ -201,6 +208,8 @@ struct HoaDonListView: View {
         .onReceive(clockTimer) { now = $0 }
         .onEntityChanged(["HoaDon"], tab: .hoaDon) { Task { await load() } }
         .onChange(of: deepLink.khachHangIdToOrder) { _ in openPendingDeepLink() }
+        .onChange(of: searchText) { _ in recomputeSorted() }
+        .onChange(of: activeFilter) { _ in recomputeSorted() }
         .sheet(item: Binding(
             get: { selectedId.map { IdentifiableId($0) } },
             set: { selectedId = $0?.value }
@@ -273,6 +282,7 @@ struct HoaDonListView: View {
         items = await APIClient.shared.getHoaDonListByDay(dateIso)
         loading = false
         hasLoaded = true
+        recomputeSorted()
     }
 
     /// Mở sheet tạo đơn Ship prefill khách từ link Danh bạ (DeepLinkRouter) — bỏ qua nếu đang có
