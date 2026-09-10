@@ -71,6 +71,8 @@ struct HoaDonEditFormView: View {
     private struct FormSnapshot: Equatable {
         let tenBan: String
         let khachId: String?
+        let sdt: String
+        let diaChi: String
         let giamGia: Double
         let items: [ItemSnapshot]
     }
@@ -79,6 +81,8 @@ struct HoaDonEditFormView: View {
         FormSnapshot(
             tenBan: tenBan,
             khachId: selectedKhach?.id,
+            sdt: sdt,
+            diaChi: diaChi,
             giamGia: giamGia,
             items: items.map {
                 ItemSnapshot(sanPhamBienTheId: $0.sanPhamBienTheId, soLuong: $0.soLuong,
