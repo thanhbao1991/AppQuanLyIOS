@@ -1100,7 +1100,7 @@ struct ProductPickerPanel: View {
                     Button("Xong") {
                         confirmAdd(sp, picking ?? bt)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .font(.subheadline.bold())
                 } else {
                     // Đang sửa món có sẵn — mọi chỉnh sửa đã tự áp live vào items[] qua
                     // liveSyncIfEditing() (xem .onChange bên dưới), nút này chỉ đóng panel, KHÔNG
