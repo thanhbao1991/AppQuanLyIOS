@@ -138,7 +138,11 @@ struct HoaDonEditFormView: View {
                         .padding(.horizontal, 16)
                         .padding(.top, 10)
                         .padding(.bottom, 8)
-                        .background(.bar)
+                        // Color(.systemBackground) thay vì .background(.bar) — Material vẽ lại theo
+                        // thời gian thực nên nhấp nháy mỗi lần view re-render (sửa bàn/khách/món/giảm
+                        // giá đều đổi state cả màn hình), màu đặc không có vấn đề này.
+                        .background(Color(.systemBackground))
+                        .overlay(Divider(), alignment: .top)
                     }
                 }
             }

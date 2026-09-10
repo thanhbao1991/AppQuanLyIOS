@@ -184,7 +184,9 @@ private struct ThongBaoQuanEditSheet: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 10)
                 .padding(.bottom, 8)
-                .background(.bar)
+                // Color(.systemBackground) thay vì .background(.bar) — xem HoaDonEditFormView.
+                .background(Color(.systemBackground))
+                .overlay(Divider(), alignment: .top)
             }
         }
     }
