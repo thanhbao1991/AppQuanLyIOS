@@ -499,7 +499,7 @@ struct HoaDonCreateFormView: View {
                         // Chọn món xong là thêm ngay — chuyển panel sang chế độ sửa đúng món vừa
                         // thêm (editingItem khớp) để mọi chỉnh sửa tiếp theo tự áp live, không cần
                         // nút "Xong" riêng nữa.
-                        pickerTarget = PickerTarget(index: items.count - 1)
+                        self.pickerTarget = PickerTarget(index: items.count - 1)
                     },
                     onSaveEdit: pickerTarget.index.map { idx -> (DraftChiTiet) -> Void in
                         { draft in

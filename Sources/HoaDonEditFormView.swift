@@ -514,7 +514,7 @@ struct HoaDonEditFormView: View {
                         items.append(draft)
                         // Chọn món xong là thêm ngay — chuyển panel sang chế độ sửa đúng món vừa
                         // thêm để mọi chỉnh sửa tiếp theo tự áp live, không cần nút "Xong" riêng.
-                        pickerTarget = PickerTarget(index: items.count - 1)
+                        self.pickerTarget = PickerTarget(index: items.count - 1)
                     },
                     onSaveEdit: pickerTarget.index.map { idx -> (DraftChiTiet) -> Void in
                         { draft in items[idx] = draft }
