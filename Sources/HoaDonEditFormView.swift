@@ -512,9 +512,10 @@ struct HoaDonEditFormView: View {
                     autoFocusSearchOnAppear: false,
                     onAdd: { draft in
                         items.append(draft)
-                        // Chọn món xong là thêm ngay — chuyển panel sang chế độ sửa đúng món vừa
-                        // thêm để mọi chỉnh sửa tiếp theo tự áp live, không cần nút "Xong" riêng.
-                        self.pickerTarget = PickerTarget(index: items.count - 1)
+                        // KHÔNG tự mở panel sửa món vừa thêm — chọn liên tiếp nhiều món phổ biến
+                        // hơn hẳn việc cần sửa ngay, panel tự quay về search (xem addDefaultDraft)
+                        // để chọn món tiếp theo nhanh. Cần sửa thì tự bấm vào dòng món trong danh
+                        // sách bên trên.
                     },
                     onSaveEdit: pickerTarget.index.map { idx -> (DraftChiTiet) -> Void in
                         { draft in items[idx] = draft }

@@ -496,10 +496,10 @@ struct HoaDonCreateFormView: View {
                     onAdd: { draft in
                         items.append(draft)
                         recalcGiamGia()
-                        // Chọn món xong là thêm ngay — chuyển panel sang chế độ sửa đúng món vừa
-                        // thêm (editingItem khớp) để mọi chỉnh sửa tiếp theo tự áp live, không cần
-                        // nút "Xong" riêng nữa.
-                        self.pickerTarget = PickerTarget(index: items.count - 1)
+                        // KHÔNG tự mở panel sửa món vừa thêm — chọn liên tiếp nhiều món phổ biến
+                        // hơn hẳn việc cần sửa ngay, panel tự quay về search (xem addDefaultDraft)
+                        // để chọn món tiếp theo nhanh. Cần sửa thì tự bấm vào dòng món trong danh
+                        // sách bên trên.
                     },
                     onSaveEdit: pickerTarget.index.map { idx -> (DraftChiTiet) -> Void in
                         { draft in
@@ -1082,29 +1082,27 @@ struct ProductPickerPanel: View {
     }
 
     private func selectProduct(_ sp: SanPhamDto) {
-        pickingSanPham = sp
-        let bt = sp.bienThe.first(where: { $0.macDinh }) ?? sp.bienThe.first
-        picking = bt
-        resetDetailState(bt)
-        if let bt { addDefaultDraft(sp, bt) }
+        guard let bt = sp.bienThe.first(where: { $0.macDinh }) ?? sp.bienThe.first else { return }
+        addDefaultDraft(sp, bt)
     }
 
     private func selectProduct(_ sp: SanPhamDto, variant: SanPhamBienTheDto) {
-        pickingSanPham = sp
-        picking = variant
-        resetDetailState(variant)
         addDefaultDraft(sp, variant)
     }
 
     /// Chọn món = thêm ngay vào đơn với cấu hình mặc định (số lượng 1, giá gốc/giá riêng, chưa
-    /// ghi chú/topping) — khớp yêu cầu "chọn xong là thêm", không cần bấm "Xong" riêng. Panel sẽ
-    /// tự chuyển sang chế độ sửa món vừa thêm (parent set pickerTarget theo index mới) để mọi
-    /// chỉnh sửa tiếp theo (size/số lượng/ghi chú/topping) tự áp live qua liveSyncIfEditing().
+    /// ghi chú/topping) — khớp yêu cầu "chọn xong là thêm", không cần bấm "Xong" riêng. Panel quay
+    /// lại search NGAY sau đó (không tự mở chế độ sửa) — chọn liên tiếp nhiều món phổ biến hơn
+    /// hẳn việc cần sửa ngay; muốn sửa (size/số lượng/ghi chú/topping) thì tự bấm vào dòng món.
     private func addDefaultDraft(_ sp: SanPhamDto, _ bt: SanPhamBienTheDto) {
         onAdd(DraftChiTiet(
             sanPhamBienTheId: bt.id, tenSanPham: sp.ten, tenBienThe: bt.tenBienThe,
             soLuong: 1, donGia: giaRiengMap[bt.id] ?? bt.giaBan, noteText: "", toppings: []
         ))
+        pickingSanPham = nil
+        picking = nil
+        searchText = ""
+        searchFocused = true
     }
 
     private func configSection(_ sp: SanPhamDto, _ bt: SanPhamBienTheDto) -> some View {
@@ -1288,15 +1286,6 @@ struct ProductPickerPanel: View {
         var notes = noteText.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         if let idx = notes.firstIndex(of: note) { notes.remove(at: idx) } else { notes.append(note) }
         noteText = notes.joined(separator: ", ")
-    }
-
-    private func resetDetailState(_ bt: SanPhamBienTheDto?) {
-        guard let bt else { return }
-        soLuong = 1
-        donGia = giaRiengMap[bt.id] ?? bt.giaBan
-        noteText = ""
-        toppingQty = [:]
-        detailTab = 0
     }
 
     private func preloadEditing() {
