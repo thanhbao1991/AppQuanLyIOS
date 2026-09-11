@@ -32,7 +32,7 @@ enum HoaDonFormatting {
     }()
 
     static func money(_ value: Double) -> String {
-        (moneyFormatter.string(from: NSNumber(value: value)) ?? "\(Int(value))") + " đ"
+        (moneyFormatter.string(from: NSNumber(value: value)) ?? "\(Int(value))") + "đ"
     }
 
     /// Viết tắt cho footer (vd "1807k") — không cần rõ số, chỉ cần ước lượng nhanh.
