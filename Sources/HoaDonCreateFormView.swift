@@ -1214,15 +1214,17 @@ struct ProductPickerPanel: View {
 
     private var toppingSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            ForEach(toppingList) { top in
+            ForEach(toppingList.sorted(by: { $0.gia > $1.gia })) { top in
                 HStack {
                     Text(top.ten)
                     Spacer()
                     Text(HoaDonFormatting.money(top.gia)).font(.caption).foregroundColor(.textMuted)
-                    Stepper("\(toppingQty[top.id] ?? 0)", value: Binding(
+                    Stepper(value: Binding(
                         get: { toppingQty[top.id] ?? 0 },
                         set: { toppingQty[top.id] = $0 }
-                    ), in: 0...20)
+                    ), in: 0...20) {
+                        Text("\(toppingQty[top.id] ?? 0)").font(.system(size: 17, weight: .bold))
+                    }
                     .fixedSize()
                 }
             }
