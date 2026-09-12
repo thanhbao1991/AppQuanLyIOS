@@ -191,10 +191,10 @@ private struct ChiTieuDetailSheet: View {
                 Spacer()
 
                 HStack(spacing: 12) {
-                    ActionButtonView(icon: "pencil", code: nil, caption: "Sửa", color: .warningColor) {
+                    ActionButtonView(icon: "✏️", code: nil, caption: "Sửa", color: .warningColor) {
                         showEditForm = true
                     }
-                    ActionButtonView(icon: "trash", code: nil, caption: "Xoá", color: .dangerColor) {
+                    ActionButtonView(icon: "🗑️", code: nil, caption: "Xoá", color: .dangerColor) {
                         showDeleteConfirm = true
                     }
                 }

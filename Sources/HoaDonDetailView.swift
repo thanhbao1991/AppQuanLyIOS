@@ -326,14 +326,14 @@ struct HoaDonDetailView: View {
         return VStack(spacing: 8) {
             HStack(spacing: 8) {
                 ActionButtonView(
-                    icon: copiedFeedback ? "checkmark" : "doc.on.doc", code: nil,
+                    icon: copiedFeedback ? "✅" : "🧾", code: nil,
                     caption: copiedFeedback ? "Đã copy" : "Gửi Bill", color: .brandPrimary
                 ) {
                     Task { await copyBillImage(d) }
                 }
 
                 if canSms {
-                    ActionButtonView(icon: "message", code: nil, caption: "Gửi SMS", color: .brandPrimary) {
+                    ActionButtonView(icon: "💬", code: nil, caption: "Gửi SMS", color: .brandPrimary) {
                         showSmsComposer = true
                     }
                 }
@@ -341,10 +341,10 @@ struct HoaDonDetailView: View {
 
             if d.conLai > 0 {
                 HStack(spacing: 8) {
-                    ActionButtonView(icon: "banknote", code: "F1", caption: "Tiền mặt", color: .successColor, prominent: true) {
+                    ActionButtonView(icon: "💵", code: "F1", caption: "Tiền mặt", color: .successColor, prominent: true) {
                         pendingAction = .tienMat
                     }
-                    ActionButtonView(icon: "creditcard", code: "F4", caption: "Chuyển khoản", color: .brandPrimary, prominent: true) {
+                    ActionButtonView(icon: "💳", code: "F4", caption: "Chuyển khoản", color: .brandPrimary, prominent: true) {
                         pendingAction = .chuyenKhoan
                     }
                 }
@@ -379,31 +379,37 @@ struct HoaDonDetailView: View {
             // Sửa đơn (canEdit), vì đổi phân loại cũng làm lệch báo cáo doanh thu theo phân loại hồi
             // tố y hệt sửa món/tiền.
             let showDoiPhanLoai = (d.phanLoai == "Ship" || d.phanLoai == "Mv") && canEdit
+            // Emoji/màu gợi liên tưởng đúng bộ icon PhanLoai dùng chung toàn app (HoaDonQuickFilter.
+            // systemIcon: Ship="scooter", Mv="bag.fill" — HoaDonFormatting.phanLoaiColor) — hiện
+            // icon/màu của phân loại SẼ CHUYỂN ĐẾN (giống cách doiPhuongThucColor ở trên tô màu theo
+            // phương thức đích, không phải phương thức hiện tại).
             let doiPhanLoaiCaption = d.phanLoai == "Ship" ? "Đổi sang Mua về" : "Đổi sang Ship"
+            let doiPhanLoaiIcon = d.phanLoai == "Ship" ? "🛍️" : "🛵"
+            let doiPhanLoaiColor = HoaDonFormatting.phanLoaiColor(d.phanLoai == "Ship" ? "Mv" : "Ship")
 
             LazyVGrid(columns: twoColumns, spacing: 8) {
-                ActionButtonView(icon: "pencil", code: nil, caption: "Sửa đơn", color: .warningColor, disabled: !showSua) {
+                ActionButtonView(icon: "✏️", code: nil, caption: "Sửa đơn", color: .warningColor, disabled: !showSua) {
                     showEditForm = true
                 }
-                ActionButtonView(icon: "trash", code: "Del", caption: "Xoá đơn", color: .dangerColor, disabled: !showXoa) {
+                ActionButtonView(icon: "🗑️", code: "Del", caption: "Xoá đơn", color: .dangerColor, disabled: !showXoa) {
                     pendingAction = .xoa
                 }
 
-                ActionButtonView(icon: "scooter", code: "Esc", caption: "Đi Ship", color: .pinkColor, disabled: !showShip) {
+                ActionButtonView(icon: "🛵", code: "Esc", caption: "Đi Ship", color: .pinkColor, disabled: !showShip) {
                     showShipperPicker = true
                 }
-                ActionButtonView(icon: "exclamationmark.circle", code: "F12", caption: "Ghi nợ", color: .dangerColor, disabled: !showGhiNo) {
+                ActionButtonView(icon: "⚠️", code: "F12", caption: "Ghi nợ", color: .dangerColor, disabled: !showGhiNo) {
                     pendingAction = .ghiNo
                 }
 
-                ActionButtonView(icon: "arrow.left.arrow.right", code: nil, caption: doiPhuongThucCaption, color: doiPhuongThucColor, disabled: !showDoiPhuongThuc) {
+                ActionButtonView(icon: "🔄", code: nil, caption: doiPhuongThucCaption, color: doiPhuongThucColor, disabled: !showDoiPhuongThuc) {
                     pendingAction = .doiPhuongThuc
                 }
-                ActionButtonView(icon: "arrow.uturn.backward.circle", code: nil, caption: "Hoàn tác thanh toán", color: .warningColor, disabled: !showHoanTac) {
+                ActionButtonView(icon: "↩️", code: nil, caption: "Hoàn tác thanh toán", color: .warningColor, disabled: !showHoanTac) {
                     pendingAction = .rollback
                 }
 
-                ActionButtonView(icon: "shippingbox", code: nil, caption: doiPhanLoaiCaption, color: .pinkColor, disabled: !showDoiPhanLoai) {
+                ActionButtonView(icon: doiPhanLoaiIcon, code: nil, caption: doiPhanLoaiCaption, color: doiPhanLoaiColor, disabled: !showDoiPhanLoai) {
                     pendingAction = .doiPhanLoai
                 }
             }
@@ -807,6 +813,7 @@ struct DetailCard<Content: View>: View {
 /// Dùng chung cho mọi màn "chi tiết" có action button (HoaDonDetailView, ThanhToanDetailView) —
 /// khớp icon + mã tắt + caption 1 kiểu xuyên suốt app.
 struct ActionButtonView: View {
+    /// Emoji thay cho SF Symbol (đổi 2026-09-12, khớp phong cách emoji đã dùng ở AppDatHangIOS).
     let icon: String
     let code: String?
     let caption: String
@@ -830,7 +837,7 @@ struct ActionButtonView: View {
     private var label: some View {
         VStack(spacing: 1) {
             HStack(spacing: 4) {
-                Image(systemName: icon)
+                Text(icon)
                 if let code {
                     Text(code).fontWeight(.bold)
                 }
@@ -840,6 +847,10 @@ struct ActionButtonView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 4)
+        // Emoji KHÔNG đổi màu theo .tint() như Image(systemName:) trước đây (glyph màu cố định) —
+        // disabled=true trước đây tự mờ đi qua .tint(.gray), giờ phải tự thêm opacity mới thấy được
+        // trạng thái "không bấm được", không thì icon emoji vẫn hiện sặc sỡ dù nút đang disabled.
+        .opacity(disabled ? 0.4 : 1)
     }
 
     var body: some View {

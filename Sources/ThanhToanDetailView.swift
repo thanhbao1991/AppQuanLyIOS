@@ -56,14 +56,14 @@ struct ThanhToanDetailView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         } else {
                             ActionButtonView(
-                                icon: "arrow.left.arrow.right", code: nil,
+                                icon: "🔄", code: nil,
                                 caption: isBank ? "Đổi sang Tiền mặt" : "Đổi sang Chuyển khoản",
                                 color: isBank ? .successColor : .brandPrimary
                             ) {
                                 showDoiPhuongThucConfirm = true
                             }
 
-                            ActionButtonView(icon: "trash", code: nil, caption: "Xoá", color: .dangerColor) {
+                            ActionButtonView(icon: "🗑️", code: nil, caption: "Xoá", color: .dangerColor) {
                                 showDeleteConfirm = true
                             }
                         }
