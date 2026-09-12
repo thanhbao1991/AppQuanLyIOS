@@ -284,7 +284,7 @@ struct HoaDonCreateFormView: View {
             }.font(.caption)
 
             fieldLabel("Địa chỉ", icon: "location")
-            contactRowsEditor($editAddressRows, placeholder: "Địa chỉ", keyboard: .default)
+            contactRowsEditor($editAddressRows, placeholder: "Địa chỉ", keyboard: .default, useTenDuongSuggest: true)
             Button {
                 editAddressRows.append(EditContactRow(id: UUID().uuidString, value: ""))
             } label: {
@@ -310,13 +310,17 @@ struct HoaDonCreateFormView: View {
         }
     }
 
-    private func contactRowsEditor(_ rows: Binding<[EditContactRow]>, placeholder: String, keyboard: UIKeyboardType) -> some View {
+    private func contactRowsEditor(_ rows: Binding<[EditContactRow]>, placeholder: String, keyboard: UIKeyboardType, useTenDuongSuggest: Bool = false) -> some View {
         VStack(spacing: 6) {
             ForEach(rows.wrappedValue.indices, id: \.self) { i in
-                HStack {
-                    TextField(placeholder, text: rows[i].value)
-                        .textFieldStyle(.roundedBorder)
-                        .keyboardType(keyboard)
+                HStack(alignment: .top) {
+                    if useTenDuongSuggest {
+                        TenDuongTextField(text: rows[i].value, placeholder: placeholder, keyboard: keyboard)
+                    } else {
+                        TextField(placeholder, text: rows[i].value)
+                            .textFieldStyle(.roundedBorder)
+                            .keyboardType(keyboard)
+                    }
                     Button { rows.wrappedValue.remove(at: i) } label: {
                         Image(systemName: "trash").foregroundColor(.dangerColor)
                     }
@@ -433,7 +437,7 @@ struct HoaDonCreateFormView: View {
         VStack(alignment: .leading, spacing: 8) {
             TextField("Tên khách", text: $newKhachTen).textFieldStyle(.roundedBorder)
             TextField("Số điện thoại (không bắt buộc)", text: $newKhachSdt).textFieldStyle(.roundedBorder).keyboardType(.phonePad)
-            TextField("Địa chỉ", text: $newKhachDiaChi).textFieldStyle(.roundedBorder)
+            TenDuongTextField(text: $newKhachDiaChi)
             Toggle("Được tích điểm/voucher", isOn: $newKhachVoucher).font(.caption)
             if let newKhachError {
                 Text(newKhachError).foregroundColor(.dangerColor).font(.caption)

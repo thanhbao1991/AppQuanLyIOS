@@ -560,6 +560,14 @@ actor APIClient {
         return (env.data ?? []).filter { !$0.ngungBan }
     }
 
+    /// Tải 1 lần rồi lọc cục bộ, khớp cách Desktop cache AppDataCache.TenDuongs cho TenDuongBox.
+    func getTenDuongList() async -> [TenDuongDto] {
+        let req = makeRequest("/api/TenDuong")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[TenDuongDto]>.self, from: data), env.isSuccess else { return [] }
+        return env.data ?? []
+    }
+
     /// Giá riêng đã lưu cho MỌI khách — endpoint không hỗ trợ lọc theo khách (khớp cách Desktop
     /// tải hết AppDataCache.GiaBanRiengs rồi lọc cục bộ theo KhachHangId khi cần).
     func getKhachHangGiaBanList() async -> [KhachHangGiaBanDto] {

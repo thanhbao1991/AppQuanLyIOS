@@ -582,6 +582,13 @@ struct ToppingDto: Decodable, Identifiable, Hashable {
     let ngungBan: Bool
 }
 
+/// Gợi ý tên đường khi nhập địa chỉ khách — cùng bảng TenDuong Desktop dùng cho TenDuongBox, xem
+/// TenDuongTextField.swift.
+struct TenDuongDto: Decodable, Identifiable {
+    let id: String
+    let ten: String
+}
+
 // ---- Tạo hoá đơn đầy đủ (món + khách + giảm giá) ----
 // Payload khớp HoaDonChiTietService.AddAsync (Backend): "id" của từng dòng chỉ dùng để liên kết
 // topping cùng dòng qua chiTietHoaDonToppings[].chiTietHoaDonId, KHÔNG phải Id thật sẽ lưu (server
