@@ -304,6 +304,7 @@ struct GamificationConfigDto: Codable {
     var vongQuayPhanThuong: [VongQuayPhanThuongDto]
     var shipKmMienPhi: Double
     var shipPhiMoiKm: Double
+    var shipDonGiaMienPhi: Double
 }
 
 // ---- Thống kê (port từ TraSuaApp.Desktop ThongKeTabControl — nguồn chính xác, KHÔNG dùng

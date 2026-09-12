@@ -94,10 +94,11 @@ private struct GamificationConfigForm: View {
                     Text("km").foregroundColor(.textMuted)
                 }
                 moneyRow("Phí mỗi km tiếp theo", value: $config.shipPhiMoiKm)
+                moneyRow("Đơn từ giá trị này thì luôn miễn phí ship", value: $config.shipDonGiaMienPhi)
             } header: {
                 Text("Phí ship 🛵")
             } footer: {
-                Text("Giao tận nơi trong \(config.shipKmMienPhi, format: .number) km đầu thì miễn phí ship; vượt quá tính thêm theo km, làm tròn lên 1.000đ.")
+                Text("Mặc định MIỄN PHÍ ship. Chỉ tính phí khi đơn CHƯA đạt mốc giá trị ở trên VÀ ở ngoài \(config.shipKmMienPhi, format: .number)km đầu — lúc đó mới cộng thêm theo km vượt, làm tròn lên 1.000đ. Đơn đạt mốc giá trị thì luôn miễn phí dù xa bao nhiêu.")
             }
 
             Section("Thẻ sưu tập ly 🧋") {
