@@ -28,14 +28,6 @@ struct ThanhToanListView: View {
         filteredItems = searchFilteredItems.filter { activeFilter?.matches($0) ?? true }
     }
 
-    private func coloredMenuIcon(_ systemName: String, _ color: Color) -> Image {
-        guard let uiImage = UIImage(systemName: systemName)?
-            .withTintColor(UIColor(color), renderingMode: .alwaysOriginal) else {
-            return Image(systemName: systemName)
-        }
-        return Image(uiImage: uiImage)
-    }
-
     private var totalText: String {
         HoaDonFormatting.money(filteredItems.reduce(0) { $0 + $1.soTien })
     }
@@ -72,7 +64,7 @@ struct ThanhToanListView: View {
                                         if let avatarName = filter.avatarName {
                                             ShipperAvatarView(name: avatarName, size: 20)
                                         } else if let systemIcon = filter.systemIcon {
-                                            coloredMenuIcon(systemIcon, filter.iconColor)
+                                            Text(systemIcon)
                                         }
                                     } icon: {
                                         Text(activeFilter == filter ? "✓ \(count) \(filter.label)" : "\(count) \(filter.label)")
@@ -295,19 +287,12 @@ enum ThanhToanQuickFilter: CaseIterable, Hashable {
         }
     }
 
+    /// Emoji (đổi từ SF Symbol 2026-09-12, khớp F1/F4 bên HoaDonDetailView + phong cách AppDatHangIOS).
     var systemIcon: String? {
         switch self {
-        case .tienMat: return "banknote.fill"
-        case .chuyenKhoan: return "creditcard.fill"
+        case .tienMat: return "💵"
+        case .chuyenKhoan: return "💳"
         default: return nil
-        }
-    }
-
-    var iconColor: Color {
-        switch self {
-        case .tienMat: return .successColor
-        case .chuyenKhoan: return .brandPrimary
-        default: return .textMuted
         }
     }
 

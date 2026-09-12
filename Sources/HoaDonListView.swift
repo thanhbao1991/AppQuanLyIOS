@@ -53,8 +53,8 @@ struct HoaDonListView: View {
         // Thiếu AppDatHang ở đây thì doanh thu đơn app khách biến mất khỏi thanh tổng, dù vẫn còn
         // trong cachedSorted — mirror đúng lỗi đã sửa ở ThongKeService (Backend, thêm nhãn "Đặt qua app").
         let order: [(code: String, icon: String)] = [
-            ("Ship", "scooter"), ("AppDatHang", "iphone.gen3"), ("Tại Chỗ", "chair.fill"), ("Mv", "bag.fill"),
-            ("Mh", "hand.raised.fill"), ("App", "iphone"),
+            ("Ship", "🛵"), ("AppDatHang", "🛒"), ("Tại Chỗ", "🪑"), ("Mv", "🛍️"),
+            ("Mh", "✋"), ("App", "📱"),
         ]
         return order.compactMap { entry in
             let total = cachedSorted.filter { $0.phanLoai == entry.code }.reduce(0) { $0 + $1.thanhTien }
@@ -62,15 +62,6 @@ struct HoaDonListView: View {
             let text = "\(Int((total / 1000).rounded()))"
             return (entry.code, entry.icon, HoaDonFormatting.phanLoaiColor(entry.code), text)
         }
-    }
-
-    /// Icon SF Symbol có màu bake sẵn, dùng riêng cho item trong `Menu` — xem giải thích tại chỗ gọi.
-    private func coloredMenuIcon(_ systemName: String, _ color: Color) -> Image {
-        guard let uiImage = UIImage(systemName: systemName)?
-            .withTintColor(UIColor(color), renderingMode: .alwaysOriginal) else {
-            return Image(systemName: systemName)
-        }
-        return Image(uiImage: uiImage)
     }
 
     var body: some View {
@@ -101,13 +92,11 @@ struct HoaDonListView: View {
                                         if let avatarName = filter.avatarName {
                                             ShipperAvatarView(name: avatarName, size: 20)
                                         } else if let systemIcon = filter.systemIcon {
-                                            // .foregroundColor() KHÔNG ăn trong UIMenu — hệ thống tự
-                                            // ép icon SF Symbol về chế độ template rồi tint lại theo
-                                            // 1 màu chung (đã verify thấy sai màu trên máy thật). Né
-                                            // bằng cách bake sẵn màu vào UIImage với renderingMode
-                                            // .alwaysOriginal (giữ nguyên pixel màu, không cho hệ
-                                            // thống tint lại) rồi bọc qua Image(uiImage:).
-                                            coloredMenuIcon(systemIcon, filter.iconColor)
+                                            // Emoji không bị UIMenu ép về template/tint lại 1 màu như
+                                            // SF Symbol trước đây (từng phải bake màu qua UIImage +
+                                            // renderingMode .alwaysOriginal để né lỗi này) — glyph màu
+                                            // cố định sẵn, hiện Text thẳng là đủ.
+                                            Text(systemIcon)
                                         }
                                     } icon: {
                                         // Menu native iOS (UIMenu) không cho custom màu/font trên text item —
@@ -188,8 +177,8 @@ struct HoaDonListView: View {
                         if !phanLoaiTotals.isEmpty {
                             HStack(spacing: 8) {
                                 ForEach(phanLoaiTotals, id: \.phanLoai) { item in
-                                    Label(item.text, systemImage: item.icon)
-                                        .font(.caption2).foregroundColor(item.color)
+                                    Label { Text(item.text).foregroundColor(item.color) } icon: { Text(item.icon) }
+                                        .font(.caption2)
                                 }
                             }
                         }
@@ -376,22 +365,17 @@ enum HoaDonQuickFilter: CaseIterable, Hashable {
         }
     }
 
-    /// Icon hệ thống cho nhóm PhanLoai — khớp bộ icon AddHoaDonSheet.categories để nhất quán trong app.
+    /// Emoji cho nhóm PhanLoai — khớp bộ emoji AddHoaDonSheet.categories/phanLoaiTotals để nhất
+    /// quán trong app (đổi từ SF Symbol 2026-09-12, khớp phong cách AppDatHangIOS).
     var systemIcon: String? {
         switch self {
-        case .taiCho: return "chair.fill"
-        case .ship: return "scooter"
-        case .muaVe: return "bag.fill"
-        case .muaHo: return "hand.raised.fill"
-        case .app: return "iphone"
+        case .taiCho: return "🪑"
+        case .ship: return "🛵"
+        case .muaVe: return "🛍️"
+        case .muaHo: return "✋"
+        case .app: return "📱"
         default: return nil
         }
-    }
-
-    /// Khớp màu icon PhanLoai dùng ở thanh tổng cuối màn hình (`phanLoaiTotals`) — cùng nguồn
-    /// `HoaDonFormatting.phanLoaiColor` để không lệch màu giữa 2 nơi.
-    var iconColor: Color {
-        HoaDonFormatting.phanLoaiColor(phanLoaiCode)
     }
 
     private var phanLoaiCode: String? {
@@ -594,10 +578,10 @@ private struct AddHoaDonSheet: View {
 
     // Không có "App" ở đây: đơn App chỉ được tạo qua "Bắt đơn App" (nút riêng bên dưới, lấy từ store).
     private let categories: [(code: String, icon: String)] = [
-        ("Ship", "scooter"),
-        ("Tại Chỗ", "chair.fill"),
-        ("Mv", "bag.fill"),
-        ("Mh", "hand.raised.fill"),
+        ("Ship", "🛵"),
+        ("Tại Chỗ", "🪑"),
+        ("Mv", "🛍️"),
+        ("Mh", "✋"),
     ]
 
     var body: some View {
@@ -608,7 +592,7 @@ private struct AddHoaDonSheet: View {
                         ForEach(categories, id: \.code) { cat in
                             Button { dismiss(); onPick(cat.code) } label: {
                                 HStack {
-                                    Image(systemName: cat.icon)
+                                    Text(cat.icon)
                                     Text(HoaDonFormatting.phanLoaiLabel(cat.code))
                                     Spacer()
                                 }
