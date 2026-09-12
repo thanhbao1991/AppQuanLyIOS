@@ -94,7 +94,7 @@ struct HoaDonDetailView: View {
     /// Mọi thao tác đụng tiền/dữ liệu thật đều phải qua bước "Xác nhận" — khớp ConfirmDialog.Show
     /// bên Desktop (DeleteAsync/RollbackAsync/GhiNoAsync đều mở dialog trước khi gọi API).
     private enum PendingAction: Identifiable {
-        case tienMat, chuyenKhoan, rollback, ghiNo, xoa, doiPhuongThuc
+        case tienMat, chuyenKhoan, rollback, ghiNo, xoa, doiPhuongThuc, doiPhanLoai
         case ship(String)
 
         var id: String {
@@ -105,6 +105,7 @@ struct HoaDonDetailView: View {
             case .ghiNo: return "ghiNo"
             case .xoa: return "xoa"
             case .doiPhuongThuc: return "doiPhuongThuc"
+            case .doiPhanLoai: return "doiPhanLoai"
             case .ship(let name): return "ship-\(name)"
             }
         }
@@ -117,6 +118,7 @@ struct HoaDonDetailView: View {
             case .ghiNo: return "Ghi nợ hoá đơn này?"
             case .xoa: return "Xoá hoá đơn này?"
             case .doiPhuongThuc: return "Đổi phương thức thanh toán?"
+            case .doiPhanLoai: return "Đổi phân loại đơn?"
             case .ship(let name): return "Gán shipper \(name)?"
             }
         }
@@ -372,6 +374,13 @@ struct HoaDonDetailView: View {
             let doiPhuongThucCaption = singlePaymentBank.map { $0 ? "Đổi sang Tiền mặt" : "Đổi sang Chuyển khoản" } ?? "Đổi phương thức TT"
             let doiPhuongThucColor: Color = singlePaymentBank == true ? .successColor : .brandPrimary
 
+            // Đổi nhanh Ship <-> Mua về (khớp Backend HoaDonTrangThaiService.DoiPhanLoaiAsync, chỉ
+            // toggle 2 phân loại này) — cùng guard "không sửa được đơn đã thu tiền ngày cũ" với nút
+            // Sửa đơn (canEdit), vì đổi phân loại cũng làm lệch báo cáo doanh thu theo phân loại hồi
+            // tố y hệt sửa món/tiền.
+            let showDoiPhanLoai = (d.phanLoai == "Ship" || d.phanLoai == "Mv") && canEdit
+            let doiPhanLoaiCaption = d.phanLoai == "Ship" ? "Đổi sang Mua về" : "Đổi sang Ship"
+
             LazyVGrid(columns: twoColumns, spacing: 8) {
                 ActionButtonView(icon: "pencil", code: nil, caption: "Sửa đơn", color: .warningColor, disabled: !showSua) {
                     showEditForm = true
@@ -392,6 +401,10 @@ struct HoaDonDetailView: View {
                 }
                 ActionButtonView(icon: "arrow.uturn.backward.circle", code: nil, caption: "Hoàn tác thanh toán", color: .warningColor, disabled: !showHoanTac) {
                     pendingAction = .rollback
+                }
+
+                ActionButtonView(icon: "shippingbox", code: nil, caption: doiPhanLoaiCaption, color: .pinkColor, disabled: !showDoiPhanLoai) {
+                    pendingAction = .doiPhanLoai
                 }
             }
         }
@@ -505,6 +518,8 @@ struct HoaDonDetailView: View {
         case .doiPhuongThuc:
             guard let paymentId = d.payments?.first?.id else { return }
             await run { await APIClient.shared.doiPhuongThucThanhToan(id: paymentId) }
+        case .doiPhanLoai:
+            await run { await APIClient.shared.doiPhanLoaiHoaDon(hoaDonId: hoaDonId) }
         case .ship(let name):
             await run { await APIClient.shared.ganShipper(hoaDonId: hoaDonId, nguoiShip: name) }
         }

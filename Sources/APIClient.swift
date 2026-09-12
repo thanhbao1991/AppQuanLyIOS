@@ -511,6 +511,11 @@ actor APIClient {
         return await executeAction(req)
     }
 
+    func doiPhanLoaiHoaDon(hoaDonId: String) async -> ActionResult {
+        let req = makeRequest("/api/HoaDon/\(hoaDonId)/doi-phan-loai", method: "PUT")
+        return await executeAction(req)
+    }
+
     func rollback(hoaDonId: String) async -> ActionResult {
         let req = makeRequest("/api/HoaDon/\(hoaDonId)/rollback", method: "PUT", body: jsonBody(IdOnlyRequest(id: hoaDonId)))
         return await executeAction(req)
