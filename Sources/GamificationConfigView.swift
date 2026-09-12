@@ -1,7 +1,9 @@
 import SwiftUI
 
 /// Chỉnh ngưỡng/số tiền các tính năng giữ chân khách trong app khách (AppDatHangIOS) — Ly Bí Mật,
-/// giới thiệu bạn bè, sinh nhật, vòng quay may mắn, thẻ sưu tập ly. GET/PUT api/GamificationConfig.
+/// giới thiệu bạn bè, sinh nhật, vòng quay may mắn, thẻ sưu tập ly — và phí ship (không thuộc
+/// gamification nhưng dùng chung API/màn hình config app khách này cho gọn). GET/PUT
+/// api/GamificationConfig.
 struct GamificationConfigView: View {
     @State private var config: GamificationConfigDto?
     @State private var hasLoaded = false
@@ -17,7 +19,7 @@ struct GamificationConfigView: View {
                 GamificationConfigForm(config: configBinding, errorMessage: errorMessage, savedMessage: savedMessage)
             }
         }
-        .navigationTitle("Cấu hình Ưu đãi")
+        .navigationTitle("Cấu hình App khách")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color.brandPrimary, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
@@ -79,6 +81,23 @@ private struct GamificationConfigForm: View {
 
             Section("Sinh nhật 🎂") {
                 moneyRow("Quà sinh nhật (1 lần/năm)", value: $config.sinhNhatThuong)
+            }
+
+            Section {
+                HStack {
+                    Text("Số km đầu miễn phí")
+                    Spacer()
+                    TextField("3", value: $config.shipKmMienPhi, format: .number)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 80)
+                    Text("km").foregroundColor(.textMuted)
+                }
+                moneyRow("Phí mỗi km tiếp theo", value: $config.shipPhiMoiKm)
+            } header: {
+                Text("Phí ship 🛵")
+            } footer: {
+                Text("Giao tận nơi trong \(config.shipKmMienPhi, format: .number) km đầu thì miễn phí ship; vượt quá tính thêm theo km, làm tròn lên 1.000đ.")
             }
 
             Section("Thẻ sưu tập ly 🧋") {

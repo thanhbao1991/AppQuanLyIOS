@@ -137,7 +137,7 @@ private struct MoreMenuView: View {
                     NavigationLink {
                         GamificationConfigView()
                     } label: {
-                        Label("Cấu hình Ưu đãi", systemImage: "gift")
+                        Label("Cấu hình App khách", systemImage: "gift")
                     }
                 }
 
