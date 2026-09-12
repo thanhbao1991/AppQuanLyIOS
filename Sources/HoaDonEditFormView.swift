@@ -384,12 +384,19 @@ struct HoaDonEditFormView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
                 ForEach(values, id: \.self) { v in
-                    Button(v) { onSelect(v) }
-                        .font(.caption.bold())
-                        .padding(.horizontal, 10).padding(.vertical, 5)
-                        .background(v == active ? Color.brandPrimary : Color.textMuted.opacity(0.12))
-                        .foregroundColor(v == active ? .white : .primary)
-                        .clipShape(Capsule())
+                    // Label closure riêng + .contentShape() NGAY TRONG label, .buttonStyle(.plain) áp
+                    // SAU CÙNG — Button(String title){} chain thẳng modifier không cho vùng chạm đáng
+                    // tin, bấm trúng phần đệm quanh chip dễ trượt (xác nhận qua test thật).
+                    Button { onSelect(v) } label: {
+                        Text(v)
+                            .font(.caption.bold())
+                            .padding(.horizontal, 10).padding(.vertical, 5)
+                            .background(v == active ? Color.brandPrimary : Color.textMuted.opacity(0.12))
+                            .foregroundColor(v == active ? .white : .primary)
+                            .clipShape(Capsule())
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
@@ -446,7 +453,9 @@ struct HoaDonEditFormView: View {
                                 .background(Color.successColor.opacity(0.12))
                                 .foregroundColor(.successColor)
                                 .clipShape(Capsule())
+                                .contentShape(Rectangle())
                         }
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -580,14 +589,18 @@ struct HoaDonEditFormView: View {
                 HStack(spacing: 8) {
                     ForEach(discountPresets, id: \.self) { v in
                         let active = giamGia == v
-                        Button(v == 0 ? "Không" : HoaDonFormatting.moneyShort(v)) {
+                        Button {
                             giamGia = min(v, tongTien)
+                        } label: {
+                            Text(v == 0 ? "Không" : HoaDonFormatting.moneyShort(v))
+                                .font(.caption.bold())
+                                .padding(.horizontal, 10).padding(.vertical, 6)
+                                .background(active ? Color.brandPrimary : Color.textMuted.opacity(0.12))
+                                .foregroundColor(active ? .white : .primary)
+                                .clipShape(Capsule())
+                                .contentShape(Rectangle())
                         }
-                        .font(.caption.bold())
-                        .padding(.horizontal, 10).padding(.vertical, 6)
-                        .background(active ? Color.brandPrimary : Color.textMuted.opacity(0.12))
-                        .foregroundColor(active ? .white : .primary)
-                        .clipShape(Capsule())
+                        .buttonStyle(.plain)
                     }
                 }
             }

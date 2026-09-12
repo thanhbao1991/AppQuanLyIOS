@@ -364,12 +364,19 @@ struct HoaDonCreateFormView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
                 ForEach(values, id: \.self) { v in
-                    Button(v) { onSelect(v) }
-                        .font(.caption.bold())
-                        .padding(.horizontal, 10).padding(.vertical, 5)
-                        .background(v == active ? Color.brandPrimary : Color.textMuted.opacity(0.12))
-                        .foregroundColor(v == active ? .white : .primary)
-                        .clipShape(Capsule())
+                    // Label closure riêng + .contentShape() NGAY TRONG label, .buttonStyle(.plain) áp
+                    // SAU CÙNG — Button(String title){} chain thẳng modifier không cho vùng chạm đáng
+                    // tin, bấm trúng phần đệm quanh chip dễ trượt (xác nhận qua test thật).
+                    Button { onSelect(v) } label: {
+                        Text(v)
+                            .font(.caption.bold())
+                            .padding(.horizontal, 10).padding(.vertical, 5)
+                            .background(v == active ? Color.brandPrimary : Color.textMuted.opacity(0.12))
+                            .foregroundColor(v == active ? .white : .primary)
+                            .clipShape(Capsule())
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
@@ -426,7 +433,9 @@ struct HoaDonCreateFormView: View {
                                 .background(Color.successColor.opacity(0.12))
                                 .foregroundColor(.successColor)
                                 .clipShape(Capsule())
+                                .contentShape(Rectangle())
                         }
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -577,16 +586,20 @@ struct HoaDonCreateFormView: View {
                 HStack(spacing: 8) {
                     ForEach(discountPresets, id: \.self) { v in
                         let active = giamGiaManual && giamGia == v
-                        Button(v == 0 ? "Không" : HoaDonFormatting.moneyShort(v)) {
+                        Button {
                             giamGiaManual = true
                             giamGia = v
                             recalcGiamGia()
+                        } label: {
+                            Text(v == 0 ? "Không" : HoaDonFormatting.moneyShort(v))
+                                .font(.caption.bold())
+                                .padding(.horizontal, 10).padding(.vertical, 6)
+                                .background(active ? Color.brandPrimary : Color.textMuted.opacity(0.12))
+                                .foregroundColor(active ? .white : .primary)
+                                .clipShape(Capsule())
+                                .contentShape(Rectangle())
                         }
-                        .font(.caption.bold())
-                        .padding(.horizontal, 10).padding(.vertical, 6)
-                        .background(active ? Color.brandPrimary : Color.textMuted.opacity(0.12))
-                        .foregroundColor(active ? .white : .primary)
-                        .clipShape(Capsule())
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -1134,18 +1147,27 @@ struct ProductPickerPanel: View {
                     HStack(spacing: 8) {
                         ForEach(sp.bienThe.sorted(by: { $0.giaBan < $1.giaBan })) { variant in
                             let active = variant.id == bt.id
-                            Button("\(variant.tenBienThe) \(HoaDonFormatting.moneyShort(variant.giaBan))") {
+                            // Button(String title) { } rồi chain modifier KHÔNG cho vùng chạm đáng tin
+                            // — vùng chạm thật co về bounding box CHỮ, bấm trúng phần đệm/nền quanh chip
+                            // thì trượt (xác nhận qua test thật bên AppDatHangIOS, cùng 1 mẫu code port
+                            // từ đây sang). Dùng label closure riêng, .contentShape() NGAY TRONG label,
+                            // .buttonStyle(.plain) áp SAU CÙNG ở ngoài Button.
+                            Button {
                                 picking = variant
                                 // Khớp resetDetailState (chọn sản phẩm MỚI) — đổi size cũng phải tự
                                 // áp Giá riêng nếu có, tránh đổi qua đổi lại size ra giá không nhất
                                 // quán với giá gốc trên hoá đơn.
                                 donGia = giaRiengMap[variant.id] ?? variant.giaBan
+                            } label: {
+                                Text("\(variant.tenBienThe) \(HoaDonFormatting.moneyShort(variant.giaBan))")
+                                    .font(.caption.bold())
+                                    .padding(.horizontal, 10).padding(.vertical, 6)
+                                    .background(active ? Color.brandPrimary : Color.textMuted.opacity(0.12))
+                                    .foregroundColor(active ? .white : .primary)
+                                    .clipShape(Capsule())
+                                    .contentShape(Rectangle())
                             }
-                            .font(.caption.bold())
-                            .padding(.horizontal, 10).padding(.vertical, 6)
-                            .background(active ? Color.brandPrimary : Color.textMuted.opacity(0.12))
-                            .foregroundColor(active ? .white : .primary)
-                            .clipShape(Capsule())
+                            .buttonStyle(.plain)
                         }
                     }
                 }
@@ -1269,15 +1291,26 @@ struct ProductPickerPanel: View {
                         VStack(alignment: .leading, spacing: 10) {
                             ForEach(group.notes, id: \.self) { note in
                                 let active = activeNotes.contains(note)
-                                Button(Self.shortNoteLabels[note] ?? note) { toggleNote(note) }
-                                    .font(.caption2.bold())
-                                    .padding(.horizontal, 6)
-                                    .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.75)
-                                    .background(active ? Color.brandPrimary : Color.textMuted.opacity(0.1))
-                                    .foregroundColor(active ? .white : .textMuted)
-                                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                // minHeight 44 = ngưỡng tối thiểu Apple HIG cho vùng chạm (34 cũ nhỏ
+                                // hơn hẳn). Label closure riêng + .contentShape() NGAY TRONG label,
+                                // .buttonStyle(.plain) áp SAU CÙNG — Button(String title){} chain thẳng
+                                // modifier KHÔNG cho vùng chạm đáng tin, xác nhận qua test thật bên
+                                // AppDatHangIOS (cùng 1 mẫu code port từ đây sang).
+                                Button {
+                                    toggleNote(note)
+                                } label: {
+                                    Text(Self.shortNoteLabels[note] ?? note)
+                                        .font(.caption2.bold())
+                                        .padding(.horizontal, 6)
+                                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.75)
+                                        .background(active ? Color.brandPrimary : Color.textMuted.opacity(0.1))
+                                        .foregroundColor(active ? .white : .textMuted)
+                                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
                     }
