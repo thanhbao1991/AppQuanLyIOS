@@ -32,6 +32,22 @@ struct ThanhToanListView: View {
         HoaDonFormatting.money(filteredItems.reduce(0) { $0 + $1.soTien })
     }
 
+    /// Emoji rasterize thành UIImage cho item trong `Menu` (UIMenu thật) — khớp lý do bên
+    /// HoaDonListView.emojiMenuIcon: Text(emoji) thẳng bị UIMenu rớt mất chữ số đếm+tên filter khi
+    /// cả title/icon closure trong Label đều là Text.
+    private func emojiMenuIcon(_ emoji: String, size: CGFloat = 22) -> Image {
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size))
+        let img = renderer.image { _ in
+            let font = UIFont.systemFont(ofSize: size * 0.82)
+            let str = emoji as NSString
+            let strSize = str.size(withAttributes: [.font: font])
+            let rect = CGRect(x: (size - strSize.width) / 2, y: (size - strSize.height) / 2,
+                               width: strSize.width, height: strSize.height)
+            str.draw(in: rect, withAttributes: [.font: font])
+        }
+        return Image(uiImage: img)
+    }
+
     private var totalTienMat: Double {
         filteredItems.filter { $0.phuongThucThanhToanId?.lowercased() == PaymentMethod.tienMatId }
             .reduce(0) { $0 + $1.soTien }
@@ -64,7 +80,7 @@ struct ThanhToanListView: View {
                                         if let avatarName = filter.avatarName {
                                             ShipperAvatarView(name: avatarName, size: 20)
                                         } else if let systemIcon = filter.systemIcon {
-                                            Text(systemIcon)
+                                            emojiMenuIcon(systemIcon)
                                         }
                                     } icon: {
                                         Text(activeFilter == filter ? "✓ \(count) \(filter.label)" : "\(count) \(filter.label)")

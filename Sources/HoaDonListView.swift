@@ -64,6 +64,24 @@ struct HoaDonListView: View {
         }
     }
 
+    /// Emoji rasterize thành UIImage, dùng riêng cho item trong `Menu` (UIMenu thật) — KHÔNG dùng
+    /// Text(emoji) trực tiếp ở đây được: đã thử và UIMenu chỉ hiện đúng 1 trong 2 view lồng trong
+    /// Label khi CẢ 2 closure (title/icon) đều là Text, rớt mất chữ số đếm+tên filter, chỉ còn trơ
+    /// emoji to đùng (xem ảnh báo lỗi 12/9). Bản SF Symbol cũ hoạt động đúng vì title-slot LUÔN LÀ
+    /// Image (coloredMenuIcon) — giữ đúng cấu trúc đó bằng cách vẽ emoji ra ảnh thay vì Text thẳng.
+    private func emojiMenuIcon(_ emoji: String, size: CGFloat = 22) -> Image {
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size))
+        let img = renderer.image { _ in
+            let font = UIFont.systemFont(ofSize: size * 0.82)
+            let str = emoji as NSString
+            let strSize = str.size(withAttributes: [.font: font])
+            let rect = CGRect(x: (size - strSize.width) / 2, y: (size - strSize.height) / 2,
+                               width: strSize.width, height: strSize.height)
+            str.draw(in: rect, withAttributes: [.font: font])
+        }
+        return Image(uiImage: img)
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -92,11 +110,7 @@ struct HoaDonListView: View {
                                         if let avatarName = filter.avatarName {
                                             ShipperAvatarView(name: avatarName, size: 20)
                                         } else if let systemIcon = filter.systemIcon {
-                                            // Emoji không bị UIMenu ép về template/tint lại 1 màu như
-                                            // SF Symbol trước đây (từng phải bake màu qua UIImage +
-                                            // renderingMode .alwaysOriginal để né lỗi này) — glyph màu
-                                            // cố định sẵn, hiện Text thẳng là đủ.
-                                            Text(systemIcon)
+                                            emojiMenuIcon(systemIcon)
                                         }
                                     } icon: {
                                         // Menu native iOS (UIMenu) không cho custom màu/font trên text item —
