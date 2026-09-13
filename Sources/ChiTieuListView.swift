@@ -64,7 +64,7 @@ struct ChiTieuListView: View {
                 Divider()
                 HStack(spacing: 12) {
                     Button { showAdd = true } label: {
-                        Image(systemName: "plus.circle.fill").font(.system(size: 34))
+                        Text("➕").font(.system(size: 30))
                     }
                     .foregroundColor(.brandPrimary)
 
@@ -361,14 +361,14 @@ private struct QuantityPriceRow: View {
                     Button {
                         if soLuong > 1 { soLuong -= 1 }
                     } label: {
-                        Image(systemName: "minus.circle.fill")
+                        Text("➖").font(.system(size: 22))
                     }
                     .disabled(soLuong <= 1)
                     Text(soLuong.formatted()).font(.subheadline.bold()).frame(minWidth: 16)
                     Button {
                         soLuong += 1
                     } label: {
-                        Image(systemName: "plus.circle.fill")
+                        Text("➕").font(.system(size: 22))
                     }
                 }
                 .buttonStyle(.plain)
@@ -379,7 +379,7 @@ private struct QuantityPriceRow: View {
                     Button {
                         donGia = max(0, donGia - 5000)
                     } label: {
-                        Image(systemName: "minus.circle.fill")
+                        Text("➖").font(.system(size: 22))
                     }
                     .disabled(donGia <= 0)
                     TextField("0", value: $donGia, format: .number)
@@ -389,7 +389,7 @@ private struct QuantityPriceRow: View {
                     Button {
                         donGia += 5000
                     } label: {
-                        Image(systemName: "plus.circle.fill")
+                        Text("➕").font(.system(size: 22))
                     }
                 }
                 .buttonStyle(.plain)
@@ -464,7 +464,7 @@ struct AddExpenseSheet: View {
                                 if addingNguyenLieu {
                                     ProgressView()
                                 } else {
-                                    Label("Thêm nguyên liệu mới \"\(searchText)\"", systemImage: "plus.circle")
+                                    EmojiLabel("Thêm nguyên liệu mới \"\(searchText)\"", "➕")
                                 }
                             }
                             .disabled(addingNguyenLieu)

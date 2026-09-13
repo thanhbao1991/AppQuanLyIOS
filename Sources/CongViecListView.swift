@@ -42,7 +42,7 @@ struct CongViecListView: View {
                                         if adding {
                                             ProgressView()
                                         } else {
-                                            Label("Thêm việc mới \"\(ten)\"", systemImage: "plus.circle")
+                                            EmojiLabel("Thêm việc mới \"\(ten)\"", "➕")
                                         }
                                     }
                                     .disabled(adding)

@@ -197,7 +197,7 @@ struct HoaDonCreateFormView: View {
     private var khachHangCard: some View {
         DetailCard {
             HStack {
-                Label("Khách hàng", systemImage: "person.fill").font(.headline)
+                EmojiLabel("Khách hàng", "👤").font(.headline)
                 Spacer()
                 if selectedKhach != nil && !showEditKhachHang {
                     Button("Sửa") { beginEditKhach() }.font(.caption)
@@ -241,7 +241,7 @@ struct HoaDonCreateFormView: View {
                     }
 
                     Button { showNewKhachForm = true } label: {
-                        Label("Khách mới", systemImage: "person.badge.plus")
+                        EmojiLabel("Khách mới", "➕👤")
                     }
                     .font(.subheadline)
                 }
@@ -280,7 +280,7 @@ struct HoaDonCreateFormView: View {
             Button {
                 editPhoneRows.append(EditContactRow(id: UUID().uuidString, value: ""))
             } label: {
-                Label("Thêm SĐT", systemImage: "plus")
+                EmojiLabel("Thêm SĐT", "➕")
             }.font(.caption)
 
             fieldLabel("Địa chỉ", icon: "location")
@@ -288,7 +288,7 @@ struct HoaDonCreateFormView: View {
             Button {
                 editAddressRows.append(EditContactRow(id: UUID().uuidString, value: ""))
             } label: {
-                Label("Thêm địa chỉ", systemImage: "plus")
+                EmojiLabel("Thêm địa chỉ", "➕")
             }.font(.caption)
 
             Toggle("Được nhận voucher", isOn: $editVoucher)
@@ -322,7 +322,7 @@ struct HoaDonCreateFormView: View {
                             .keyboardType(keyboard)
                     }
                     Button { rows.wrappedValue.remove(at: i) } label: {
-                        Image(systemName: "trash").foregroundColor(.dangerColor)
+                        Text("🗑️").foregroundColor(.dangerColor)
                     }
                 }
             }
@@ -473,7 +473,7 @@ struct HoaDonCreateFormView: View {
     private var monCard: some View {
         DetailCard {
             HStack {
-                Label("Món", systemImage: "cup.and.saucer.fill").font(.headline)
+                EmojiLabel("Món", "☕").font(.headline)
                 Spacer()
                 if tongLy > 0 {
                     Text("\(tongLy) ly")
@@ -561,7 +561,7 @@ struct HoaDonCreateFormView: View {
                     items.remove(at: index)
                     recalcGiamGia()
                 } label: {
-                    Image(systemName: "trash").foregroundColor(.dangerColor).font(.caption)
+                    Text("🗑️").foregroundColor(.dangerColor).font(.caption)
                 }
             }
         }
@@ -578,7 +578,7 @@ struct HoaDonCreateFormView: View {
     private var discountCard: some View {
         DetailCard {
             HStack {
-                Label("Giảm giá", systemImage: "tag.fill").font(.headline)
+                EmojiLabel("Giảm giá", "🏷️").font(.headline)
                 Spacer()
                 Button("Tự động") { applyAutoGiamGia() }.font(.caption)
             }
@@ -1187,14 +1187,14 @@ struct ProductPickerPanel: View {
                         Button {
                             if soLuong > 1 { soLuong -= 1 }
                         } label: {
-                            Image(systemName: "minus.circle.fill")
+                            Text("➖").font(.system(size: 22))
                         }
                         .disabled(soLuong <= 1)
                         Text("\(soLuong)").font(.subheadline.bold()).frame(minWidth: 16)
                         Button {
                             if soLuong < 50 { soLuong += 1 }
                         } label: {
-                            Image(systemName: "plus.circle.fill")
+                            Text("➕").font(.system(size: 22))
                         }
                         .disabled(soLuong >= 50)
                     }
@@ -1206,7 +1206,7 @@ struct ProductPickerPanel: View {
                         Button {
                             donGia = max(0, donGia - 5000)
                         } label: {
-                            Image(systemName: "minus.circle.fill")
+                            Text("➖").font(.system(size: 22))
                         }
                         .disabled(donGia <= 0)
                         TextField("0", value: $donGia, format: .number)
@@ -1216,7 +1216,7 @@ struct ProductPickerPanel: View {
                         Button {
                             donGia += 5000
                         } label: {
-                            Image(systemName: "plus.circle.fill")
+                            Text("➕").font(.system(size: 22))
                         }
                     }
                     .buttonStyle(.plain)

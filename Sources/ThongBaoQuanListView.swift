@@ -44,7 +44,7 @@ struct ThongBaoQuanListView: View {
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button { showAdd = true } label: { Image(systemName: "plus") }
+                Button { showAdd = true } label: { Text("➕") }
             }
         }
         .task { await load() }
@@ -112,7 +112,7 @@ private struct ThongBaoQuanRowView: View {
         .buttonStyle(.plain)
         .swipeActions(edge: .trailing) {
             Button(role: .destructive, action: onDelete) {
-                Label("Xoá", systemImage: "trash")
+                EmojiLabel("Xoá", "🗑️")
             }
             Button(action: onToggle) {
                 Label(item.dangHoatDong ? "Ẩn" : "Hiện", systemImage: item.dangHoatDong ? "eye.slash" : "eye")

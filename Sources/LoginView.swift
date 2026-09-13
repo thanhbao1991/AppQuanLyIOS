@@ -35,7 +35,7 @@ struct LoginView: View {
                     VStack(spacing: 22) {
                         if let errorText {
                             HStack(spacing: 8) {
-                                Image(systemName: "exclamationmark.triangle.fill")
+                                Text("⚠️")
                                 Text(errorText)
                             }
                             .font(.footnote.weight(.medium))

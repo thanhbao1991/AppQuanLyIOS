@@ -21,19 +21,19 @@ enum MainTab: CaseIterable {
         }
     }
 
+    /// Emoji thay SF Symbol (đổi 2026-09-13, đồng bộ phong cách emoji đã dùng cho ActionButtonView) —
+    /// emoji không đổi màu theo .foregroundColor như SF Symbol, nên tab đang chọn được đánh dấu bằng
+    /// nền tròn nhạt phía sau icon thay vì đổi màu icon (xem tabBar).
     var icon: String {
         switch self {
-        case .thongKe: "chart.pie"
-        case .hoaDon: "doc.text"
-        case .thanhToan: "creditcard"
-        case .congNo: "exclamationmark.circle"
-        case .chiTieu: "banknote"
-        case .menu: "ellipsis.circle"
+        case .thongKe: "📊"
+        case .hoaDon: "🧾"
+        case .thanhToan: "💳"
+        case .congNo: "⚠️"
+        case .chiTieu: "💵"
+        case .menu: "⚙️"
         }
     }
-
-    /// Bản .fill cùng tên — hiện khi tab đang được chọn, để khớp cảm giác native TabView.
-    var iconFilled: String { "\(icon).fill" }
 }
 
 struct MainTabView: View {
@@ -84,12 +84,15 @@ struct MainTabView: View {
                     selection = tab
                 } label: {
                     VStack(spacing: 3) {
-                        Image(systemName: selection == tab ? tab.iconFilled : tab.icon)
-                            .font(.system(size: 20))
+                        Text(tab.icon)
+                            .font(.system(size: 18))
+                            .frame(width: 30, height: 30)
+                            .background(selection == tab ? Color.brandPrimary.opacity(0.15) : Color.clear)
+                            .clipShape(Circle())
                         Text(tab.label)
                             .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(selection == tab ? .brandPrimary : .textMuted)
                     }
-                    .foregroundColor(selection == tab ? .brandPrimary : .textMuted)
                     .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.plain)
@@ -122,22 +125,22 @@ private struct MoreMenuView: View {
                     NavigationLink {
                         CongViecListView()
                     } label: {
-                        Label("Công việc", systemImage: "checklist")
+                        EmojiLabel("Công việc", "📋")
                     }
                     NavigationLink {
                         SanPhamHinhAnhListView()
                     } label: {
-                        Label("Ảnh menu", systemImage: "photo.on.rectangle.angled")
+                        EmojiLabel("Ảnh menu", "🖼️")
                     }
                     NavigationLink {
                         ThongBaoQuanListView()
                     } label: {
-                        Label("Thông báo/Khuyến mãi", systemImage: "megaphone")
+                        EmojiLabel("Thông báo/Khuyến mãi", "📣")
                     }
                     NavigationLink {
                         GamificationConfigView()
                     } label: {
-                        Label("Cấu hình App khách", systemImage: "gift")
+                        EmojiLabel("Cấu hình App khách", "🎁")
                     }
                 }
 
@@ -145,12 +148,12 @@ private struct MoreMenuView: View {
                     NavigationLink {
                         TinhLuongView(shipperTen: "Khánh")
                     } label: {
-                        Label("Tính lương Khánh", systemImage: "fuelpump")
+                        EmojiLabel("Tính lương Khánh", "⛽")
                     }
                     NavigationLink {
                         TinhLuongView(shipperTen: "Nhã")
                     } label: {
-                        Label("Tính lương Nhã", systemImage: "fuelpump")
+                        EmojiLabel("Tính lương Nhã", "⛽")
                     }
                 }
 
@@ -159,7 +162,7 @@ private struct MoreMenuView: View {
                         Task { await syncContacts() }
                     } label: {
                         HStack {
-                            Label("Đồng bộ danh bạ", systemImage: "person.text.rectangle")
+                            EmojiLabel("Đồng bộ danh bạ", "📇")
                             Spacer()
                             if isSyncingContacts {
                                 ProgressView()
@@ -173,19 +176,19 @@ private struct MoreMenuView: View {
 
                 Section {
                     if let name = Prefs.displayName, !name.isEmpty {
-                        Label(name, systemImage: "person.circle")
+                        EmojiLabel(name, "👤")
                     }
                     NavigationLink {
                         DeviceSessionsView()
                     } label: {
-                        Label("Thiết bị đăng nhập", systemImage: "iphone.and.arrow.forward")
+                        EmojiLabel("Thiết bị đăng nhập", "📱")
                     }
                     Button(role: .destructive) {
                         Prefs.clear()
                         Prefs.manualLogout = true
                         isLoggedIn = false
                     } label: {
-                        Label("Đăng xuất", systemImage: "rectangle.portrait.and.arrow.right")
+                        EmojiLabel("Đăng xuất", "🚪")
                     }
                 } footer: {
                     Text("Phiên bản \(appVersionString)")

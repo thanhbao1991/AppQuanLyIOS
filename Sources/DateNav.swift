@@ -58,7 +58,7 @@ struct DaySearchBar: View {
 
             Button { showPicker = true } label: {
                 HStack(spacing: 4) {
-                    Image(systemName: "calendar")
+                    Text("📅")
                     Text(DateNavFormat.dayTitle.string(from: date))
                 }
                 .font(.subheadline.bold())
@@ -125,7 +125,7 @@ struct DayDateBar: View {
         HStack {
             Button { showPicker = true } label: {
                 HStack(spacing: 4) {
-                    Image(systemName: "calendar")
+                    Text("📅")
                     Text(DateNavFormat.dayTitle.string(from: date))
                 }
                 .font(.subheadline.bold())
@@ -185,7 +185,7 @@ struct MonthDateBar: View {
     var body: some View {
         Button { showPicker = true } label: {
             HStack(spacing: 4) {
-                Image(systemName: "calendar")
+                Text("📅")
                 Text(DateNavFormat.monthTitle.string(from: date))
             }
             .font(.subheadline.bold())

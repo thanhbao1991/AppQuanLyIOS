@@ -148,14 +148,14 @@ struct HoaDonDetailView: View {
 
                 DetailCard {
                     HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: "person.crop.circle.fill")
+                        Text("👤")
                             .font(.title2)
                             .foregroundColor(.brandPrimary)
                         VStack(alignment: .leading, spacing: 4) {
                             Text(d.tenKhachHangText?.isEmpty == false ? d.tenKhachHangText! : (d.tenBan.map { "Bàn \($0)" } ?? "Khách lẻ"))
                                 .font(.title3.bold())
                             if let sdt = d.soDienThoaiText, !sdt.isEmpty { phoneRow(sdt) }
-                            if let dc = d.diaChiText, !dc.isEmpty { iconRow("location.fill", dc) }
+                            if let dc = d.diaChiText, !dc.isEmpty { iconRow("📍", dc) }
                         }
                         Spacer()
                         if let qrImage {
@@ -165,14 +165,14 @@ struct HoaDonDetailView: View {
                                 .frame(width: 90, height: 90)
                         }
                     }
-                    if let gc = d.ghiChu, !gc.isEmpty { iconRow("note.text", gc) }
-                    if let tk = d.tenTaiKhoan, !tk.isEmpty { iconRow("person.badge.plus", "Tạo bởi: \(tk)") }
+                    if let gc = d.ghiChu, !gc.isEmpty { iconRow("📝", gc) }
+                    if let tk = d.tenTaiKhoan, !tk.isEmpty { iconRow("➕👤", "Tạo bởi: \(tk)") }
                 }
 
                 if let chiTiet = d.chiTietHoaDons, !chiTiet.isEmpty {
                     DetailCard {
                         HStack {
-                            Label("Món", systemImage: "cup.and.saucer.fill").font(.headline)
+                            EmojiLabel("Món", "☕").font(.headline)
                             Spacer()
                             Text("\(chiTiet.reduce(0) { $0 + $1.soLuong }) ly")
                                 .font(.caption.bold())
@@ -486,7 +486,7 @@ struct HoaDonDetailView: View {
             if let url = URL(string: "tel:\(digits)") {
                 Link(destination: url) {
                     HStack(spacing: 4) {
-                        Image(systemName: "phone.fill").font(.caption2)
+                        Text("📞").font(.caption2)
                         Text(sdt)
                     }
                     .foregroundColor(.brandPrimary)
@@ -510,7 +510,9 @@ struct HoaDonDetailView: View {
     /// Dòng phụ trong card khách hàng (địa chỉ/ghi chú) — icon nhỏ bên trái thay vì nhãn chữ, gọn hơn.
     private func iconRow(_ icon: String, _ text: String) -> some View {
         HStack(alignment: .top, spacing: 6) {
-            Image(systemName: icon).font(.caption).foregroundColor(.textMuted).frame(width: 14)
+            // Emoji thay SF Symbol (đổi 2026-09-13) — mất màu .textMuted trên icon (emoji không ăn
+            // foregroundColor), chấp nhận đánh đổi để đồng bộ phong cách.
+            Text(icon).font(.caption).frame(width: 14)
             Text(text).font(.subheadline).foregroundColor(.textMuted)
             Spacer()
         }

@@ -178,12 +178,12 @@ struct HoaDonListView: View {
                 Divider()
                 HStack(spacing: 12) {
                     Button { showAddSheet = true } label: {
-                        Image(systemName: "plus.circle.fill").font(.system(size: 34))
+                        Text("➕").font(.system(size: 30))
                     }
                     .foregroundColor(.brandPrimary)
 
                     Button { showDesktopSheet = true } label: {
-                        Image(systemName: "desktopcomputer").font(.system(size: 28))
+                        Text("🖥️").font(.system(size: 26))
                     }
                     .foregroundColor(.brandPrimary)
 
@@ -520,7 +520,7 @@ private struct HoaDonRowView: View {
                     Spacer()
                     if let waitingMinutes {
                         HStack(spacing: 3) {
-                            Image(systemName: "clock.fill").font(.caption2)
+                            Text("🕐").font(.caption2)
                             Text(HoaDonFormatting.waitingText(waitingMinutes)).font(.caption2.bold())
                         }
                         .foregroundColor(.white)
@@ -533,7 +533,7 @@ private struct HoaDonRowView: View {
                     .font(.subheadline.bold())
                 if (item.phanLoai == "Ship" || item.phanLoai == "AppDatHang"), let diaChi = item.diaChiText, !diaChi.isEmpty {
                     HStack(spacing: 4) {
-                        Image(systemName: "location.fill").font(.caption2).foregroundColor(.textMuted)
+                        Text("📍").font(.caption2).foregroundColor(.textMuted)
                         Text(diaChi).font(.footnote).foregroundColor(.textMuted).lineLimit(1)
                     }
                 }
@@ -545,7 +545,7 @@ private struct HoaDonRowView: View {
             VStack(alignment: .trailing, spacing: 4) {
                 if shipTiNuaChuyenKhoan {
                     HStack(spacing: 3) {
-                        Image(systemName: "bell.fill").font(.caption2)
+                        Text("🔔").font(.caption2)
                         Text("Tí nữa CK").font(.caption2.bold())
                     }
                     .foregroundColor(.white)
@@ -619,7 +619,7 @@ private struct AddHoaDonSheet: View {
 
                     Button { showGoiSom = true } label: {
                         HStack {
-                            Image(systemName: "clock.fill")
+                            Text("🕐")
                             Text("Đơn 7h — khách hay gọi sớm")
                             Spacer()
                             Image(systemName: "chevron.right").font(.caption)
@@ -631,7 +631,7 @@ private struct AddHoaDonSheet: View {
 
                     Button { showAppOrder = true } label: {
                         HStack {
-                            Image(systemName: "app.badge.checkmark")
+                            Text("✅")
                             Text("Bắt đơn App — lấy đơn từ store")
                             Spacer()
                             Image(systemName: "chevron.right").font(.caption)

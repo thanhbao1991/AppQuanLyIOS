@@ -225,7 +225,7 @@ struct HoaDonEditFormView: View {
     private var khachHangCard: some View {
         DetailCard {
             HStack {
-                Label("Khách hàng", systemImage: "person.fill").font(.headline)
+                EmojiLabel("Khách hàng", "👤").font(.headline)
                 Spacer()
                 if selectedKhach != nil && !showEditKhachHang {
                     Button("Sửa") { beginEditKhach() }.font(.caption)
@@ -269,7 +269,7 @@ struct HoaDonEditFormView: View {
                     }
 
                     Button { showNewKhachForm = true } label: {
-                        Label("Khách mới", systemImage: "person.badge.plus")
+                        EmojiLabel("Khách mới", "➕👤")
                     }
                     .font(.subheadline)
                 }
@@ -300,7 +300,7 @@ struct HoaDonEditFormView: View {
             Button {
                 editPhoneRows.append(EditContactRow(id: UUID().uuidString, value: ""))
             } label: {
-                Label("Thêm SĐT", systemImage: "plus")
+                EmojiLabel("Thêm SĐT", "➕")
             }.font(.caption)
 
             fieldLabel("Địa chỉ", icon: "location")
@@ -308,7 +308,7 @@ struct HoaDonEditFormView: View {
             Button {
                 editAddressRows.append(EditContactRow(id: UUID().uuidString, value: ""))
             } label: {
-                Label("Thêm địa chỉ", systemImage: "plus")
+                EmojiLabel("Thêm địa chỉ", "➕")
             }.font(.caption)
 
             Toggle("Được nhận voucher", isOn: $editVoucher)
@@ -342,7 +342,7 @@ struct HoaDonEditFormView: View {
                             .keyboardType(keyboard)
                     }
                     Button { rows.wrappedValue.remove(at: i) } label: {
-                        Image(systemName: "trash").foregroundColor(.dangerColor)
+                        Text("🗑️").foregroundColor(.dangerColor)
                     }
                 }
             }
@@ -493,7 +493,7 @@ struct HoaDonEditFormView: View {
     private var monCard: some View {
         DetailCard {
             HStack {
-                Label("Món", systemImage: "cup.and.saucer.fill").font(.headline)
+                EmojiLabel("Món", "☕").font(.headline)
                 Spacer()
                 if tongLy > 0 {
                     Text("\(tongLy) ly")
@@ -570,7 +570,7 @@ struct HoaDonEditFormView: View {
                 Button {
                     items.remove(at: index)
                 } label: {
-                    Image(systemName: "trash").foregroundColor(.dangerColor).font(.caption)
+                    Text("🗑️").foregroundColor(.dangerColor).font(.caption)
                 }
             }
         }
@@ -584,7 +584,7 @@ struct HoaDonEditFormView: View {
 
     private var discountCard: some View {
         DetailCard {
-            Label("Giảm giá", systemImage: "tag.fill").font(.headline)
+            EmojiLabel("Giảm giá", "🏷️").font(.headline)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(discountPresets, id: \.self) { v in

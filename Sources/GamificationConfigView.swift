@@ -123,7 +123,7 @@ private struct GamificationConfigForm: View {
                 Button {
                     config.vongQuayPhanThuong.append(VongQuayPhanThuongDto(label: "Ô thưởng mới", trongSo: 10, thuong: 0))
                 } label: {
-                    Label("Thêm ô thưởng", systemImage: "plus.circle")
+                    EmojiLabel("Thêm ô thưởng", "➕")
                 }
             } header: {
                 Text("Vòng quay may mắn 🎡")
