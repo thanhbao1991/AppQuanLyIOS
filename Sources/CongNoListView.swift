@@ -190,7 +190,7 @@ struct CongNoFooterView: View {
             Group {
                 if showSendButton {
                     footerColumnButton(
-                        icon: copiedFeedback ? "checkmark" : "doc.on.doc",
+                        icon: copiedFeedback ? "✅" : "🧾",
                         label: copiedFeedback ? "Đã copy" : "Gửi Bill",
                         color: .brandPrimary
                     ) {
@@ -204,7 +204,7 @@ struct CongNoFooterView: View {
 
             Group {
                 if showSendButton && !items.isEmpty {
-                    footerColumnButton(icon: "banknote", label: "Thanh toán", color: .successColor) {
+                    footerColumnButton(icon: "💵", label: "Thanh toán", color: .successColor) {
                         payAllInput = ""
                         showPayAllConfirm = true
                     }
@@ -254,7 +254,7 @@ struct CongNoFooterView: View {
     private func footerColumnButton(icon: String, label: String, color: Color, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: 2) {
-                Image(systemName: icon)
+                Text(icon)
                 Text(label).font(.caption2.bold())
             }
             .frame(maxWidth: .infinity)

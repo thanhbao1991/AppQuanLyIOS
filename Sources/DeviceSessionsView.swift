@@ -90,10 +90,10 @@ private struct SessionRowView: View {
     // (dễ trùng/gây nhầm với tên tài khoản, ví dụ user đặt tên máy trùng "ADMIN").
     private var platformIcon: String {
         switch session.nenTang {
-        case "Desktop": return "desktopcomputer"
-        case "Android": return "phone.fill"
-        case "iOS": return "iphone"
-        default: return "questionmark.circle"
+        case "Desktop": return "🖥️"
+        case "Android": return "🤖"
+        case "iOS": return "📱"
+        default: return "❓"
         }
     }
 
@@ -113,8 +113,8 @@ private struct SessionRowView: View {
         HStack(alignment: .top, spacing: 12) {
             ZStack {
                 Circle().fill(accentColor.opacity(0.16)).frame(width: 40, height: 40)
-                Image(systemName: platformIcon)
-                    .font(.system(size: 17, weight: .medium))
+                Text(platformIcon)
+                    .font(.system(size: 16))
                     .foregroundColor(accentColor)
             }
 

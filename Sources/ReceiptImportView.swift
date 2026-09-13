@@ -18,7 +18,7 @@ struct ReceiptImportButton: View {
     var body: some View {
         HStack(spacing: 10) {
             PhotosPicker(selection: $pickerItem, matching: .images) {
-                iconOrSpinner("photo.on.rectangle")
+                iconOrSpinner("🖼️")
             }
             .disabled(loading)
             .onChange(of: pickerItem) { item in
@@ -29,7 +29,7 @@ struct ReceiptImportButton: View {
             Button {
                 showCamera = true
             } label: {
-                iconOrSpinner("camera.fill")
+                iconOrSpinner("📷")
             }
             .disabled(loading)
         }
@@ -58,11 +58,12 @@ struct ReceiptImportButton: View {
     }
 
     @ViewBuilder
-    private func iconOrSpinner(_ systemName: String) -> some View {
+    private func iconOrSpinner(_ icon: String) -> some View {
         if loading {
             ProgressView().frame(width: 30, height: 30)
         } else {
-            Image(systemName: systemName).font(.system(size: 28))
+            // Emoji thay SF Symbol (đổi 2026-09-13).
+            Text(icon).font(.system(size: 26))
         }
     }
 
@@ -243,7 +244,7 @@ private struct ReceiptReviewSheet: View {
             Button {
                 line.wrappedValue.included.toggle()
             } label: {
-                Image(systemName: line.wrappedValue.included ? "checkmark.circle.fill" : "circle")
+                Text(line.wrappedValue.included ? "✅" : "⚪")
                     .foregroundColor(line.wrappedValue.included ? .brandPrimary : .textMuted)
             }
         }

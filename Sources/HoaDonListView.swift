@@ -124,11 +124,11 @@ struct HoaDonListView: View {
                                 Button("Bỏ lọc", role: .destructive) { activeFilter = nil }
                             }
                         } label: {
-                            Image(systemName: activeFilter == nil ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
-                                .font(.title2)
-                                .foregroundColor(.white.opacity(activeFilter == nil ? 0.75 : 1))
-                                // Badge tròn góc trên-phải, giống badge thông báo — chỉ hiện khi đang lọc,
-                                // vì Menu native không cho style số đếm trong text item (xem trong menu).
+                            // Emoji thay SF Symbol (đổi 2026-09-13) — mất khả năng đổi opacity theo
+                            // activeFilter (emoji không ăn .foregroundColor), badge số đếm góc trên-phải
+                            // (chỉ hiện khi đang lọc) đã đủ phân biệt trạng thái đang lọc hay không.
+                            Text("🔽")
+                                .font(.title3)
                                 .overlay(alignment: .topTrailing) {
                                     if activeFilter != nil {
                                         Text("\(cachedSorted.count)")

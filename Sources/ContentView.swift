@@ -104,8 +104,8 @@ private struct SignalToastBanner: View {
             // Gói gọn 1 dòng (nhãn: nội dung) thay vì 2 dòng riêng — để chiều cao khớp đúng
             // ô tìm kiếm (SearchFieldRow: padding dọc 7 quanh 1 dòng chữ ≈ 36pt), tràn thì cắt "...".
             HStack(spacing: 6) {
-                Image(systemName: bus.toastIcon)
-                    .font(.system(size: 14))
+                Text(bus.toastIcon)
+                    .font(.system(size: 13))
                 Text(text.isEmpty ? bus.toastLabel : "\(bus.toastLabel): \(text)")
                     .font(.system(size: 13, weight: .semibold))
                     .lineLimit(1)

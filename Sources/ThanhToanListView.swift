@@ -92,9 +92,9 @@ struct ThanhToanListView: View {
                                 Button("Bỏ lọc", role: .destructive) { activeFilter = nil }
                             }
                         } label: {
-                            Image(systemName: activeFilter == nil ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
-                                .font(.title2)
-                                .foregroundColor(.white.opacity(activeFilter == nil ? 0.75 : 1))
+                            // Emoji thay SF Symbol (đổi 2026-09-13) — khớp HoaDonListView.
+                            Text("🔽")
+                                .font(.title3)
                                 .overlay(alignment: .topTrailing) {
                                     if activeFilter != nil {
                                         Text("\(filteredItems.count)")

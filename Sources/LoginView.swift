@@ -94,7 +94,7 @@ struct LoginView: View {
 
     private var manualForm: some View {
         VStack(spacing: 16) {
-            fieldContainer(icon: "person.fill", isFocused: focusedField == .taiKhoan) {
+            fieldContainer(icon: "👤", isFocused: focusedField == .taiKhoan) {
                 TextField("Tài khoản", text: $taiKhoan)
                     .textInputAutocapitalization(.never)
                     .disableAutocorrection(true)
@@ -103,7 +103,7 @@ struct LoginView: View {
                     .onSubmit { focusedField = .matKhau }
             }
 
-            fieldContainer(icon: "lock.fill", isFocused: focusedField == .matKhau) {
+            fieldContainer(icon: "🔒", isFocused: focusedField == .matKhau) {
                 Group {
                     if showMatKhau {
                         TextField("Mật khẩu", text: $matKhau)
@@ -118,7 +118,7 @@ struct LoginView: View {
                 Button {
                     withAnimation(.easeInOut(duration: 0.15)) { showMatKhau.toggle() }
                 } label: {
-                    Image(systemName: showMatKhau ? "eye.slash.fill" : "eye.fill")
+                    Text(showMatKhau ? "🙈" : "👁️")
                         .foregroundColor(.secondary)
                 }
             }
@@ -155,9 +155,7 @@ struct LoginView: View {
     @ViewBuilder
     private func fieldContainer<Content: View>(icon: String, isFocused: Bool, @ViewBuilder content: () -> Content) -> some View {
         HStack(spacing: 10) {
-            Image(systemName: icon)
-                .foregroundColor(isFocused ? .brandPrimary : .secondary)
-                .frame(width: 20)
+            Text(icon).frame(width: 20)
             content()
         }
         .padding(.horizontal, 14)

@@ -98,9 +98,8 @@ private struct SanPhamHinhAnhRow: View {
                 if uploading {
                     ProgressView().frame(width: 28, height: 28)
                 } else {
-                    Image(systemName: sanPham.hinhAnh == nil ? "plus.circle" : "arrow.triangle.2.circlepath.circle")
-                        .font(.system(size: 22))
-                        .foregroundColor(.brandPrimary)
+                    Text(sanPham.hinhAnh == nil ? "➕" : "🔄")
+                        .font(.system(size: 20))
                 }
             }
             .disabled(uploading)
