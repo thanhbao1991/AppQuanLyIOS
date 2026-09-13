@@ -313,6 +313,9 @@ struct HoaDonDetailView: View {
         let payments = d.payments ?? []
         let singlePaymentBank = payments.count == 1 ? payments[0].phuongThucThanhToanId.lowercased() == PaymentMethod.chuyenKhoanId : nil
         let twoColumns = [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)]
+        // Nhóm nút phụ (Sửa/Xoá/Ship/Ghi nợ/Đổi phương thức/Hoàn tác/Đổi phân loại) co còn ~nửa cỡ,
+        // xếp 4 cột thay vì 2 — chỉ Tiền mặt/Chuyển khoản (2 nút thu tiền chính) giữ nguyên cỡ lớn.
+        let fourColumns = [GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6)]
 
         // "Gửi SMS" luôn hiện kể cả hoá đơn không có SĐT — soạn sẵn nội dung, nhân viên tự chọn
         // người nhận trong app Tin nhắn. Chỉ ẩn khi máy không hỗ trợ gửi SMS thật (không SIM/không
@@ -350,10 +353,11 @@ struct HoaDonDetailView: View {
                 }
             }
 
-            // 6 ô cố định 3 hàng x 2 cột, LUÔN hiển thị đủ ở mọi hoá đơn — nút nào không áp dụng thì
-            // mờ đi + không bấm được (disabled) thay vì ẩn/để trống, vừa giữ đúng vị trí từng nút vừa
-            // không còn chỗ trống trong grid. Thứ tự ưu tiên nút hay áp dụng lên trên: Sửa/Xoá → Ship/
-            // Ghi nợ → Đổi phương thức/Hoàn tác (2 nút cuối chỉ áp dụng khi đã thu đủ).
+            // 7 ô cố định 4 cột (co nửa cỡ so với Tiền mặt/Chuyển khoản ở trên), LUÔN hiển thị đủ ở
+            // mọi hoá đơn — nút nào không áp dụng thì mờ đi + không bấm được (disabled) thay vì
+            // ẩn/để trống, vừa giữ đúng vị trí từng nút vừa không còn chỗ trống trong grid. Thứ tự
+            // ưu tiên nút hay áp dụng lên trên-trái: Sửa/Xoá → Ship/Ghi nợ → Đổi phương thức/Hoàn
+            // tác (chỉ áp dụng khi đã thu đủ) → Đổi phân loại.
             let showSua = canEdit
             // Đơn đã ghi nợ tuyệt đối không cho xoá cứng — chỉ còn Hoàn tác (rollback, wipe hết thanh
             // toán/ship/nợ về trạng thái mới) là lựa chọn an toàn duy nhất. Khớp guard NgayNo bên
@@ -387,29 +391,27 @@ struct HoaDonDetailView: View {
             let doiPhanLoaiIcon = d.phanLoai == "Ship" ? "🛍️" : "🛵"
             let doiPhanLoaiColor = HoaDonFormatting.phanLoaiColor(d.phanLoai == "Ship" ? "Mv" : "Ship")
 
-            LazyVGrid(columns: twoColumns, spacing: 8) {
-                ActionButtonView(icon: "✏️", code: nil, caption: "Sửa đơn", color: .warningColor, disabled: !showSua) {
+            LazyVGrid(columns: fourColumns, spacing: 6) {
+                ActionButtonView(icon: "✏️", code: nil, caption: "Sửa đơn", color: .warningColor, compact: true, disabled: !showSua) {
                     showEditForm = true
                 }
-                ActionButtonView(icon: "🗑️", code: "Del", caption: "Xoá đơn", color: .dangerColor, disabled: !showXoa) {
+                ActionButtonView(icon: "🗑️", code: "Del", caption: "Xoá đơn", color: .dangerColor, compact: true, disabled: !showXoa) {
                     pendingAction = .xoa
                 }
-
-                ActionButtonView(icon: "🛵", code: "Esc", caption: "Đi Ship", color: .pinkColor, disabled: !showShip) {
+                ActionButtonView(icon: "🛵", code: "Esc", caption: "Đi Ship", color: .pinkColor, compact: true, disabled: !showShip) {
                     showShipperPicker = true
                 }
-                ActionButtonView(icon: "⚠️", code: "F12", caption: "Ghi nợ", color: .dangerColor, disabled: !showGhiNo) {
+                ActionButtonView(icon: "⚠️", code: "F12", caption: "Ghi nợ", color: .dangerColor, compact: true, disabled: !showGhiNo) {
                     pendingAction = .ghiNo
                 }
 
-                ActionButtonView(icon: "🔄", code: nil, caption: doiPhuongThucCaption, color: doiPhuongThucColor, disabled: !showDoiPhuongThuc) {
+                ActionButtonView(icon: "🔄", code: nil, caption: doiPhuongThucCaption, color: doiPhuongThucColor, compact: true, disabled: !showDoiPhuongThuc) {
                     pendingAction = .doiPhuongThuc
                 }
-                ActionButtonView(icon: "↩️", code: nil, caption: "Hoàn tác thanh toán", color: .warningColor, disabled: !showHoanTac) {
+                ActionButtonView(icon: "↩️", code: nil, caption: "Hoàn tác thanh toán", color: .warningColor, compact: true, disabled: !showHoanTac) {
                     pendingAction = .rollback
                 }
-
-                ActionButtonView(icon: doiPhanLoaiIcon, code: nil, caption: doiPhanLoaiCaption, color: doiPhanLoaiColor, disabled: !showDoiPhanLoai) {
+                ActionButtonView(icon: doiPhanLoaiIcon, code: nil, caption: doiPhanLoaiCaption, color: doiPhanLoaiColor, compact: true, disabled: !showDoiPhanLoai) {
                     pendingAction = .doiPhanLoai
                 }
             }
@@ -819,34 +821,42 @@ struct ActionButtonView: View {
     let caption: String
     let color: Color
     var prominent: Bool = false
+    /// Nút phụ (không phải Tiền mặt/Chuyển khoản) co còn ~nửa kích thước, xếp 4 cột thay vì 2 —
+    /// nhóm nút chính F1/F4 giữ nguyên cỡ lớn ở trên, phần còn lại chỉ cần bấm được, không cần to
+    /// bằng 2 nút thu tiền chính (xem actionButtons()).
+    var compact: Bool = false
     /// Nút không áp dụng cho hoá đơn hiện tại vẫn HIỂN THỊ (mờ đi) thay vì ẩn hẳn — giữ đúng vị trí
-    /// 6 ô cố định trong actionButtons(), tránh chỗ trống trong grid mà vẫn không bấm được.
+    /// cố định trong actionButtons(), tránh chỗ trống trong grid mà vẫn không bấm được.
     var disabled: Bool = false
     let action: () -> Void
 
-    init(icon: String, code: String?, caption: String, color: Color, prominent: Bool = false, disabled: Bool = false, action: @escaping () -> Void) {
+    init(icon: String, code: String?, caption: String, color: Color, prominent: Bool = false, compact: Bool = false, disabled: Bool = false, action: @escaping () -> Void) {
         self.icon = icon
         self.code = code
         self.caption = caption
         self.color = color
         self.prominent = prominent
+        self.compact = compact
         self.disabled = disabled
         self.action = action
     }
 
     private var label: some View {
-        VStack(spacing: 1) {
-            HStack(spacing: 4) {
+        VStack(spacing: compact ? 0 : 1) {
+            HStack(spacing: compact ? 2 : 4) {
                 Text(icon)
                 if let code {
                     Text(code).fontWeight(.bold)
                 }
             }
-            .font(.footnote)
-            Text(caption).font(.caption2)
+            .font(compact ? .system(size: 11) : .footnote)
+            Text(caption)
+                .font(compact ? .system(size: 9) : .caption2)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 4)
+        .padding(.vertical, compact ? 2 : 4)
         // Emoji KHÔNG đổi màu theo .tint() như Image(systemName:) trước đây (glyph màu cố định) —
         // disabled=true trước đây tự mờ đi qua .tint(.gray), giờ phải tự thêm opacity mới thấy được
         // trạng thái "không bấm được", không thì icon emoji vẫn hiện sặc sỡ dù nút đang disabled.
