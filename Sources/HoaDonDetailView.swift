@@ -391,28 +391,30 @@ struct HoaDonDetailView: View {
             let doiPhanLoaiIcon = d.phanLoai == "Ship" ? "🛍️" : "🛵"
             let doiPhanLoaiColor = HoaDonFormatting.phanLoaiColor(d.phanLoai == "Ship" ? "Mv" : "Ship")
 
+            // Thứ tự theo yêu cầu: hàng 1 = Esc/F12/Sửa/Del (thao tác trên đơn), hàng 2 = Đổi phân
+            // loại/Đổi phương thức/Hoàn tác (thao tác trên thanh toán), ô cuối để trống.
             LazyVGrid(columns: fourColumns, spacing: 6) {
-                ActionButtonView(icon: "✏️", code: nil, caption: "Sửa đơn", color: .warningColor, compact: true, disabled: !showSua) {
-                    showEditForm = true
-                }
-                ActionButtonView(icon: "🗑️", code: "Del", caption: "Xoá đơn", color: .dangerColor, compact: true, disabled: !showXoa) {
-                    pendingAction = .xoa
-                }
                 ActionButtonView(icon: "🛵", code: "Esc", caption: "Đi Ship", color: .pinkColor, compact: true, disabled: !showShip) {
                     showShipperPicker = true
                 }
                 ActionButtonView(icon: "⚠️", code: "F12", caption: "Ghi nợ", color: .dangerColor, compact: true, disabled: !showGhiNo) {
                     pendingAction = .ghiNo
                 }
+                ActionButtonView(icon: "✏️", code: nil, caption: "Sửa đơn", color: .warningColor, compact: true, disabled: !showSua) {
+                    showEditForm = true
+                }
+                ActionButtonView(icon: "🗑️", code: "Del", caption: "Xoá đơn", color: .dangerColor, compact: true, disabled: !showXoa) {
+                    pendingAction = .xoa
+                }
 
+                ActionButtonView(icon: doiPhanLoaiIcon, code: nil, caption: doiPhanLoaiCaption, color: doiPhanLoaiColor, compact: true, disabled: !showDoiPhanLoai) {
+                    pendingAction = .doiPhanLoai
+                }
                 ActionButtonView(icon: "🔄", code: nil, caption: doiPhuongThucCaption, color: doiPhuongThucColor, compact: true, disabled: !showDoiPhuongThuc) {
                     pendingAction = .doiPhuongThuc
                 }
                 ActionButtonView(icon: "↩️", code: nil, caption: "Hoàn tác thanh toán", color: .warningColor, compact: true, disabled: !showHoanTac) {
                     pendingAction = .rollback
-                }
-                ActionButtonView(icon: doiPhanLoaiIcon, code: nil, caption: doiPhanLoaiCaption, color: doiPhanLoaiColor, compact: true, disabled: !showDoiPhanLoai) {
-                    pendingAction = .doiPhanLoai
                 }
             }
         }
