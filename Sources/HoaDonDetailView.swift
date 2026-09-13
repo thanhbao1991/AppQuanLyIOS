@@ -375,7 +375,11 @@ struct HoaDonDetailView: View {
             let coTuDong = payments.contains { $0.tuDongLuc != nil }
             let showDoiPhuongThuc = d.conLai <= 0 && singlePaymentBank != nil && !coTuDong
             let showHoanTac = d.conLai <= 0 && !coTuDong
-            let doiPhuongThucCaption = singlePaymentBank.map { $0 ? "Đổi sang Tiền mặt" : "Đổi sang Chuyển khoản" } ?? "Đổi phương thức TT"
+            // Rút gọn "Tiền mặt"/"Chuyển khoản" thành "TM"/"CK" cho vừa nút compact (4 cột), kèm icon
+            // đổi theo hướng đích giống doiPhanLoaiIcon bên dưới (trước đây dùng chung 1 icon 🔄 cố
+            // định không phân biệt đổi sang gì).
+            let doiPhuongThucCaption = singlePaymentBank.map { $0 ? "Đổi sang TM" : "Đổi sang CK" } ?? "Đổi phương thức TT"
+            let doiPhuongThucIcon = singlePaymentBank.map { $0 ? "💵" : "💳" } ?? "🔄"
             let doiPhuongThucColor: Color = singlePaymentBank == true ? .successColor : .brandPrimary
 
             // Đổi nhanh Ship <-> Mua về (khớp Backend HoaDonTrangThaiService.DoiPhanLoaiAsync, chỉ
@@ -387,7 +391,7 @@ struct HoaDonDetailView: View {
             // systemIcon: Ship="scooter", Mv="bag.fill" — HoaDonFormatting.phanLoaiColor) — hiện
             // icon/màu của phân loại SẼ CHUYỂN ĐẾN (giống cách doiPhuongThucColor ở trên tô màu theo
             // phương thức đích, không phải phương thức hiện tại).
-            let doiPhanLoaiCaption = d.phanLoai == "Ship" ? "Đổi sang Mua về" : "Đổi sang Ship"
+            let doiPhanLoaiCaption = d.phanLoai == "Ship" ? "Đổi sang Mv" : "Đổi sang Ship"
             let doiPhanLoaiIcon = d.phanLoai == "Ship" ? "🛍️" : "🛵"
             let doiPhanLoaiColor = HoaDonFormatting.phanLoaiColor(d.phanLoai == "Ship" ? "Mv" : "Ship")
 
@@ -410,10 +414,10 @@ struct HoaDonDetailView: View {
                 ActionButtonView(icon: doiPhanLoaiIcon, code: nil, caption: doiPhanLoaiCaption, color: doiPhanLoaiColor, compact: true, disabled: !showDoiPhanLoai) {
                     pendingAction = .doiPhanLoai
                 }
-                ActionButtonView(icon: "🔄", code: nil, caption: doiPhuongThucCaption, color: doiPhuongThucColor, compact: true, disabled: !showDoiPhuongThuc) {
+                ActionButtonView(icon: doiPhuongThucIcon, code: nil, caption: doiPhuongThucCaption, color: doiPhuongThucColor, compact: true, disabled: !showDoiPhuongThuc) {
                     pendingAction = .doiPhuongThuc
                 }
-                ActionButtonView(icon: "↩️", code: nil, caption: "Hoàn tác thanh toán", color: .warningColor, compact: true, disabled: !showHoanTac) {
+                ActionButtonView(icon: "❌", code: nil, caption: "Xoá thanh toán", color: .warningColor, compact: true, disabled: !showHoanTac) {
                     pendingAction = .rollback
                 }
             }
