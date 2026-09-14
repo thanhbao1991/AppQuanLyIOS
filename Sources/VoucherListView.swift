@@ -64,6 +64,7 @@ struct VoucherListView: View {
     private func toggle(_ item: VoucherDto) async {
         _ = await APIClient.shared.updateVoucher(id: item.id, VoucherRequest(
             ma: item.ma, ten: item.ten, moTa: item.moTa, soTienGiam: item.soTienGiam,
+            loaiGiam: item.loaiGiam, phanTramGiam: item.phanTramGiam, donToiThieu: item.donToiThieu,
             dieuKien: item.dieuKien, dangHoatDong: !item.dangHoatDong))
         await load()
     }
@@ -98,7 +99,7 @@ private struct VoucherRowView: View {
                 HStack {
                     Text("Mã \(item.ma)").font(.caption).foregroundColor(.textMuted)
                     Spacer()
-                    Text("-\(Int(item.soTienGiam).formatted())đ").font(.caption).fontWeight(.bold).foregroundColor(.dangerColor)
+                    Text(nhanUuDai(item)).font(.caption).fontWeight(.bold).foregroundColor(.dangerColor)
                 }
                 if let moTa = item.moTa, !moTa.isEmpty {
                     Text(moTa).font(.caption).foregroundColor(.textMuted).lineLimit(2)
@@ -126,8 +127,16 @@ private struct VoucherRowView: View {
         switch dieuKien {
         case "DonDauTien": return "Điều kiện: đơn app đầu tiên của khách"
         case "SinhNhat": return "Điều kiện: trong tháng sinh nhật, 1 lần/năm"
+        case "DonToiThieu": return "Điều kiện: đơn tối thiểu, không giới hạn số lần"
         default: return "Điều kiện: \(dieuKien)"
         }
+    }
+
+    private func nhanUuDai(_ item: VoucherDto) -> String {
+        if item.loaiGiam == "PhanTram" {
+            return "-\(Int(item.phanTramGiam ?? 0))%"
+        }
+        return "-\(Int(item.soTienGiam).formatted())đ"
     }
 }
 
@@ -140,6 +149,9 @@ private struct VoucherEditSheet: View {
     @State private var ten: String
     @State private var moTa: String
     @State private var soTienGiam: Double
+    @State private var loaiGiam: String
+    @State private var phanTramGiam: Double
+    @State private var donToiThieu: Double
     @State private var dieuKien: String
     @State private var dangHoatDong: Bool
     @State private var saving = false
@@ -149,6 +161,12 @@ private struct VoucherEditSheet: View {
     private let dieuKienOptions = [
         ("DonDauTien", "Đơn app đầu tiên"),
         ("SinhNhat", "Sinh nhật (1 lần/năm)"),
+        ("DonToiThieu", "Đơn tối thiểu (không giới hạn)"),
+    ]
+    // Khớp VoucherLoaiGiam bên Backend.
+    private let loaiGiamOptions = [
+        ("SoTien", "Giảm số tiền cố định"),
+        ("PhanTram", "Giảm theo %"),
     ]
 
     init(existing: VoucherDto?, onSaved: @escaping () -> Void) {
@@ -158,6 +176,9 @@ private struct VoucherEditSheet: View {
         _ten = State(initialValue: existing?.ten ?? "")
         _moTa = State(initialValue: existing?.moTa ?? "")
         _soTienGiam = State(initialValue: existing?.soTienGiam ?? 5000)
+        _loaiGiam = State(initialValue: existing?.loaiGiam ?? "SoTien")
+        _phanTramGiam = State(initialValue: existing?.phanTramGiam ?? 10)
+        _donToiThieu = State(initialValue: existing?.donToiThieu ?? 100000)
         _dieuKien = State(initialValue: existing?.dieuKien ?? "DonDauTien")
         _dangHoatDong = State(initialValue: existing?.dangHoatDong ?? true)
     }
@@ -177,17 +198,43 @@ private struct VoucherEditSheet: View {
                     TextField("Hiện cho khách khi chọn voucher", text: $moTa, axis: .vertical)
                         .lineLimit(2...4)
                 }
-                Section("Số tiền giảm") {
-                    HStack {
-                        TextField("0", value: $soTienGiam, format: .number)
-                            .keyboardType(.numberPad)
-                        Text("đ").foregroundColor(.textMuted)
+                Section("Loại giảm") {
+                    Picker("Loại giảm", selection: $loaiGiam) {
+                        ForEach(loaiGiamOptions, id: \.0) { value, label in
+                            Text(label).tag(value)
+                        }
+                    }
+                }
+                if loaiGiam == "PhanTram" {
+                    Section("Phần trăm giảm") {
+                        HStack {
+                            TextField("0", value: $phanTramGiam, format: .number)
+                                .keyboardType(.numberPad)
+                            Text("%").foregroundColor(.textMuted)
+                        }
+                    }
+                } else {
+                    Section("Số tiền giảm") {
+                        HStack {
+                            TextField("0", value: $soTienGiam, format: .number)
+                                .keyboardType(.numberPad)
+                            Text("đ").foregroundColor(.textMuted)
+                        }
                     }
                 }
                 Section("Điều kiện áp dụng") {
                     Picker("Điều kiện", selection: $dieuKien) {
                         ForEach(dieuKienOptions, id: \.0) { value, label in
                             Text(label).tag(value)
+                        }
+                    }
+                }
+                if dieuKien == "DonToiThieu" {
+                    Section("Ngưỡng giá trị đơn tối thiểu") {
+                        HStack {
+                            TextField("0", value: $donToiThieu, format: .number)
+                                .keyboardType(.numberPad)
+                            Text("đ").foregroundColor(.textMuted)
                         }
                     }
                 }
@@ -220,7 +267,10 @@ private struct VoucherEditSheet: View {
                 .tint(.brandPrimary)
                 .controlSize(.large)
                 .disabled(ma.trimmingCharacters(in: .whitespaces).isEmpty
-                    || ten.trimmingCharacters(in: .whitespaces).isEmpty || soTienGiam <= 0 || saving)
+                    || ten.trimmingCharacters(in: .whitespaces).isEmpty
+                    || (loaiGiam == "PhanTram" ? (phanTramGiam <= 0 || phanTramGiam > 100) : soTienGiam <= 0)
+                    || (dieuKien == "DonToiThieu" && donToiThieu <= 0)
+                    || saving)
                 .padding(.horizontal, 16)
                 .padding(.top, 10)
                 .padding(.bottom, 8)
@@ -238,6 +288,9 @@ private struct VoucherEditSheet: View {
             ten: ten.trimmingCharacters(in: .whitespaces),
             moTa: moTa.trimmingCharacters(in: .whitespaces).isEmpty ? nil : moTa.trimmingCharacters(in: .whitespaces),
             soTienGiam: soTienGiam,
+            loaiGiam: loaiGiam,
+            phanTramGiam: loaiGiam == "PhanTram" ? phanTramGiam : nil,
+            donToiThieu: dieuKien == "DonToiThieu" ? donToiThieu : nil,
             dieuKien: dieuKien,
             dangHoatDong: dangHoatDong)
         let result: ActionResult

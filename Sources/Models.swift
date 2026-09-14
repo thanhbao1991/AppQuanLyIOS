@@ -294,7 +294,11 @@ struct VoucherDto: Codable, Identifiable {
     var ten: String
     var moTa: String?
     var soTienGiam: Double
-    // "DonDauTien" — chỉ giá trị hợp lệ hiện tại, xem VoucherDieuKien bên Backend.
+    // "SoTien" (mặc định) | "PhanTram" — xem VoucherLoaiGiam bên Backend.
+    var loaiGiam: String = "SoTien"
+    var phanTramGiam: Double?
+    var donToiThieu: Double?
+    // "DonDauTien" | "SinhNhat" | "DonToiThieu" — xem VoucherDieuKien bên Backend.
     var dieuKien: String
     var dangHoatDong: Bool
 }
@@ -304,6 +308,9 @@ struct VoucherRequest: Encodable {
     let ten: String
     let moTa: String?
     let soTienGiam: Double
+    let loaiGiam: String
+    let phanTramGiam: Double?
+    let donToiThieu: Double?
     let dieuKien: String
     let dangHoatDong: Bool
 }
