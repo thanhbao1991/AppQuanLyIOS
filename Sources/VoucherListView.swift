@@ -65,7 +65,7 @@ struct VoucherListView: View {
         _ = await APIClient.shared.updateVoucher(id: item.id, VoucherRequest(
             ma: item.ma, ten: item.ten, moTa: item.moTa, soTienGiam: item.soTienGiam,
             loaiGiam: item.loaiGiam, phanTramGiam: item.phanTramGiam, donToiThieu: item.donToiThieu,
-            dieuKien: item.dieuKien, dangHoatDong: !item.dangHoatDong))
+            dieuKien: item.dieuKien, hangToiThieu: item.hangToiThieu, dangHoatDong: !item.dangHoatDong))
         await load()
     }
 
@@ -105,6 +105,9 @@ private struct VoucherRowView: View {
                     Text(moTa).font(.caption).foregroundColor(.textMuted).lineLimit(2)
                 }
                 Text(nhanDieuKien(item.dieuKien)).font(.caption2).foregroundColor(.brandPrimary)
+                if let hangToiThieu = item.hangToiThieu, !hangToiThieu.isEmpty {
+                    Text("Chỉ hạng \(hangToiThieu) trở lên").font(.caption2).foregroundColor(.dangerColor)
+                }
             }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -156,6 +159,7 @@ private struct VoucherEditSheet: View {
     @State private var phanTramGiam: Double
     @State private var donToiThieu: Double
     @State private var dieuKien: String
+    @State private var hangToiThieu: String
     @State private var dangHoatDong: Bool
     @State private var saving = false
     @State private var errorMessage: String?
@@ -174,6 +178,13 @@ private struct VoucherEditSheet: View {
         ("SoTien", "Giảm số tiền cố định"),
         ("PhanTram", "Giảm theo %"),
     ]
+    // "" = không giới hạn hạng. Khớp HangKhachHang bên Backend (Kim Cương cao nhất).
+    private let hangOptions = [
+        ("", "Không giới hạn hạng"),
+        ("Bạc", "Bạc trở lên"),
+        ("Vàng", "Vàng trở lên"),
+        ("Kim Cương", "Chỉ Kim Cương"),
+    ]
 
     init(existing: VoucherDto?, onSaved: @escaping () -> Void) {
         self.existing = existing
@@ -186,6 +197,7 @@ private struct VoucherEditSheet: View {
         _phanTramGiam = State(initialValue: existing?.phanTramGiam ?? 10)
         _donToiThieu = State(initialValue: existing?.donToiThieu ?? 100000)
         _dieuKien = State(initialValue: existing?.dieuKien ?? "DonDauTien")
+        _hangToiThieu = State(initialValue: existing?.hangToiThieu ?? "")
         _dangHoatDong = State(initialValue: existing?.dangHoatDong ?? true)
     }
 
@@ -244,6 +256,13 @@ private struct VoucherEditSheet: View {
                         }
                     }
                 }
+                Section("Hạng khách yêu cầu (cộng thêm vào điều kiện trên)") {
+                    Picker("Hạng tối thiểu", selection: $hangToiThieu) {
+                        ForEach(hangOptions, id: \.0) { value, label in
+                            Text(label).tag(value)
+                        }
+                    }
+                }
                 Section {
                     Toggle("Đang hoạt động (hiện cho khách)", isOn: $dangHoatDong)
                 }
@@ -298,6 +317,7 @@ private struct VoucherEditSheet: View {
             phanTramGiam: loaiGiam == "PhanTram" ? phanTramGiam : nil,
             donToiThieu: dieuKien == "DonToiThieu" ? donToiThieu : nil,
             dieuKien: dieuKien,
+            hangToiThieu: hangToiThieu.isEmpty ? nil : hangToiThieu,
             dangHoatDong: dangHoatDong)
         let result: ActionResult
         if let existing {
