@@ -125,6 +125,7 @@ private struct VoucherRowView: View {
     private func nhanDieuKien(_ dieuKien: String) -> String {
         switch dieuKien {
         case "DonDauTien": return "Điều kiện: đơn app đầu tiên của khách"
+        case "SinhNhat": return "Điều kiện: trong tháng sinh nhật, 1 lần/năm"
         default: return "Điều kiện: \(dieuKien)"
         }
     }
@@ -144,9 +145,11 @@ private struct VoucherEditSheet: View {
     @State private var saving = false
     @State private var errorMessage: String?
 
-    // Chỉ có đúng 1 điều kiện hợp lệ hiện tại (khớp VoucherDieuKien bên Backend) — Picker sẵn cho
-    // thêm option sau này mà không phải đổi cấu trúc form.
-    private let dieuKienOptions = [("DonDauTien", "Đơn app đầu tiên")]
+    // Khớp VoucherDieuKien bên Backend — thêm điều kiện mới thì thêm 1 dòng ở đây.
+    private let dieuKienOptions = [
+        ("DonDauTien", "Đơn app đầu tiên"),
+        ("SinhNhat", "Sinh nhật (1 lần/năm)"),
+    ]
 
     init(existing: VoucherDto?, onSaved: @escaping () -> Void) {
         self.existing = existing
