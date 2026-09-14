@@ -65,7 +65,8 @@ struct VoucherListView: View {
         _ = await APIClient.shared.updateVoucher(id: item.id, VoucherRequest(
             ma: item.ma, ten: item.ten, moTa: item.moTa, soTienGiam: item.soTienGiam,
             loaiGiam: item.loaiGiam, phanTramGiam: item.phanTramGiam, donToiThieu: item.donToiThieu,
-            dieuKien: item.dieuKien, hangToiThieu: item.hangToiThieu, dangHoatDong: !item.dangHoatDong))
+            dieuKien: item.dieuKien, soDonApDung: item.soDonApDung, mucDich: item.mucDich,
+            hangToiThieu: item.hangToiThieu, dangHoatDong: !item.dangHoatDong))
         await load()
     }
 
@@ -88,6 +89,11 @@ private struct VoucherRowView: View {
                     Text(item.ten)
                         .font(.subheadline).fontWeight(.semibold)
                         .foregroundColor(.primary)
+                    if item.mucDich == "TangDoanhThu" {
+                        Text("📈").font(.caption)
+                    } else if item.mucDich == "GiuChan" {
+                        Text("🛡️").font(.caption)
+                    }
                     Spacer()
                     Text(item.dangHoatDong ? "Đang hoạt động" : "Đã tắt")
                         .font(.caption2).fontWeight(.semibold)
@@ -104,7 +110,7 @@ private struct VoucherRowView: View {
                 if let moTa = item.moTa, !moTa.isEmpty {
                     Text(moTa).font(.caption).foregroundColor(.textMuted).lineLimit(2)
                 }
-                Text(nhanDieuKien(item.dieuKien)).font(.caption2).foregroundColor(.brandPrimary)
+                Text(nhanDieuKien(item)).font(.caption2).foregroundColor(.brandPrimary)
                 if let hangToiThieu = item.hangToiThieu, !hangToiThieu.isEmpty {
                     Text("Chỉ hạng \(hangToiThieu) trở lên").font(.caption2).foregroundColor(.dangerColor)
                 }
@@ -126,15 +132,15 @@ private struct VoucherRowView: View {
         }
     }
 
-    private func nhanDieuKien(_ dieuKien: String) -> String {
-        switch dieuKien {
+    private func nhanDieuKien(_ item: VoucherDto) -> String {
+        switch item.dieuKien {
         case "DonDauTien": return "Điều kiện: đơn app đầu tiên của khách"
         case "SinhNhat": return "Điều kiện: trong tháng sinh nhật, 1 lần/năm"
         case "DonToiThieu": return "Điều kiện: đơn tối thiểu, không giới hạn số lần"
         case "KhongDieuKien": return "Điều kiện: không có, dùng cho dịp/lễ — tự bật tắt"
-        case "DonTiepTheo": return "Điều kiện: đúng đơn thứ 2 của khách"
+        case "DonThuN": return "Điều kiện: đúng đơn thứ \(item.soDonApDung ?? 0) của khách"
         case "QuayLai": return "Điều kiện: khách lâu không mua quay lại, 1 lần/tháng"
-        default: return "Điều kiện: \(dieuKien)"
+        default: return "Điều kiện: \(item.dieuKien)"
         }
     }
 
@@ -159,7 +165,9 @@ private struct VoucherEditSheet: View {
     @State private var phanTramGiam: Double
     @State private var donToiThieu: Double
     @State private var dieuKien: String
+    @State private var soDonApDung: Int
     @State private var hangToiThieu: String
+    @State private var mucDich: String
     @State private var dangHoatDong: Bool
     @State private var saving = false
     @State private var errorMessage: String?
@@ -170,7 +178,7 @@ private struct VoucherEditSheet: View {
         ("SinhNhat", "Sinh nhật (1 lần/năm)"),
         ("DonToiThieu", "Đơn tối thiểu (không giới hạn)"),
         ("KhongDieuKien", "Không điều kiện (dịp/lễ — tự bật tắt)"),
-        ("DonTiepTheo", "Đơn thứ 2"),
+        ("DonThuN", "Đơn thứ N (tự nhập)"),
         ("QuayLai", "Khách lâu không mua quay lại (1 lần/tháng)"),
     ]
     // Khớp VoucherLoaiGiam bên Backend.
@@ -185,6 +193,12 @@ private struct VoucherEditSheet: View {
         ("Vàng", "Vàng trở lên"),
         ("Kim Cương", "Chỉ Kim Cương"),
     ]
+    // "" = chưa gắn nhãn. Khớp VoucherMucDich bên Backend.
+    private let mucDichOptions = [
+        ("", "Chưa gắn nhãn"),
+        ("TangDoanhThu", "📈 Tăng doanh thu"),
+        ("GiuChan", "🛡️ Giữ chân"),
+    ]
 
     init(existing: VoucherDto?, onSaved: @escaping () -> Void) {
         self.existing = existing
@@ -197,7 +211,9 @@ private struct VoucherEditSheet: View {
         _phanTramGiam = State(initialValue: existing?.phanTramGiam ?? 10)
         _donToiThieu = State(initialValue: existing?.donToiThieu ?? 100000)
         _dieuKien = State(initialValue: existing?.dieuKien ?? "DonDauTien")
+        _soDonApDung = State(initialValue: existing?.soDonApDung ?? 2)
         _hangToiThieu = State(initialValue: existing?.hangToiThieu ?? "")
+        _mucDich = State(initialValue: existing?.mucDich ?? "")
         _dangHoatDong = State(initialValue: existing?.dangHoatDong ?? true)
     }
 
@@ -256,9 +272,25 @@ private struct VoucherEditSheet: View {
                         }
                     }
                 }
+                if dieuKien == "DonThuN" {
+                    Section("Áp dụng đúng đơn thứ") {
+                        HStack {
+                            TextField("2", value: $soDonApDung, format: .number)
+                                .keyboardType(.numberPad)
+                            Text("của khách (N ≥ 2)").foregroundColor(.textMuted)
+                        }
+                    }
+                }
                 Section("Hạng khách yêu cầu (cộng thêm vào điều kiện trên)") {
                     Picker("Hạng tối thiểu", selection: $hangToiThieu) {
                         ForEach(hangOptions, id: \.0) { value, label in
+                            Text(label).tag(value)
+                        }
+                    }
+                }
+                Section("Mục đích (chỉ để phân loại, không ảnh hưởng cách áp dụng)") {
+                    Picker("Mục đích", selection: $mucDich) {
+                        ForEach(mucDichOptions, id: \.0) { value, label in
                             Text(label).tag(value)
                         }
                     }
@@ -295,6 +327,7 @@ private struct VoucherEditSheet: View {
                     || ten.trimmingCharacters(in: .whitespaces).isEmpty
                     || (loaiGiam == "PhanTram" ? (phanTramGiam <= 0 || phanTramGiam > 100) : soTienGiam <= 0)
                     || (dieuKien == "DonToiThieu" && donToiThieu <= 0)
+                    || (dieuKien == "DonThuN" && soDonApDung < 2)
                     || saving)
                 .padding(.horizontal, 16)
                 .padding(.top, 10)
@@ -317,6 +350,8 @@ private struct VoucherEditSheet: View {
             phanTramGiam: loaiGiam == "PhanTram" ? phanTramGiam : nil,
             donToiThieu: dieuKien == "DonToiThieu" ? donToiThieu : nil,
             dieuKien: dieuKien,
+            soDonApDung: dieuKien == "DonThuN" ? soDonApDung : nil,
+            mucDich: mucDich.isEmpty ? nil : mucDich,
             hangToiThieu: hangToiThieu.isEmpty ? nil : hangToiThieu,
             dangHoatDong: dangHoatDong)
         let result: ActionResult

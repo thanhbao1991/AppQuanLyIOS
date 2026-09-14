@@ -298,12 +298,17 @@ struct VoucherDto: Codable, Identifiable {
     var loaiGiam: String = "SoTien"
     var phanTramGiam: Double?
     var donToiThieu: Double?
-    // "DonDauTien" | "SinhNhat" | "DonToiThieu" | "KhongDieuKien" | "DonTiepTheo" | "QuayLai" — xem
+    // "DonDauTien" | "SinhNhat" | "DonToiThieu" | "KhongDieuKien" | "DonThuN" | "QuayLai" — xem
     // VoucherDieuKien bên Backend.
     var dieuKien: String
+    // Chỉ có ý nghĩa khi dieuKien == "DonThuN" — áp dụng đúng đơn thứ N (N>=2, N=1 dùng DonDauTien).
+    var soDonApDung: Int?
     // Điều kiện PHỤ cộng thêm vào dieuKien — nil = không giới hạn hạng. "Kim Cương"|"Vàng"|"Bạc"|
     // "Thành Viên", xem HangKhachHang bên Backend.
     var hangToiThieu: String?
+    // "TangDoanhThu" | "GiuChan" — nhãn kinh doanh, không ảnh hưởng logic áp dụng. Xem
+    // VoucherMucDich bên Backend.
+    var mucDich: String?
     var dangHoatDong: Bool
 }
 
@@ -316,6 +321,8 @@ struct VoucherRequest: Encodable {
     let phanTramGiam: Double?
     let donToiThieu: Double?
     let dieuKien: String
+    let soDonApDung: Int?
+    let mucDich: String?
     let hangToiThieu: String?
     let dangHoatDong: Bool
 }
