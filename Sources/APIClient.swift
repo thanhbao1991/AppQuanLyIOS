@@ -311,6 +311,29 @@ actor APIClient {
         return await executeAction(req)
     }
 
+    // Voucher app khách (AppDatHangIOS) — quản trị từ đây.
+    func getVoucherList() async -> [VoucherDto] {
+        let req = makeRequest("/api/Voucher")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[VoucherDto]>.self, from: data), env.isSuccess else { return [] }
+        return env.data ?? []
+    }
+
+    func createVoucher(_ v: VoucherRequest) async -> ActionResult {
+        let req = makeRequest("/api/Voucher", method: "POST", body: jsonBody(v))
+        return await executeAction(req)
+    }
+
+    func updateVoucher(id: String, _ v: VoucherRequest) async -> ActionResult {
+        let req = makeRequest("/api/Voucher/\(id)", method: "PUT", body: jsonBody(v))
+        return await executeAction(req)
+    }
+
+    func deleteVoucher(id: String) async -> ActionResult {
+        let req = makeRequest("/api/Voucher/\(id)", method: "DELETE")
+        return await executeAction(req)
+    }
+
     // Ngưỡng/số tiền các tính năng giữ chân khách (Ly Bí Mật, giới thiệu, sinh nhật, vòng quay, thẻ
     // tem) trong app khách — trước đây hardcode, giờ chỉnh được từ đây.
     func getGamificationConfig() async -> GamificationConfigDto? {

@@ -286,6 +286,28 @@ struct ThongBaoQuanRequest: Encodable {
     let dangHoatDong: Bool
 }
 
+// ---- Voucher app khách (AppDatHangIOS) ----
+
+struct VoucherDto: Codable, Identifiable {
+    let id: String
+    var ma: String
+    var ten: String
+    var moTa: String?
+    var soTienGiam: Double
+    // "DonDauTien" — chỉ giá trị hợp lệ hiện tại, xem VoucherDieuKien bên Backend.
+    var dieuKien: String
+    var dangHoatDong: Bool
+}
+
+struct VoucherRequest: Encodable {
+    let ma: String
+    let ten: String
+    let moTa: String?
+    let soTienGiam: Double
+    let dieuKien: String
+    let dangHoatDong: Bool
+}
+
 // ---- Cấu hình ngưỡng/số tiền gamification (app khách AppDatHangIOS) ----
 
 struct VongQuayPhanThuongDto: Codable, Identifiable, Hashable {
