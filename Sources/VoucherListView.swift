@@ -128,6 +128,9 @@ private struct VoucherRowView: View {
         case "DonDauTien": return "Điều kiện: đơn app đầu tiên của khách"
         case "SinhNhat": return "Điều kiện: trong tháng sinh nhật, 1 lần/năm"
         case "DonToiThieu": return "Điều kiện: đơn tối thiểu, không giới hạn số lần"
+        case "KhongDieuKien": return "Điều kiện: không có, dùng cho dịp/lễ — tự bật tắt"
+        case "DonTiepTheo": return "Điều kiện: đúng đơn thứ 2 của khách"
+        case "QuayLai": return "Điều kiện: khách lâu không mua quay lại, 1 lần/tháng"
         default: return "Điều kiện: \(dieuKien)"
         }
     }
@@ -162,6 +165,9 @@ private struct VoucherEditSheet: View {
         ("DonDauTien", "Đơn app đầu tiên"),
         ("SinhNhat", "Sinh nhật (1 lần/năm)"),
         ("DonToiThieu", "Đơn tối thiểu (không giới hạn)"),
+        ("KhongDieuKien", "Không điều kiện (dịp/lễ — tự bật tắt)"),
+        ("DonTiepTheo", "Đơn thứ 2"),
+        ("QuayLai", "Khách lâu không mua quay lại (1 lần/tháng)"),
     ]
     // Khớp VoucherLoaiGiam bên Backend.
     private let loaiGiamOptions = [
