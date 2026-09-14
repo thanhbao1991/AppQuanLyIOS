@@ -85,20 +85,29 @@ private struct GamificationConfigForm: View {
 
             Section {
                 HStack {
-                    Text("Số km đầu miễn phí")
+                    Text("Km miễn phí gốc")
                     Spacer()
-                    TextField("3", value: $config.shipKmMienPhi, format: .number)
+                    TextField("2", value: $config.shipKmGoc, format: .number)
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
                         .frame(width: 80)
                     Text("km").foregroundColor(.textMuted)
                 }
-                moneyRow("Phí mỗi km tiếp theo", value: $config.shipPhiMoiKm)
-                moneyRow("Đơn từ giá trị này thì luôn miễn phí ship", value: $config.shipDonGiaMienPhi)
+                moneyRow("Mỗi bậc tiền", value: $config.shipTienMoiBac)
+                HStack {
+                    Text("Km tăng mỗi bậc")
+                    Spacer()
+                    TextField("1", value: $config.shipKmTangMoiBac, format: .number)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 80)
+                    Text("km").foregroundColor(.textMuted)
+                }
+                moneyRow("Phí mỗi km vượt", value: $config.shipPhiMoiKm)
             } header: {
                 Text("Phí ship 🛵")
             } footer: {
-                Text("Mặc định MIỄN PHÍ ship. Chỉ tính phí khi đơn CHƯA đạt mốc giá trị ở trên VÀ ở ngoài \(config.shipKmMienPhi, format: .number)km đầu — lúc đó mới cộng thêm theo km vượt, làm tròn lên 1.000đ. Đơn đạt mốc giá trị thì luôn miễn phí dù xa bao nhiêu.")
+                Text("Bán kính miễn phí TĂNG DẦN theo bậc giá trị đơn (mỗi \(config.shipTienMoiBac, format: .number)đ thêm \(config.shipKmTangMoiBac, format: .number)km miễn phí, không giới hạn trên). Mặc định: đơn ≤50.000đ miễn phí ≤2km, đơn ≤100.000đ miễn phí ≤3km, đơn ≤150.000đ miễn phí ≤4km... Vượt bán kính miễn phí của đúng đơn đó mới tính thêm theo km vượt, làm tròn lên 1.000đ.")
             }
 
             Section("Thẻ sưu tập ly 🧋") {
