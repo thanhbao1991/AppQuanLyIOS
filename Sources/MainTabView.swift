@@ -160,6 +160,11 @@ private struct MoreMenuView: View {
                     } label: {
                         EmojiLabel("Tính lương Nhã", "⛽")
                     }
+                    NavigationLink {
+                        GiaNguyenLieuView()
+                    } label: {
+                        EmojiLabel("Giá nguyên liệu", "🏷️")
+                    }
                 }
 
                 Section {
