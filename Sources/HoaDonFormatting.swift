@@ -110,7 +110,7 @@ enum HoaDonFormatting {
         // AppDatHang (đơn qua app khách của quán, thêm 2026-09-06) — trước khi thêm dòng này, rơi
         // vào default và hiện SAI thành "Ship" (không phải chỉ thiếu phân biệt, mà hiện nhầm loại
         // khác hẳn — mirror đúng bug đã tìm thấy và sửa ở Desktop HoaDonTabControl.xaml).
-        case "AppDatHang": return "App Khách"
+        case "AppDatHang": return "App Đenn"
         default: return "Ship"
         }
     }
