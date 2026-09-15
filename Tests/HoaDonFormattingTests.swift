@@ -10,8 +10,8 @@ final class HoaDonFormattingTests: XCTestCase {
     // MARK: - money / moneyShort
 
     func test_money_dinhDangKieuVietNamCoDauCham() {
-        XCTAssertEqual(HoaDonFormatting.money(1_500_000), "1.500.000 đ")
-        XCTAssertEqual(HoaDonFormatting.money(0), "0 đ")
+        XCTAssertEqual(HoaDonFormatting.money(1_500_000), "1.500.000đ")
+        XCTAssertEqual(HoaDonFormatting.money(0), "0đ")
     }
 
     func test_moneyShort_lamTronVeNghin() {
@@ -68,10 +68,10 @@ final class HoaDonFormattingTests: XCTestCase {
         XCTAssertEqual(HoaDonFormatting.phanLoaiLabel("App"), "App")
     }
 
-    // AppDatHang (thêm 2026-09-06) PHẢI có label riêng "App Khách" — rơi vào default sẽ hiện SAI
-    // thành "Ship", đúng lớp bug đã tìm thấy ở Desktop HoaDonTabControl.xaml.
+    // AppDatHang (thêm 2026-09-06, đổi nhãn "App Khách" -> "App Đenn" sau đó) PHẢI có label riêng —
+    // rơi vào default sẽ hiện SAI thành "Ship", đúng lớp bug đã tìm thấy ở Desktop HoaDonTabControl.xaml.
     func test_phanLoaiLabel_appDatHang_KHONG_duocRoiVaoDefaultShip() {
-        XCTAssertEqual(HoaDonFormatting.phanLoaiLabel("AppDatHang"), "App Khách")
+        XCTAssertEqual(HoaDonFormatting.phanLoaiLabel("AppDatHang"), "App Đenn")
     }
 
     func test_phanLoaiLabel_khongXacDinhMacDinhLaShip() {
