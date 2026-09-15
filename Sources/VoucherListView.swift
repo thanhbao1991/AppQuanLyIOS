@@ -139,7 +139,7 @@ private struct VoucherRowView: View {
         case "DonToiThieu": return "Điều kiện: đơn tối thiểu, không giới hạn số lần"
         case "KhongDieuKien": return "Điều kiện: không có, dùng cho dịp/lễ — tự bật tắt"
         case "DonThuN": return "Điều kiện: đúng đơn thứ \(item.soDonApDung ?? 0) của khách"
-        case "QuayLai": return "Điều kiện: khách lâu không mua quay lại, 1 lần/tháng"
+        case "QuayLai": return "Điều kiện: khách lâu không mua quay lại, cần 1 đơn không Comeback xen giữa"
         default: return "Điều kiện: \(item.dieuKien)"
         }
     }
