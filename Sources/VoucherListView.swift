@@ -64,7 +64,8 @@ struct VoucherListView: View {
     private func toggle(_ item: VoucherDto) async {
         _ = await APIClient.shared.updateVoucher(id: item.id, VoucherRequest(
             ma: item.ma, ten: item.ten, moTa: item.moTa, soTienGiam: item.soTienGiam,
-            loaiGiam: item.loaiGiam, phanTramGiam: item.phanTramGiam, donToiThieu: item.donToiThieu,
+            loaiGiam: item.loaiGiam, phanTramGiam: item.phanTramGiam, giamToiDa: item.giamToiDa,
+            donToiThieu: item.donToiThieu,
             dieuKien: item.dieuKien, soDonApDung: item.soDonApDung, mucDich: item.mucDich,
             hangToiThieu: item.hangToiThieu, dangHoatDong: !item.dangHoatDong))
         await load()
@@ -105,7 +106,12 @@ private struct VoucherRowView: View {
                 HStack {
                     Text("Mã \(item.ma)").font(.caption).foregroundColor(.textMuted)
                     Spacer()
-                    Text(nhanUuDai(item)).font(.caption).fontWeight(.bold).foregroundColor(.dangerColor)
+                    VStack(alignment: .trailing, spacing: 1) {
+                        Text(nhanUuDai(item)).font(.caption).fontWeight(.bold).foregroundColor(.dangerColor)
+                        if let giamToiDa = item.giamToiDa, giamToiDa > 0 {
+                            Text("Tối đa \(Int(giamToiDa).formatted())đ").font(.caption2).foregroundColor(.textMuted)
+                        }
+                    }
                 }
                 if let moTa = item.moTa, !moTa.isEmpty {
                     Text(moTa).font(.caption).foregroundColor(.textMuted).lineLimit(2)
@@ -163,6 +169,7 @@ private struct VoucherEditSheet: View {
     @State private var soTienGiam: Double
     @State private var loaiGiam: String
     @State private var phanTramGiam: Double
+    @State private var giamToiDa: Double
     @State private var donToiThieu: Double
     @State private var dieuKien: String
     @State private var soDonApDung: Int
@@ -209,6 +216,7 @@ private struct VoucherEditSheet: View {
         _soTienGiam = State(initialValue: existing?.soTienGiam ?? 5000)
         _loaiGiam = State(initialValue: existing?.loaiGiam ?? "SoTien")
         _phanTramGiam = State(initialValue: existing?.phanTramGiam ?? 10)
+        _giamToiDa = State(initialValue: existing?.giamToiDa ?? 0)
         _donToiThieu = State(initialValue: existing?.donToiThieu ?? 100000)
         _dieuKien = State(initialValue: existing?.dieuKien ?? "DonDauTien")
         _soDonApDung = State(initialValue: existing?.soDonApDung ?? 2)
@@ -245,6 +253,13 @@ private struct VoucherEditSheet: View {
                             TextField("0", value: $phanTramGiam, format: .number)
                                 .keyboardType(.numberPad)
                             Text("%").foregroundColor(.textMuted)
+                        }
+                    }
+                    Section("Trần giảm tối đa (0 = không giới hạn)") {
+                        HStack {
+                            TextField("0", value: $giamToiDa, format: .number)
+                                .keyboardType(.numberPad)
+                            Text("đ").foregroundColor(.textMuted)
                         }
                     }
                 } else {
@@ -348,6 +363,7 @@ private struct VoucherEditSheet: View {
             soTienGiam: soTienGiam,
             loaiGiam: loaiGiam,
             phanTramGiam: loaiGiam == "PhanTram" ? phanTramGiam : nil,
+            giamToiDa: loaiGiam == "PhanTram" && giamToiDa > 0 ? giamToiDa : nil,
             donToiThieu: dieuKien == "DonToiThieu" ? donToiThieu : nil,
             dieuKien: dieuKien,
             soDonApDung: dieuKien == "DonThuN" ? soDonApDung : nil,
