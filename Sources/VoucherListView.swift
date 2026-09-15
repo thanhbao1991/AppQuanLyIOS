@@ -186,7 +186,7 @@ private struct VoucherEditSheet: View {
         ("DonToiThieu", "Đơn tối thiểu (không giới hạn)"),
         ("KhongDieuKien", "Không điều kiện (dịp/lễ — tự bật tắt)"),
         ("DonThuN", "Đơn thứ N (tự nhập)"),
-        ("QuayLai", "Khách lâu không mua quay lại (1 lần/tháng)"),
+        ("QuayLai", "Khách lâu không mua quay lại (không dùng liên tiếp)"),
     ]
     // Khớp VoucherLoaiGiam bên Backend.
     private let loaiGiamOptions = [
