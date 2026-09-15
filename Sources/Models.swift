@@ -362,6 +362,9 @@ struct VoucherDto: Codable, Identifiable {
     // Chỉ có ý nghĩa khi dieuKien == "SoLuongToiThieu" — số ly tối thiểu (không tính topping). Xem
     // VoucherEntity.SoLuongToiThieu bên Backend.
     var soLuongToiThieu: Int?
+    // Điều kiện PHỤ khác — true = đơn phải có ít nhất 1 dòng biến thể Size L. Xem
+    // VoucherEntity.YeuCauSizeL bên Backend.
+    var yeuCauSizeL: Bool = false
     // Điều kiện PHỤ cộng thêm vào dieuKien — nil = không giới hạn hạng. "Kim Cương"|"Vàng"|"Bạc"|
     // "Thành Viên", xem HangKhachHang bên Backend.
     var hangToiThieu: String?
@@ -387,6 +390,7 @@ struct VoucherRequest: Encodable {
     let thuTrongTuan: String?
     let bacThang: String?
     let soLuongToiThieu: Int?
+    let yeuCauSizeL: Bool
     let mucDich: String?
     let hangToiThieu: String?
     let dangHoatDong: Bool

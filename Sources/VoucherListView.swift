@@ -69,6 +69,7 @@ struct VoucherListView: View {
             dieuKien: item.dieuKien, soDonApDung: item.soDonApDung,
             gioBatDau: item.gioBatDau, gioKetThuc: item.gioKetThuc, thuTrongTuan: item.thuTrongTuan,
             bacThang: item.bacThang, soLuongToiThieu: item.soLuongToiThieu,
+            yeuCauSizeL: item.yeuCauSizeL,
             mucDich: item.mucDich,
             hangToiThieu: item.hangToiThieu, dangHoatDong: !item.dangHoatDong))
         await load()
@@ -123,6 +124,9 @@ private struct VoucherRowView: View {
                 if let hangToiThieu = item.hangToiThieu, !hangToiThieu.isEmpty {
                     Text("Chỉ hạng \(hangToiThieu) trở lên").font(.caption2).foregroundColor(.dangerColor)
                 }
+                if item.yeuCauSizeL {
+                    Text("Chỉ áp dụng khi đơn có Size L").font(.caption2).foregroundColor(.dangerColor)
+                }
             }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -158,6 +162,8 @@ private struct VoucherRowView: View {
             return "Điều kiện: bậc thang — \(bacText.isEmpty ? "chưa cấu hình" : bacText)"
         case "SoLuongToiThieu":
             return "Điều kiện: đơn từ \(item.soLuongToiThieu ?? 0) ly, chỉ khách CHƯA TỪNG tự mua đủ số lượng này (dùng được 1 lần)"
+        case "UpsizeMonMoi":
+            return "Điều kiện: tặng Size L miễn phí cho SẢN PHẨM khách chưa từng upsize (mỗi món 1 lần, không giới hạn tổng số lần)"
         default: return "Điều kiện: \(item.dieuKien)"
         }
     }
@@ -223,6 +229,8 @@ private struct VoucherEditSheet: View {
     @State private var bacThangRows: [BacThangRow]
     /// Chỉ có ý nghĩa khi dieuKien == "SoLuongToiThieu".
     @State private var soLuongToiThieu: Int
+    /// Điều kiện PHỤ, áp được cho bất kỳ dieuKien nào (KhungGioThapDiem/DonThuN/DonDauTien...).
+    @State private var yeuCauSizeL: Bool
     @State private var hangToiThieu: String
     @State private var mucDich: String
     @State private var dangHoatDong: Bool
@@ -240,6 +248,7 @@ private struct VoucherEditSheet: View {
         ("KhungGioThapDiem", "Khung giờ thấp điểm"),
         ("DonToiThieuBac", "Bậc thang theo giá trị đơn"),
         ("SoLuongToiThieu", "Số lượng ly tối thiểu"),
+        ("UpsizeMonMoi", "Tặng Size L món mới (dùng thử)"),
     ]
     // Khớp VoucherLoaiGiam bên Backend.
     private let loaiGiamOptions = [
@@ -279,6 +288,7 @@ private struct VoucherEditSheet: View {
         let parsedBacThang = BacThangRow.parse(existing?.bacThang)
         _bacThangRows = State(initialValue: parsedBacThang.isEmpty ? [BacThangRow(nguong: 0, giam: 0)] : parsedBacThang)
         _soLuongToiThieu = State(initialValue: existing?.soLuongToiThieu ?? 2)
+        _yeuCauSizeL = State(initialValue: existing?.yeuCauSizeL ?? false)
         _hangToiThieu = State(initialValue: existing?.hangToiThieu ?? "")
         _mucDich = State(initialValue: existing?.mucDich ?? "")
         _dangHoatDong = State(initialValue: existing?.dangHoatDong ?? true)
@@ -410,6 +420,13 @@ private struct VoucherEditSheet: View {
                         Text("Chỉ áp dụng cho khách CHƯA TỪNG có đơn nào (kể cả không dùng voucher) đạt đủ số lượng này — nếu khách đã tự mua đủ ít nhất 1 lần trước đây, voucher không tạo hành vi mới nên không hiện nữa. Vì vậy mỗi khách chỉ dùng được ĐÚNG 1 LẦN trong đời.")
                     }
                 }
+                if dieuKien != "UpsizeMonMoi" {
+                    Section {
+                        Toggle("Chỉ áp dụng khi đơn có Size L", isOn: $yeuCauSizeL)
+                    } footer: {
+                        Text("Điều kiện phụ cộng thêm vào điều kiện trên — bắt khách phải thật sự chọn Size L mới được giảm, thay vì lấy tiền giảm mà vẫn giữ size chuẩn.")
+                    }
+                }
                 Section("Hạng khách yêu cầu (cộng thêm vào điều kiện trên)") {
                     Picker("Hạng tối thiểu", selection: $hangToiThieu) {
                         ForEach(hangOptions, id: \.0) { value, label in
@@ -517,6 +534,7 @@ private struct VoucherEditSheet: View {
             thuTrongTuan: dieuKien == "KhungGioThapDiem" && !thuChon.isEmpty ? thuChon.sorted().map(String.init).joined(separator: ",") : nil,
             bacThang: dieuKien == "DonToiThieuBac" ? BacThangRow.encode(bacThangRows) : nil,
             soLuongToiThieu: dieuKien == "SoLuongToiThieu" ? soLuongToiThieu : nil,
+            yeuCauSizeL: dieuKien != "UpsizeMonMoi" && yeuCauSizeL,
             mucDich: mucDich.isEmpty ? nil : mucDich,
             hangToiThieu: hangToiThieu.isEmpty ? nil : hangToiThieu,
             dangHoatDong: dangHoatDong)
