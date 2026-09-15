@@ -67,7 +67,8 @@ struct VoucherListView: View {
             loaiGiam: item.loaiGiam, phanTramGiam: item.phanTramGiam, giamToiDa: item.giamToiDa,
             donToiThieu: item.donToiThieu,
             dieuKien: item.dieuKien, soDonApDung: item.soDonApDung,
-            gioBatDau: item.gioBatDau, gioKetThuc: item.gioKetThuc, mucDich: item.mucDich,
+            gioBatDau: item.gioBatDau, gioKetThuc: item.gioKetThuc, thuTrongTuan: item.thuTrongTuan,
+            mucDich: item.mucDich,
             hangToiThieu: item.hangToiThieu, dangHoatDong: !item.dangHoatDong))
         await load()
     }
@@ -147,7 +148,10 @@ private struct VoucherRowView: View {
         case "KhongDieuKien": return "Điều kiện: không có, dùng cho dịp/lễ — tự bật tắt"
         case "DonThuN": return "Điều kiện: đúng đơn thứ \(item.soDonApDung ?? 0) của khách"
         case "QuayLai": return "Điều kiện: đơn quay lại sau ≥30 ngày không mua, không dùng liên tiếp 2 lần"
-        case "KhungGioThapDiem": return "Điều kiện: khung \(item.gioBatDau ?? 0)h-\(item.gioKetThuc ?? 0)h, đơn thứ 2+ trong ngày của khách"
+        case "KhungGioThapDiem":
+            let thuText = (item.thuTrongTuan ?? "").split(separator: ",").compactMap { Int($0) }.sorted()
+                .compactMap { tenThuNganGon[$0] }.joined(separator: "/")
+            return "Điều kiện: khung \(item.gioBatDau ?? 0)h-\(item.gioKetThuc ?? 0)h\(thuText.isEmpty ? "" : " (\(thuText))"), đơn thứ 2+ trong ngày"
         default: return "Điều kiện: \(item.dieuKien)"
         }
     }
@@ -177,6 +181,8 @@ private struct VoucherEditSheet: View {
     @State private var soDonApDung: Int
     @State private var gioBatDau: Int
     @State private var gioKetThuc: Int
+    /// Rỗng = áp dụng MỌI thứ trong tuần. Khớp Voucher.ThuTrongTuan ("1,3,5" = T2/T4/T6).
+    @State private var thuChon: Set<Int>
     @State private var showGioThapDiem = false
     @State private var hangToiThieu: String
     @State private var mucDich: String
@@ -228,6 +234,7 @@ private struct VoucherEditSheet: View {
         _soDonApDung = State(initialValue: existing?.soDonApDung ?? 2)
         _gioBatDau = State(initialValue: existing?.gioBatDau ?? 14)
         _gioKetThuc = State(initialValue: existing?.gioKetThuc ?? 16)
+        _thuChon = State(initialValue: Set((existing?.thuTrongTuan ?? "").split(separator: ",").compactMap { Int($0) }))
         _hangToiThieu = State(initialValue: existing?.hangToiThieu ?? "")
         _mucDich = State(initialValue: existing?.mucDich ?? "")
         _dangHoatDong = State(initialValue: existing?.dangHoatDong ?? true)
@@ -308,13 +315,20 @@ private struct VoucherEditSheet: View {
                     Section("Khung giờ áp dụng") {
                         Stepper("Bắt đầu: \(gioBatDau)h", value: $gioBatDau, in: 0...22)
                         Stepper("Kết thúc: \(gioKetThuc)h", value: $gioKetThuc, in: (gioBatDau + 1)...23)
+                        Text("Chỉ áp dụng cho đơn THỨ 2 TRỞ LÊN trong ngày của khách — tránh khách trì hoãn đơn chính để chờ giờ rẻ.")
+                            .font(.caption2).foregroundColor(.textMuted)
+                    }
+                    Section {
+                        thuChonRow
                         Button {
                             showGioThapDiem = true
                         } label: {
                             Label("Xem giờ vắng khách của quán", systemImage: "chart.bar")
                         }
-                        Text("Chỉ áp dụng cho đơn THỨ 2 TRỞ LÊN trong ngày của khách — tránh khách trì hoãn đơn chính để chờ giờ rẻ.")
-                            .font(.caption2).foregroundColor(.textMuted)
+                    } header: {
+                        Text("Thứ trong tuần áp dụng")
+                    } footer: {
+                        Text(thuChon.isEmpty ? "Đang áp dụng mọi ngày trong tuần." : "Chỉ áp dụng vào: \(thuChon.sorted().compactMap { tenThuTrongTuan[$0] }.joined(separator: ", "))")
                     }
                 }
                 Section("Hạng khách yêu cầu (cộng thêm vào điều kiện trên)") {
@@ -349,9 +363,10 @@ private struct VoucherEditSheet: View {
                 }
             }
             .navigationDestination(isPresented: $showGioThapDiem) {
-                GioThapDiemView { batDau, ketThuc in
+                GioThapDiemView { batDau, ketThuc, thu in
                     gioBatDau = batDau
                     gioKetThuc = ketThuc
+                    thuChon = thu
                 }
             }
             .safeAreaInset(edge: .bottom) {
@@ -381,6 +396,28 @@ private struct VoucherEditSheet: View {
         }
     }
 
+    /// 7 chip bật/tắt T2..CN — rỗng = mọi thứ (không phải "không thứ nào", tránh voucher vô nghĩa
+    /// không bao giờ áp dụng được).
+    private var thuChonRow: some View {
+        HStack(spacing: 6) {
+            ForEach(1...7, id: \.self) { thu in
+                let daChon = thuChon.contains(thu)
+                Button {
+                    if daChon { thuChon.remove(thu) } else { thuChon.insert(thu) }
+                } label: {
+                    Text(tenThuNganGon[thu] ?? "?")
+                        .font(.caption).fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                        .background(daChon ? Color.brandPrimary : Color.brandPrimary.pastelBackground())
+                        .foregroundColor(daChon ? .white : .brandPrimary)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
     private func save() async {
         saving = true
         errorMessage = nil
@@ -397,6 +434,7 @@ private struct VoucherEditSheet: View {
             soDonApDung: dieuKien == "DonThuN" ? soDonApDung : nil,
             gioBatDau: dieuKien == "KhungGioThapDiem" ? gioBatDau : nil,
             gioKetThuc: dieuKien == "KhungGioThapDiem" ? gioKetThuc : nil,
+            thuTrongTuan: dieuKien == "KhungGioThapDiem" && !thuChon.isEmpty ? thuChon.sorted().map(String.init).joined(separator: ",") : nil,
             mucDich: mucDich.isEmpty ? nil : mucDich,
             hangToiThieu: hangToiThieu.isEmpty ? nil : hangToiThieu,
             dangHoatDong: dangHoatDong)

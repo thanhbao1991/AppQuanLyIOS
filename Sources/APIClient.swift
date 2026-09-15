@@ -375,6 +375,13 @@ actor APIClient {
         return env.data ?? []
     }
 
+    func getPhanBoDoanhThuTheoThu(soNgay: Int = 30) async -> [PhanBoDoanhThuTheoThuItemDto] {
+        let req = makeRequest("/api/ThongKe/phan-bo-doanh-thu-theo-thu?soNgay=\(soNgay)")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[PhanBoDoanhThuTheoThuItemDto]>.self, from: data), env.isSuccess else { return [] }
+        return env.data ?? []
+    }
+
     // Ngưỡng/số tiền các tính năng giữ chân khách (Ly Bí Mật, giới thiệu, sinh nhật, vòng quay, thẻ
     // tem) trong app khách — trước đây hardcode, giờ chỉnh được từ đây.
     func getGamificationConfig() async -> GamificationConfigDto? {

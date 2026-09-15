@@ -323,6 +323,14 @@ struct PhanBoDonTheoGioItemDto: Codable, Identifiable {
     let doanhThu: Double
 }
 
+// Phân bố doanh thu theo thứ trong tuần (1=Thứ Hai...7=Chủ Nhật, ISO) — xem GioThapDiemView.
+struct PhanBoDoanhThuTheoThuItemDto: Codable, Identifiable {
+    var id: Int { thu }
+    let thu: Int
+    let soDon: Int
+    let doanhThu: Double
+}
+
 // ---- Voucher app khách (AppDatHangIOS) ----
 
 struct VoucherDto: Codable, Identifiable {
@@ -345,6 +353,9 @@ struct VoucherDto: Codable, Identifiable {
     // Chỉ có ý nghĩa khi dieuKien == "KhungGioThapDiem" — giờ trong ngày, 0-23.
     var gioBatDau: Int?
     var gioKetThuc: Int?
+    // Chỉ có ý nghĩa khi dieuKien == "KhungGioThapDiem" — "1,3,5" = T2/T4/T6 (1=T2...7=CN), nil/rỗng
+    // = mọi thứ. Xem VoucherEntity.ThuTrongTuan bên Backend.
+    var thuTrongTuan: String?
     // Điều kiện PHỤ cộng thêm vào dieuKien — nil = không giới hạn hạng. "Kim Cương"|"Vàng"|"Bạc"|
     // "Thành Viên", xem HangKhachHang bên Backend.
     var hangToiThieu: String?
@@ -367,6 +378,7 @@ struct VoucherRequest: Encodable {
     let soDonApDung: Int?
     let gioBatDau: Int?
     let gioKetThuc: Int?
+    let thuTrongTuan: String?
     let mucDich: String?
     let hangToiThieu: String?
     let dangHoatDong: Bool
