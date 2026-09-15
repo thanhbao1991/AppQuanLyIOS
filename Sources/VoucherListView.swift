@@ -44,7 +44,7 @@ struct VoucherListView: View {
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button { showAdd = true } label: { Text("➕") }
+                Button { showAdd = true } label: { Image(systemName: "plus") }
             }
         }
         .task { await load() }
