@@ -160,7 +160,7 @@ actor APIClient {
     }
 
     /// Công cụ "Giá nguyên liệu gần đây" (Menu > Công cụ) — N lần mua gần nhất của 1 nguyên liệu.
-    func getGiaNguyenLieuGanDay(nguyenLieuId: String, soLan: Int = 10) async -> [ChiTieuHangNgayDto] {
+    func getGiaNguyenLieuGanDay(nguyenLieuId: String, soLan: Int = 30) async -> [ChiTieuHangNgayDto] {
         let req = makeRequest("/api/ChiTieuHangNgay/gia-gan-day?nguyenLieuId=\(nguyenLieuId)&soLan=\(soLan)")
         let (data, _) = await send(req)
         guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[ChiTieuHangNgayDto]>.self, from: data), env.isSuccess else { return [] }
