@@ -127,7 +127,7 @@ private struct CongNoDateFilterBar: View {
             }
         } label: {
             HStack(spacing: 4) {
-                Text("📅")
+                Image(systemName: "calendar")
                 Text(label)
             }
             .font(.subheadline.bold())

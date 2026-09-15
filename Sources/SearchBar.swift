@@ -36,9 +36,10 @@ struct SearchFieldRow: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            // Emoji thay SF Symbol (đổi 2026-09-13) — mất khả năng đổi màu theo isFocused (emoji
-            // không ăn .foregroundColor như SF Symbol), chấp nhận đánh đổi để đồng bộ phong cách.
-            Text("🔍").font(.system(size: 13))
+            // Đổi lại SF Symbol (revert 2026-09-15) — lấy lại khả năng đổi màu theo isFocused.
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 13))
+                .foregroundColor(isFocused ? .brandPrimary : .textMuted)
             TextField(placeholder, text: $text)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
