@@ -258,19 +258,20 @@ private struct EditExpenseSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var soLuong: Double
-    @State private var donGia: Double
+    @State private var thanhTien: Double
     @State private var ghiChu: String
     @State private var billThang: Bool
     @State private var saving = false
     @State private var errorMessage: String?
 
-    private var thanhTien: Double { soLuong * donGia }
+    /// Tự tính ngược từ Thành tiền/Số lượng — xem QuantityPriceRow.
+    private var donGia: Double { soLuong > 0 ? thanhTien / soLuong : 0 }
 
     init(item: ChiTieuHangNgayDto, onSaved: @escaping () -> Void) {
         self.item = item
         self.onSaved = onSaved
         _soLuong = State(initialValue: item.soLuong)
-        _donGia = State(initialValue: item.donGia)
+        _thanhTien = State(initialValue: item.thanhTien)
         _ghiChu = State(initialValue: item.ghiChu ?? "")
         _billThang = State(initialValue: item.billThang)
     }
@@ -278,8 +279,8 @@ private struct EditExpenseSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Số lượng & đơn giá") {
-                    QuantityPriceRow(soLuong: $soLuong, donGia: $donGia, thanhTien: thanhTien)
+                Section("Số lượng & thành tiền") {
+                    QuantityPriceRow(soLuong: $soLuong, thanhTien: $thanhTien, donGia: donGia)
                 }
 
                 Section(item.ten) {
@@ -312,7 +313,7 @@ private struct EditExpenseSheet: View {
                 .buttonStyle(.borderedProminent)
                 .tint(.brandPrimary)
                 .controlSize(.large)
-                .disabled(donGia <= 0 || saving)
+                .disabled(thanhTien <= 0 || saving)
                 .padding(.horizontal, 16)
                 .padding(.top, 10)
                 .padding(.bottom, 8)
@@ -344,13 +345,15 @@ private struct EditExpenseSheet: View {
     }
 }
 
-/// Hàng Số lượng/Đơn giá/Thành tiền — khớp `configSection` bên HoaDonCreateFormView.ProductPickerSheet
-/// (nút tròn -/+ cho số lượng, -/+5000 quanh ô nhập đơn giá) thay cho Stepper mặc định trước đây, dùng
+/// Hàng Số lượng/Thành tiền/Đơn giá — khớp bố cục `configSection` bên HoaDonCreateFormView.ProductPickerSheet
+/// (nút tròn -/+ cho số lượng) nhưng đảo vai trò Đơn giá↔Thành tiền: nhân viên hay nhập gộp nhiều lần
+/// mua thành 1 lần thanh toán, biết chắc tổng tiền hơn đơn giá từng đơn vị — nên chỉ nhập Số lượng +
+/// Thành tiền (đều bắt buộc), Đơn giá tự tính ngược = Thành tiền/Số lượng, hiển thị read-only. Dùng
 /// chung cho cả AddExpenseSheet lẫn EditExpenseSheet để 2 form luôn khớp nhau.
 private struct QuantityPriceRow: View {
     @Binding var soLuong: Double
-    @Binding var donGia: Double
-    var thanhTien: Double
+    @Binding var thanhTien: Double
+    var donGia: Double
 
     var body: some View {
         GeometryReader { geo in
@@ -377,17 +380,17 @@ private struct QuantityPriceRow: View {
 
                 HStack(spacing: 4) {
                     Button {
-                        donGia = max(0, donGia - 5000)
+                        thanhTien = max(0, thanhTien - 5000)
                     } label: {
                         Text("➖").font(.system(size: 22))
                     }
-                    .disabled(donGia <= 0)
-                    TextField("0", value: $donGia, format: .number)
+                    .disabled(thanhTien <= 0)
+                    TextField("0", value: $thanhTien, format: .number)
                         .keyboardType(.numberPad)
                         .multilineTextAlignment(.trailing)
                         .textFieldStyle(.roundedBorder)
                     Button {
-                        donGia += 5000
+                        thanhTien += 5000
                     } label: {
                         Text("➕").font(.system(size: 22))
                     }
@@ -396,12 +399,15 @@ private struct QuantityPriceRow: View {
                 .foregroundColor(.brandPrimary)
                 .frame(width: unit * 1.3, alignment: .center)
 
-                Text(HoaDonFormatting.money(thanhTien))
-                    .font(.subheadline.bold())
-                    .foregroundColor(.brandPrimary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .frame(width: unit, alignment: .trailing)
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text(HoaDonFormatting.money(donGia))
+                        .font(.subheadline.bold())
+                        .foregroundColor(.textMuted)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    Text("đơn giá").font(.caption2).foregroundColor(.textMuted)
+                }
+                .frame(width: unit, alignment: .trailing)
             }
         }
         .frame(height: 34)
@@ -417,7 +423,7 @@ struct AddExpenseSheet: View {
     @State private var searchText = ""
     @State private var selected: NguyenLieuDto?
     @State private var soLuong: Double = 1
-    @State private var donGia: Double = 0
+    @State private var thanhTien: Double = 0
     @State private var ghiChu = ""
     @State private var billThang = false
     @State private var saving = false
@@ -431,7 +437,8 @@ struct AddExpenseSheet: View {
         return nguyenLieuList.filter { $0.ten.matchesSearch(searchText) }
     }
 
-    private var thanhTien: Double { soLuong * donGia }
+    /// Tự tính ngược từ Thành tiền/Số lượng — xem QuantityPriceRow.
+    private var donGia: Double { soLuong > 0 ? thanhTien / soLuong : 0 }
 
     var body: some View {
         NavigationStack {
@@ -449,7 +456,10 @@ struct AddExpenseSheet: View {
                             Button {
                                 selected = nl
                                 searchText = ""
-                                if nl.giaNhap > 0 { donGia = nl.giaNhap }
+                                // Gợi ý Thành tiền = Số lượng hiện tại × giá nhập gần nhất — chỉ là
+                                // điểm khởi đầu, sửa lại đúng tổng tiền thật đã trả (có thể gộp
+                                // nhiều lần mua).
+                                if nl.giaNhap > 0 { thanhTien = soLuong * nl.giaNhap }
                             } label: {
                                 Text(nl.ten)
                             }
@@ -474,8 +484,8 @@ struct AddExpenseSheet: View {
 
                 // Khớp hàng Số lượng/Đơn giá/Thành tiền bên "Thêm món"
                 // (HoaDonCreateFormView.ProductPickerSheet.configSection) qua QuantityPriceRow dùng chung.
-                Section("Số lượng & đơn giá") {
-                    QuantityPriceRow(soLuong: $soLuong, donGia: $donGia, thanhTien: thanhTien)
+                Section("Số lượng & thành tiền") {
+                    QuantityPriceRow(soLuong: $soLuong, thanhTien: $thanhTien, donGia: donGia)
                 }
 
                 Section {
@@ -508,7 +518,7 @@ struct AddExpenseSheet: View {
                 .buttonStyle(.borderedProminent)
                 .tint(.brandPrimary)
                 .controlSize(.large)
-                .disabled(selected == nil || donGia <= 0 || saving)
+                .disabled(selected == nil || thanhTien <= 0 || saving)
                 .padding(.horizontal, 16)
                 .padding(.top, 10)
                 .padding(.bottom, 8)
