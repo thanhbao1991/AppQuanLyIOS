@@ -170,6 +170,11 @@ private struct MoreMenuView: View {
                     } label: {
                         EmojiLabel("Giá nguyên liệu", "🏷️")
                     }
+                    NavigationLink {
+                        GioThapDiemView()
+                    } label: {
+                        EmojiLabel("Giờ vắng khách", "🕑")
+                    }
                 }
 
                 Section {
