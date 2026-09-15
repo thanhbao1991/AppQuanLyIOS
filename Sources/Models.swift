@@ -248,10 +248,38 @@ struct NguyenLieuBanHangDto: Decodable, Identifiable {
 struct NguyenLieuDto: Decodable, Identifiable {
     let id: String
     let ten: String
+    let donViTinh: String?
     let giaNhap: Double
+    let ngungSuDung: Bool
+    let thuTu: Int
+    /// Liên kết tồn kho bán hàng — màn "Cập nhật nguyên liệu" (NguyenLieuListView) KHÔNG cho sửa 2
+    /// field này, chỉ đọc rồi gửi lại y nguyên khi Update, tránh vô tình xoá mất liên kết tồn kho
+    /// (UpdateAsync bên Backend ghi đè toàn bộ field, thiếu 2 field này sẽ set về null/0).
+    let nguyenLieuBanHangId: String?
+    let heSoQuyDoiBanHang: Double?
+    let danhMucChiTieuId: String?
+    let tenDanhMucChiTieu: String?
 }
 
 struct NguyenLieuCreateRequest: Encodable {
+    let ten: String
+}
+
+/// Dùng cho Create/Update đầy đủ field (NguyenLieuListView) — khác NguyenLieuCreateRequest (chỉ có
+/// Ten, dùng cho flow thêm nhanh trong AddExpenseSheet).
+struct NguyenLieuUpdateRequest: Encodable {
+    let ten: String
+    let donViTinh: String?
+    let giaNhap: Double
+    let ngungSuDung: Bool
+    let thuTu: Int
+    let nguyenLieuBanHangId: String?
+    let heSoQuyDoiBanHang: Double?
+    let danhMucChiTieuId: String?
+}
+
+struct DanhMucChiTieuDto: Decodable, Identifiable, Hashable {
+    let id: String
     let ten: String
 }
 

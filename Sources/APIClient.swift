@@ -275,6 +275,30 @@ actor APIClient {
         return (env.isSuccess, env.message, env.data)
     }
 
+    /// Cập nhật nguyên liệu (NguyenLieuListView) — chỉnh Ten/DonViTinh/GiaNhap/NgungSuDung/Nhóm chi
+    /// tiêu đầy đủ (khác createNguyenLieu(ten:) chỉ thêm nhanh 1 field).
+    func createNguyenLieuFull(_ body: NguyenLieuUpdateRequest) async -> ActionResult {
+        let req = makeRequest("/api/NguyenLieu", method: "POST", body: jsonBody(body))
+        return await executeAction(req)
+    }
+
+    func updateNguyenLieu(id: String, _ body: NguyenLieuUpdateRequest) async -> ActionResult {
+        let req = makeRequest("/api/NguyenLieu/\(id)", method: "PUT", body: jsonBody(body))
+        return await executeAction(req)
+    }
+
+    func deleteNguyenLieu(id: String) async -> ActionResult {
+        let req = makeRequest("/api/NguyenLieu/\(id)", method: "DELETE")
+        return await executeAction(req)
+    }
+
+    func getDanhMucChiTieuList() async -> [DanhMucChiTieuDto] {
+        let req = makeRequest("/api/DanhMucChiTieu")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[DanhMucChiTieuDto]>.self, from: data), env.isSuccess else { return [] }
+        return env.data ?? []
+    }
+
     func getCongViecList() async -> [CongViecNoiBoDto] {
         let req = makeRequest("/api/CongViecNoiBo")
         let (data, _) = await send(req)

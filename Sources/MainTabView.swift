@@ -147,6 +147,11 @@ private struct MoreMenuView: View {
                     } label: {
                         EmojiLabel("Voucher", "🎟️")
                     }
+                    NavigationLink {
+                        NguyenLieuListView()
+                    } label: {
+                        EmojiLabel("Nguyên liệu", "🧂")
+                    }
                 }
 
                 Section("Công cụ") {
