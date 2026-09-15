@@ -392,6 +392,10 @@ struct GamificationConfigDto: Codable {
     var shipTienMoiBac: Double
     var shipKmTangMoiBac: Double
     var shipPhiMoiKm: Double
+    // Giờ mở/đóng cửa (0-24) — app khách dùng chặn đặt hàng ngoài giờ, GioThapDiemView dùng tính
+    // gợi ý khung giờ vắng khách chính xác hơn.
+    var gioMoCua: Int
+    var gioDongCua: Int
 }
 
 // ---- Thống kê (port từ TraSuaApp.Desktop ThongKeTabControl — nguồn chính xác, KHÔNG dùng

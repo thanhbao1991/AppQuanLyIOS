@@ -3,26 +3,31 @@ import SwiftUI
 
 /// Phân tích số đơn theo giờ trong ngày (30 ngày gần đây) để staff TỰ NHẬN RA khung giờ vắng khách
 /// thật của quán, thay vì đoán mò khi cấu hình voucher DieuKien=KhungGioThapDiem — xem
-/// GET /api/ThongKe/phan-bo-don-theo-gio. Có gợi ý tự động (khung 2 giờ liên tiếp ít đơn nhất trong
-/// số giờ ĐANG MỞ CỬA — loại giờ 0 đơn tuyệt đối vì nhiều khả năng là giờ đóng cửa, không phải "vắng
-/// khách") kèm nút áp thẳng vào form voucher đang mở (onChon), hoặc chỉ xem tham khảo khi mở độc lập.
+/// GET /api/ThongKe/phan-bo-don-theo-gio. Gợi ý tự động (khung 2 giờ liên tiếp ít đơn nhất) CHỈ xét
+/// trong giờ mở bán thật (GamificationConfig.gioMoCua/gioDongCua, xem GamificationConfigView) — trước
+/// đây (2026-09-15) chỉ đoán qua "giờ có ít nhất 1 đơn" nên có thể lẫn giờ gần đóng cửa (đơn lác đác
+/// do khách đặt app chờ giao sau) vào coi như "giờ mở cửa bình thường". Kèm nút áp thẳng vào form
+/// voucher đang mở (onChon), hoặc chỉ xem tham khảo khi mở độc lập từ Công cụ.
 struct GioThapDiemView: View {
     var onChon: ((Int, Int) -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
     @State private var items: [PhanBoDonTheoGioItemDto] = []
+    @State private var config: GamificationConfigDto?
     @State private var loading = true
     @State private var gioBatDau = 14
     @State private var gioKetThuc = 16
 
-    /// Khung 2 giờ liên tiếp có tổng số đơn thấp nhất, chỉ xét trong các giờ CÓ ít nhất 1 đơn (loại
-    /// giờ đóng cửa hẳn) — tránh gợi ý nhầm 2h-4h sáng chỉ vì quán không mở cửa giờ đó.
+    /// Khung 2 giờ liên tiếp trong giờ mở bán có tổng số đơn thấp nhất — chưa tải được config thì
+    /// coi như mở cửa cả ngày (không lọc gì) để vẫn ra gợi ý thay vì im lặng.
     private var goiY: (batDau: Int, ketThuc: Int)? {
-        let sorted = items.sorted { $0.gio < $1.gio }
+        let mo = config?.gioMoCua ?? 0
+        let dong = config?.gioDongCua ?? 24
+        let sorted = items.filter { $0.gio >= mo && $0.gio < dong }.sorted { $0.gio < $1.gio }
         var best: (batDau: Int, ketThuc: Int, tong: Int)?
         for i in 0..<sorted.count {
             let j = i + 1
-            guard sorted[i].soDon > 0, j < sorted.count, sorted[j].soDon > 0 else { continue }
+            guard j < sorted.count else { continue }
             let tong = sorted[i].soDon + sorted[j].soDon
             if best == nil || tong < best!.tong {
                 best = (sorted[i].gio, sorted[j].gio + 1, tong)
@@ -48,16 +53,19 @@ struct GioThapDiemView: View {
             } else {
                 Section("Số đơn theo giờ (30 ngày gần đây)") {
                     Chart(items) { item in
+                        let dangMoCua = item.gio >= (config?.gioMoCua ?? 0) && item.gio < (config?.gioDongCua ?? 24)
                         BarMark(x: .value("Giờ", "\(item.gio)h"), y: .value("Số đơn", item.soDon))
                             .foregroundStyle(
-                                item.gio >= gioBatDau && item.gio < gioKetThuc
-                                    ? Color.brandPrimary
-                                    : Color.textMuted.opacity(0.35)
+                                !dangMoCua ? Color.textMuted.opacity(0.15)
+                                    : (item.gio >= gioBatDau && item.gio < gioKetThuc ? Color.brandPrimary : Color.textMuted.opacity(0.35))
                             )
                     }
                     .frame(height: 200)
                     .chartXAxis { AxisMarks(values: .automatic(desiredCount: 8)) { AxisValueLabel().font(.caption2) } }
-                    Text("Cột xanh = khung giờ đang chọn bên dưới").font(.caption2).foregroundColor(.textMuted)
+                    if let config {
+                        Text("Cột xanh = khung giờ đang chọn · Cột mờ nhạt nhất (\(config.gioDongCua)h–24h, 0h–\(config.gioMoCua)h) = ngoài giờ mở bán")
+                            .font(.caption2).foregroundColor(.textMuted)
+                    }
                 }
 
                 if let goiY {
@@ -72,8 +80,8 @@ struct GioThapDiemView: View {
                 }
 
                 Section("Khung giờ") {
-                    Stepper("Bắt đầu: \(gioBatDau)h", value: $gioBatDau, in: 0...22)
-                    Stepper("Kết thúc: \(gioKetThuc)h", value: $gioKetThuc, in: (gioBatDau + 1)...23)
+                    Stepper("Bắt đầu: \(gioBatDau)h", value: $gioBatDau, in: (config?.gioMoCua ?? 0)...min(22, (config?.gioDongCua ?? 24) - 1))
+                    Stepper("Kết thúc: \(gioKetThuc)h", value: $gioKetThuc, in: (gioBatDau + 1)...min(23, config?.gioDongCua ?? 23))
                 }
             }
         }
@@ -94,7 +102,9 @@ struct GioThapDiemView: View {
     }
 
     private func load() async {
-        items = await APIClient.shared.getPhanBoDonTheoGio(soNgay: 30)
+        async let itemsTask = APIClient.shared.getPhanBoDonTheoGio(soNgay: 30)
+        async let configTask = APIClient.shared.getGamificationConfig()
+        (items, config) = await (itemsTask, configTask)
         loading = false
         if let goiY {
             gioBatDau = goiY.batDau

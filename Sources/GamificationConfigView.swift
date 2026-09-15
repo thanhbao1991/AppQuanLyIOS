@@ -63,6 +63,15 @@ private struct GamificationConfigForm: View {
     var body: some View {
         Form {
             Section {
+                Stepper("Mở cửa: \(config.gioMoCua)h", value: $config.gioMoCua, in: 0...23)
+                Stepper("Đóng cửa: \(config.gioDongCua)h", value: $config.gioDongCua, in: (config.gioMoCua + 1)...24)
+            } header: {
+                Text("Giờ mở bán 🕑")
+            } footer: {
+                Text("App khách chặn đặt hàng ngoài khung giờ này (server chặn thật, không chỉ ẩn UI). Cũng dùng để tính gợi ý khung giờ vắng khách ở Công cụ > Giờ vắng khách.")
+            }
+
+            Section {
                 moneyRow("Giá khách trả", value: $config.lyBiMatGiaTraTien)
                 moneyRow("Ngưỡng giá thật tối đa", value: $config.lyBiMatNguongGiaThat)
             } header: {
