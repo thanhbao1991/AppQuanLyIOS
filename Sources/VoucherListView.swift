@@ -68,7 +68,7 @@ struct VoucherListView: View {
             donToiThieu: item.donToiThieu,
             dieuKien: item.dieuKien, soDonApDung: item.soDonApDung,
             gioBatDau: item.gioBatDau, gioKetThuc: item.gioKetThuc, thuTrongTuan: item.thuTrongTuan,
-            bacThang: item.bacThang,
+            bacThang: item.bacThang, soLuongToiThieu: item.soLuongToiThieu,
             mucDich: item.mucDich,
             hangToiThieu: item.hangToiThieu, dangHoatDong: !item.dangHoatDong))
         await load()
@@ -156,6 +156,8 @@ private struct VoucherRowView: View {
         case "DonToiThieuBac":
             let bacText = BacThangRow.parse(item.bacThang).map { "\(Int($0.nguong).formatted())đ→-\(Int($0.giam).formatted())đ" }.joined(separator: ", ")
             return "Điều kiện: bậc thang — \(bacText.isEmpty ? "chưa cấu hình" : bacText)"
+        case "SoLuongToiThieu":
+            return "Điều kiện: đơn từ \(item.soLuongToiThieu ?? 0) ly, chỉ khách CHƯA TỪNG tự mua đủ số lượng này (dùng được 1 lần)"
         default: return "Điều kiện: \(item.dieuKien)"
         }
     }
@@ -219,6 +221,8 @@ private struct VoucherEditSheet: View {
     @State private var showGioThapDiem = false
     /// Chỉ có ý nghĩa khi dieuKien == "DonToiThieuBac". Xem BacThangRow.
     @State private var bacThangRows: [BacThangRow]
+    /// Chỉ có ý nghĩa khi dieuKien == "SoLuongToiThieu".
+    @State private var soLuongToiThieu: Int
     @State private var hangToiThieu: String
     @State private var mucDich: String
     @State private var dangHoatDong: Bool
@@ -235,6 +239,7 @@ private struct VoucherEditSheet: View {
         ("QuayLai", "Khách lâu không mua quay lại (không dùng liên tiếp)"),
         ("KhungGioThapDiem", "Khung giờ thấp điểm"),
         ("DonToiThieuBac", "Bậc thang theo giá trị đơn"),
+        ("SoLuongToiThieu", "Số lượng ly tối thiểu"),
     ]
     // Khớp VoucherLoaiGiam bên Backend.
     private let loaiGiamOptions = [
@@ -273,6 +278,7 @@ private struct VoucherEditSheet: View {
         _thuChon = State(initialValue: Set((existing?.thuTrongTuan ?? "").split(separator: ",").compactMap { Int($0) }))
         let parsedBacThang = BacThangRow.parse(existing?.bacThang)
         _bacThangRows = State(initialValue: parsedBacThang.isEmpty ? [BacThangRow(nguong: 0, giam: 0)] : parsedBacThang)
+        _soLuongToiThieu = State(initialValue: existing?.soLuongToiThieu ?? 2)
         _hangToiThieu = State(initialValue: existing?.hangToiThieu ?? "")
         _mucDich = State(initialValue: existing?.mucDich ?? "")
         _dangHoatDong = State(initialValue: existing?.dangHoatDong ?? true)
@@ -395,6 +401,15 @@ private struct VoucherEditSheet: View {
                         Text("Đơn đạt ngưỡng CAO NHẤT nào thì giảm đúng số tiền của bậc đó (không cộng dồn nhiều bậc). Mốc nên cao hơn giá trị đơn trung bình hiện tại, số tiền giảm nên nhỏ hơn giá trị phần khách cần mua thêm để đạt mốc — nếu không quán lỗ dù doanh thu tăng.")
                     }
                 }
+                if dieuKien == "SoLuongToiThieu" {
+                    Section {
+                        Stepper("Từ \(soLuongToiThieu) ly trở lên", value: $soLuongToiThieu, in: 2...10)
+                    } header: {
+                        Text("Số lượng áp dụng")
+                    } footer: {
+                        Text("Chỉ áp dụng cho khách CHƯA TỪNG có đơn nào (kể cả không dùng voucher) đạt đủ số lượng này — nếu khách đã tự mua đủ ít nhất 1 lần trước đây, voucher không tạo hành vi mới nên không hiện nữa. Vì vậy mỗi khách chỉ dùng được ĐÚNG 1 LẦN trong đời.")
+                    }
+                }
                 Section("Hạng khách yêu cầu (cộng thêm vào điều kiện trên)") {
                     Picker("Hạng tối thiểu", selection: $hangToiThieu) {
                         ForEach(hangOptions, id: \.0) { value, label in
@@ -501,6 +516,7 @@ private struct VoucherEditSheet: View {
             gioKetThuc: dieuKien == "KhungGioThapDiem" ? gioKetThuc : nil,
             thuTrongTuan: dieuKien == "KhungGioThapDiem" && !thuChon.isEmpty ? thuChon.sorted().map(String.init).joined(separator: ",") : nil,
             bacThang: dieuKien == "DonToiThieuBac" ? BacThangRow.encode(bacThangRows) : nil,
+            soLuongToiThieu: dieuKien == "SoLuongToiThieu" ? soLuongToiThieu : nil,
             mucDich: mucDich.isEmpty ? nil : mucDich,
             hangToiThieu: hangToiThieu.isEmpty ? nil : hangToiThieu,
             dangHoatDong: dangHoatDong)
