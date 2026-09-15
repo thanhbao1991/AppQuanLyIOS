@@ -22,24 +22,18 @@ struct GiaNguyenLieuView: View {
         List {
             Section("Nguyên liệu") {
                 TextField("Tìm nguyên liệu...", text: $searchText)
-                if let selected {
-                    HStack {
-                        Text(selected.ten).bold()
-                        Spacer()
-                        Button("Đổi") {
-                            self.selected = nil
-                            items = []
-                        }.font(.footnote)
-                    }
-                } else {
-                    ForEach(filteredList.prefix(30)) { nl in
-                        Button {
-                            selected = nl
-                            searchText = ""
-                            Task { await loadGia(nl) }
-                        } label: {
-                            Text(nl.ten)
-                        }
+                // Gõ tiếp bất cứ lúc nào để tìm nguyên liệu khác — không còn nút "Đổi" chặn giữa,
+                // chỉ ẩn tên đã chọn đi khi đang gõ để nhường chỗ cho kết quả tìm.
+                if let selected, searchText.isEmpty {
+                    Text(selected.ten).bold().foregroundColor(.brandPrimary)
+                }
+                ForEach(filteredList.prefix(30)) { nl in
+                    Button {
+                        selected = nl
+                        searchText = ""
+                        Task { await loadGia(nl) }
+                    } label: {
+                        Text(nl.ten)
                     }
                 }
             }
