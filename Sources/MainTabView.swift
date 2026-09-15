@@ -128,6 +128,11 @@ private struct MoreMenuView: View {
                         EmojiLabel("Công việc", "📋")
                     }
                     NavigationLink {
+                        NguyenLieuListView()
+                    } label: {
+                        EmojiLabel("Nguyên liệu", "🧂")
+                    }
+                    NavigationLink {
                         SanPhamHinhAnhListView()
                     } label: {
                         EmojiLabel("Ảnh menu", "🖼️")
@@ -146,11 +151,6 @@ private struct MoreMenuView: View {
                         VoucherListView()
                     } label: {
                         EmojiLabel("Voucher", "🎟️")
-                    }
-                    NavigationLink {
-                        NguyenLieuListView()
-                    } label: {
-                        EmojiLabel("Nguyên liệu", "🧂")
                     }
                 }
 

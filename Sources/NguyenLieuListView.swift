@@ -18,9 +18,11 @@ struct NguyenLieuListView: View {
     }
 
     var body: some View {
-        Group {
+        VStack(spacing: 0) {
+            SearchBar(text: $searchText, placeholder: "Tìm nguyên liệu...")
+
             if !hasLoaded {
-                VStack { Spacer(); ProgressView(); Spacer() }
+                Spacer(); ProgressView(); Spacer()
             } else {
                 List {
                     ForEach(filteredItems) { item in
@@ -32,7 +34,6 @@ struct NguyenLieuListView: View {
                     }
                 }
                 .listStyle(.plain)
-                .searchable(text: $searchText, prompt: "Tìm nguyên liệu...")
                 .refreshable { await load() }
             }
         }
