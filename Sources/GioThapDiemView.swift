@@ -37,7 +37,12 @@ struct GioThapDiemView: View {
         return (best.batDau, best.ketThuc)
     }
 
-    private var maxSoDon: Int { items.map(\.soDon).max() ?? 0 }
+    /// Chỉ giờ trong khung mở bán — bỏ hẳn cột giờ đóng cửa khỏi biểu đồ thay vì làm mờ, đỡ rối mắt.
+    private var itemsMoCua: [PhanBoDonTheoGioItemDto] {
+        let mo = config?.gioMoCua ?? 0
+        let dong = config?.gioDongCua ?? 24
+        return items.filter { $0.gio >= mo && $0.gio < dong }
+    }
 
     var body: some View {
         List {
@@ -51,21 +56,14 @@ struct GioThapDiemView: View {
                         .foregroundColor(.textMuted)
                 }
             } else {
-                Section("Số đơn theo giờ (30 ngày gần đây)") {
-                    Chart(items) { item in
-                        let dangMoCua = item.gio >= (config?.gioMoCua ?? 0) && item.gio < (config?.gioDongCua ?? 24)
+                Section("Số đơn theo giờ (30 ngày gần đây, trong giờ mở bán)") {
+                    Chart(itemsMoCua) { item in
                         BarMark(x: .value("Giờ", "\(item.gio)h"), y: .value("Số đơn", item.soDon))
-                            .foregroundStyle(
-                                !dangMoCua ? Color.textMuted.opacity(0.15)
-                                    : (item.gio >= gioBatDau && item.gio < gioKetThuc ? Color.brandPrimary : Color.textMuted.opacity(0.35))
-                            )
+                            .foregroundStyle(item.gio >= gioBatDau && item.gio < gioKetThuc ? Color.brandPrimary : Color.textMuted.opacity(0.35))
                     }
                     .frame(height: 200)
                     .chartXAxis { AxisMarks(values: .automatic(desiredCount: 8)) { AxisValueLabel().font(.caption2) } }
-                    if let config {
-                        Text("Cột xanh = khung giờ đang chọn · Cột mờ nhạt nhất (\(config.gioDongCua)h–24h, 0h–\(config.gioMoCua)h) = ngoài giờ mở bán")
-                            .font(.caption2).foregroundColor(.textMuted)
-                    }
+                    Text("Cột xanh = khung giờ đang chọn bên dưới").font(.caption2).foregroundColor(.textMuted)
                 }
 
                 if let goiY {
