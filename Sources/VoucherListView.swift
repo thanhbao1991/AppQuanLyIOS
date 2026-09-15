@@ -66,7 +66,8 @@ struct VoucherListView: View {
             ma: item.ma, ten: item.ten, moTa: item.moTa, soTienGiam: item.soTienGiam,
             loaiGiam: item.loaiGiam, phanTramGiam: item.phanTramGiam, giamToiDa: item.giamToiDa,
             donToiThieu: item.donToiThieu,
-            dieuKien: item.dieuKien, soDonApDung: item.soDonApDung, mucDich: item.mucDich,
+            dieuKien: item.dieuKien, soDonApDung: item.soDonApDung,
+            gioBatDau: item.gioBatDau, gioKetThuc: item.gioKetThuc, mucDich: item.mucDich,
             hangToiThieu: item.hangToiThieu, dangHoatDong: !item.dangHoatDong))
         await load()
     }
@@ -146,6 +147,7 @@ private struct VoucherRowView: View {
         case "KhongDieuKien": return "Điều kiện: không có, dùng cho dịp/lễ — tự bật tắt"
         case "DonThuN": return "Điều kiện: đúng đơn thứ \(item.soDonApDung ?? 0) của khách"
         case "QuayLai": return "Điều kiện: đơn quay lại sau ≥30 ngày không mua, không dùng liên tiếp 2 lần"
+        case "KhungGioThapDiem": return "Điều kiện: khung \(item.gioBatDau ?? 0)h-\(item.gioKetThuc ?? 0)h, đơn thứ 2+ trong ngày của khách"
         default: return "Điều kiện: \(item.dieuKien)"
         }
     }
@@ -173,6 +175,9 @@ private struct VoucherEditSheet: View {
     @State private var donToiThieu: Double
     @State private var dieuKien: String
     @State private var soDonApDung: Int
+    @State private var gioBatDau: Int
+    @State private var gioKetThuc: Int
+    @State private var showGioThapDiem = false
     @State private var hangToiThieu: String
     @State private var mucDich: String
     @State private var dangHoatDong: Bool
@@ -187,6 +192,7 @@ private struct VoucherEditSheet: View {
         ("KhongDieuKien", "Không điều kiện (dịp/lễ — tự bật tắt)"),
         ("DonThuN", "Đơn thứ N (tự nhập)"),
         ("QuayLai", "Khách lâu không mua quay lại (không dùng liên tiếp)"),
+        ("KhungGioThapDiem", "Khung giờ thấp điểm (đơn thứ 2+ trong ngày)"),
     ]
     // Khớp VoucherLoaiGiam bên Backend.
     private let loaiGiamOptions = [
@@ -220,6 +226,8 @@ private struct VoucherEditSheet: View {
         _donToiThieu = State(initialValue: existing?.donToiThieu ?? 100000)
         _dieuKien = State(initialValue: existing?.dieuKien ?? "DonDauTien")
         _soDonApDung = State(initialValue: existing?.soDonApDung ?? 2)
+        _gioBatDau = State(initialValue: existing?.gioBatDau ?? 14)
+        _gioKetThuc = State(initialValue: existing?.gioKetThuc ?? 16)
         _hangToiThieu = State(initialValue: existing?.hangToiThieu ?? "")
         _mucDich = State(initialValue: existing?.mucDich ?? "")
         _dangHoatDong = State(initialValue: existing?.dangHoatDong ?? true)
@@ -296,6 +304,19 @@ private struct VoucherEditSheet: View {
                         }
                     }
                 }
+                if dieuKien == "KhungGioThapDiem" {
+                    Section("Khung giờ áp dụng") {
+                        Stepper("Bắt đầu: \(gioBatDau)h", value: $gioBatDau, in: 0...22)
+                        Stepper("Kết thúc: \(gioKetThuc)h", value: $gioKetThuc, in: (gioBatDau + 1)...23)
+                        Button {
+                            showGioThapDiem = true
+                        } label: {
+                            Label("Xem giờ vắng khách của quán", systemImage: "chart.bar")
+                        }
+                        Text("Chỉ áp dụng cho đơn THỨ 2 TRỞ LÊN trong ngày của khách — tránh khách trì hoãn đơn chính để chờ giờ rẻ.")
+                            .font(.caption2).foregroundColor(.textMuted)
+                    }
+                }
                 Section("Hạng khách yêu cầu (cộng thêm vào điều kiện trên)") {
                     Picker("Hạng tối thiểu", selection: $hangToiThieu) {
                         ForEach(hangOptions, id: \.0) { value, label in
@@ -327,6 +348,12 @@ private struct VoucherEditSheet: View {
                     Button("Huỷ") { dismiss() }
                 }
             }
+            .navigationDestination(isPresented: $showGioThapDiem) {
+                GioThapDiemView { batDau, ketThuc in
+                    gioBatDau = batDau
+                    gioKetThuc = ketThuc
+                }
+            }
             .safeAreaInset(edge: .bottom) {
                 Button {
                     Task { await save() }
@@ -343,6 +370,7 @@ private struct VoucherEditSheet: View {
                     || (loaiGiam == "PhanTram" ? (phanTramGiam <= 0 || phanTramGiam > 100) : soTienGiam <= 0)
                     || (dieuKien == "DonToiThieu" && donToiThieu <= 0)
                     || (dieuKien == "DonThuN" && soDonApDung < 2)
+                    || (dieuKien == "KhungGioThapDiem" && gioBatDau >= gioKetThuc)
                     || saving)
                 .padding(.horizontal, 16)
                 .padding(.top, 10)
@@ -367,6 +395,8 @@ private struct VoucherEditSheet: View {
             donToiThieu: dieuKien == "DonToiThieu" ? donToiThieu : nil,
             dieuKien: dieuKien,
             soDonApDung: dieuKien == "DonThuN" ? soDonApDung : nil,
+            gioBatDau: dieuKien == "KhungGioThapDiem" ? gioBatDau : nil,
+            gioKetThuc: dieuKien == "KhungGioThapDiem" ? gioKetThuc : nil,
             mucDich: mucDich.isEmpty ? nil : mucDich,
             hangToiThieu: hangToiThieu.isEmpty ? nil : hangToiThieu,
             dangHoatDong: dangHoatDong)

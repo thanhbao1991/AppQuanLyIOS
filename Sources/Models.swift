@@ -314,6 +314,15 @@ struct ThongBaoQuanRequest: Encodable {
     let dangHoatDong: Bool
 }
 
+// Phân bố số đơn/doanh thu theo giờ trong ngày — dùng để nhận ra khung giờ vắng khách trước khi
+// cấu hình voucher DieuKien=KhungGioThapDiem. Xem GioThapDiemView + ThongKeService.
+struct PhanBoDonTheoGioItemDto: Codable, Identifiable {
+    var id: Int { gio }
+    let gio: Int
+    let soDon: Int
+    let doanhThu: Double
+}
+
 // ---- Voucher app khách (AppDatHangIOS) ----
 
 struct VoucherDto: Codable, Identifiable {
@@ -328,11 +337,14 @@ struct VoucherDto: Codable, Identifiable {
     // Trần giảm tối đa — chỉ có ý nghĩa khi loaiGiam == "PhanTram".
     var giamToiDa: Double?
     var donToiThieu: Double?
-    // "DonDauTien" | "SinhNhat" | "DonToiThieu" | "KhongDieuKien" | "DonThuN" | "QuayLai" — xem
-    // VoucherDieuKien bên Backend.
+    // "DonDauTien" | "SinhNhat" | "DonToiThieu" | "KhongDieuKien" | "DonThuN" | "QuayLai" |
+    // "KhungGioThapDiem" — xem VoucherDieuKien bên Backend.
     var dieuKien: String
     // Chỉ có ý nghĩa khi dieuKien == "DonThuN" — áp dụng đúng đơn thứ N (N>=2, N=1 dùng DonDauTien).
     var soDonApDung: Int?
+    // Chỉ có ý nghĩa khi dieuKien == "KhungGioThapDiem" — giờ trong ngày, 0-23.
+    var gioBatDau: Int?
+    var gioKetThuc: Int?
     // Điều kiện PHỤ cộng thêm vào dieuKien — nil = không giới hạn hạng. "Kim Cương"|"Vàng"|"Bạc"|
     // "Thành Viên", xem HangKhachHang bên Backend.
     var hangToiThieu: String?
@@ -353,6 +365,8 @@ struct VoucherRequest: Encodable {
     let donToiThieu: Double?
     let dieuKien: String
     let soDonApDung: Int?
+    let gioBatDau: Int?
+    let gioKetThuc: Int?
     let mucDich: String?
     let hangToiThieu: String?
     let dangHoatDong: Bool
