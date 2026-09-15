@@ -10,9 +10,17 @@ struct NguyenLieuListView: View {
     @State private var searchText = ""
     @State private var showAdd = false
     @State private var editing: NguyenLieuDto?
+    /// nil = tất cả nhóm; "" (rỗng) = chỉ nguyên liệu chưa gắn nhóm nào.
+    @State private var filterDanhMucId: String?
 
     private var filteredItems: [NguyenLieuDto] {
-        let sorted = items.sorted { $0.ten.localizedStandardCompare($1.ten) == .orderedAscending }
+        var list = items
+        if let filterDanhMucId {
+            list = filterDanhMucId.isEmpty
+                ? list.filter { $0.danhMucChiTieuId == nil }
+                : list.filter { $0.danhMucChiTieuId == filterDanhMucId }
+        }
+        let sorted = list.sorted { $0.ten.localizedStandardCompare($1.ten) == .orderedAscending }
         guard !searchText.isEmpty else { return sorted }
         return sorted.filter { $0.ten.matchesSearch(searchText) }
     }
@@ -44,7 +52,32 @@ struct NguyenLieuListView: View {
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button { showAdd = true } label: { Text("➕") }
+                Menu {
+                    Button {
+                        filterDanhMucId = nil
+                    } label: {
+                        if filterDanhMucId == nil { Label("Tất cả nhóm", systemImage: "checkmark") }
+                        else { Text("Tất cả nhóm") }
+                    }
+                    Button {
+                        filterDanhMucId = ""
+                    } label: {
+                        if filterDanhMucId == "" { Label("Chưa có nhóm", systemImage: "checkmark") }
+                        else { Text("Chưa có nhóm") }
+                    }
+                    Divider()
+                    ForEach(danhMucs) { dm in
+                        Button {
+                            filterDanhMucId = dm.id
+                        } label: {
+                            if filterDanhMucId == dm.id { Label(dm.ten, systemImage: "checkmark") }
+                            else { Text(dm.ten) }
+                        }
+                    }
+                } label: {
+                    Image(systemName: filterDanhMucId == nil ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
+                }
+                Button { showAdd = true } label: { Image(systemName: "plus") }
             }
         }
         .task { await load() }
