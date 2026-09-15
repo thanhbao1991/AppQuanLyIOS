@@ -356,6 +356,9 @@ struct VoucherDto: Codable, Identifiable {
     // Chỉ có ý nghĩa khi dieuKien == "KhungGioThapDiem" — "1,3,5" = T2/T4/T6 (1=T2...7=CN), nil/rỗng
     // = mọi thứ. Xem VoucherEntity.ThuTrongTuan bên Backend.
     var thuTrongTuan: String?
+    // Chỉ có ý nghĩa khi dieuKien == "DonToiThieuBac" — "nguong1:giam1,nguong2:giam2,...". Xem
+    // VoucherEntity.BacThang bên Backend.
+    var bacThang: String?
     // Điều kiện PHỤ cộng thêm vào dieuKien — nil = không giới hạn hạng. "Kim Cương"|"Vàng"|"Bạc"|
     // "Thành Viên", xem HangKhachHang bên Backend.
     var hangToiThieu: String?
@@ -379,6 +382,7 @@ struct VoucherRequest: Encodable {
     let gioBatDau: Int?
     let gioKetThuc: Int?
     let thuTrongTuan: String?
+    let bacThang: String?
     let mucDich: String?
     let hangToiThieu: String?
     let dangHoatDong: Bool

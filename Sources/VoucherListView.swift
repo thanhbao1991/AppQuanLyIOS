@@ -68,6 +68,7 @@ struct VoucherListView: View {
             donToiThieu: item.donToiThieu,
             dieuKien: item.dieuKien, soDonApDung: item.soDonApDung,
             gioBatDau: item.gioBatDau, gioKetThuc: item.gioKetThuc, thuTrongTuan: item.thuTrongTuan,
+            bacThang: item.bacThang,
             mucDich: item.mucDich,
             hangToiThieu: item.hangToiThieu, dangHoatDong: !item.dangHoatDong))
         await load()
@@ -152,15 +153,47 @@ private struct VoucherRowView: View {
             let thuText = (item.thuTrongTuan ?? "").split(separator: ",").compactMap { Int($0) }.sorted()
                 .compactMap { tenThuNganGon[$0] }.joined(separator: "/")
             return "Điều kiện: khung \(item.gioBatDau ?? 0)h-\(item.gioKetThuc ?? 0)h\(thuText.isEmpty ? "" : " (\(thuText))")"
+        case "DonToiThieuBac":
+            let bacText = BacThangRow.parse(item.bacThang).map { "\(Int($0.nguong).formatted())đ→-\(Int($0.giam).formatted())đ" }.joined(separator: ", ")
+            return "Điều kiện: bậc thang — \(bacText.isEmpty ? "chưa cấu hình" : bacText)"
         default: return "Điều kiện: \(item.dieuKien)"
         }
     }
 
     private func nhanUuDai(_ item: VoucherDto) -> String {
+        if item.dieuKien == "DonToiThieuBac" {
+            let max = BacThangRow.parse(item.bacThang).map(\.giam).max() ?? 0
+            return max > 0 ? "-\(Int(max).formatted())đ" : "—"
+        }
         if item.loaiGiam == "PhanTram" {
             return "-\(Int(item.phanTramGiam ?? 0))%"
         }
         return "-\(Int(item.soTienGiam).formatted())đ"
+    }
+}
+
+/// 1 bậc trong voucher "Bậc thang theo giá trị đơn" — encode/decode khớp Voucher.BacThang bên
+/// Backend ("nguong1:giam1,nguong2:giam2,..."). id riêng (không phải nguong) để SwiftUI ForEach có
+/// định danh ổn định khi staff đang gõ dở giá trị trùng nhau giữa 2 hàng.
+private struct BacThangRow: Identifiable {
+    let id = UUID()
+    var nguong: Double
+    var giam: Double
+
+    static func parse(_ raw: String?) -> [BacThangRow] {
+        (raw ?? "").split(separator: ",").compactMap { phan in
+            let parts = phan.split(separator: ":")
+            guard parts.count == 2, let n = Double(parts[0]), let g = Double(parts[1]) else { return nil }
+            return BacThangRow(nguong: n, giam: g)
+        }
+    }
+
+    /// Sắp tăng dần theo nguong trước khi encode — khớp yêu cầu backend (bậc sau phải cao hơn bậc
+    /// trước), staff không cần tự nhập đúng thứ tự.
+    static func encode(_ rows: [BacThangRow]) -> String? {
+        let valid = rows.filter { $0.nguong > 0 && $0.giam > 0 }.sorted { $0.nguong < $1.nguong }
+        guard !valid.isEmpty else { return nil }
+        return valid.map { "\(Int($0.nguong)):\(Int($0.giam))" }.joined(separator: ",")
     }
 }
 
@@ -184,6 +217,8 @@ private struct VoucherEditSheet: View {
     /// Rỗng = áp dụng MỌI thứ trong tuần. Khớp Voucher.ThuTrongTuan ("1,3,5" = T2/T4/T6).
     @State private var thuChon: Set<Int>
     @State private var showGioThapDiem = false
+    /// Chỉ có ý nghĩa khi dieuKien == "DonToiThieuBac". Xem BacThangRow.
+    @State private var bacThangRows: [BacThangRow]
     @State private var hangToiThieu: String
     @State private var mucDich: String
     @State private var dangHoatDong: Bool
@@ -199,6 +234,7 @@ private struct VoucherEditSheet: View {
         ("DonThuN", "Đơn thứ N (tự nhập)"),
         ("QuayLai", "Khách lâu không mua quay lại (không dùng liên tiếp)"),
         ("KhungGioThapDiem", "Khung giờ thấp điểm"),
+        ("DonToiThieuBac", "Bậc thang theo giá trị đơn"),
     ]
     // Khớp VoucherLoaiGiam bên Backend.
     private let loaiGiamOptions = [
@@ -235,6 +271,8 @@ private struct VoucherEditSheet: View {
         _gioBatDau = State(initialValue: existing?.gioBatDau ?? 14)
         _gioKetThuc = State(initialValue: existing?.gioKetThuc ?? 16)
         _thuChon = State(initialValue: Set((existing?.thuTrongTuan ?? "").split(separator: ",").compactMap { Int($0) }))
+        let parsedBacThang = BacThangRow.parse(existing?.bacThang)
+        _bacThangRows = State(initialValue: parsedBacThang.isEmpty ? [BacThangRow(nguong: 0, giam: 0)] : parsedBacThang)
         _hangToiThieu = State(initialValue: existing?.hangToiThieu ?? "")
         _mucDich = State(initialValue: existing?.mucDich ?? "")
         _dangHoatDong = State(initialValue: existing?.dangHoatDong ?? true)
@@ -255,34 +293,36 @@ private struct VoucherEditSheet: View {
                     TextField("Hiện cho khách khi chọn voucher", text: $moTa, axis: .vertical)
                         .lineLimit(2...4)
                 }
-                Section("Loại giảm") {
-                    Picker("Loại giảm", selection: $loaiGiam) {
-                        ForEach(loaiGiamOptions, id: \.0) { value, label in
-                            Text(label).tag(value)
+                if dieuKien != "DonToiThieuBac" {
+                    Section("Loại giảm") {
+                        Picker("Loại giảm", selection: $loaiGiam) {
+                            ForEach(loaiGiamOptions, id: \.0) { value, label in
+                                Text(label).tag(value)
+                            }
                         }
                     }
-                }
-                if loaiGiam == "PhanTram" {
-                    Section("Phần trăm giảm") {
-                        HStack {
-                            TextField("0", value: $phanTramGiam, format: .number)
-                                .keyboardType(.numberPad)
-                            Text("%").foregroundColor(.textMuted)
+                    if loaiGiam == "PhanTram" {
+                        Section("Phần trăm giảm") {
+                            HStack {
+                                TextField("0", value: $phanTramGiam, format: .number)
+                                    .keyboardType(.numberPad)
+                                Text("%").foregroundColor(.textMuted)
+                            }
                         }
-                    }
-                    Section("Trần giảm tối đa (0 = không giới hạn)") {
-                        HStack {
-                            TextField("0", value: $giamToiDa, format: .number)
-                                .keyboardType(.numberPad)
-                            Text("đ").foregroundColor(.textMuted)
+                        Section("Trần giảm tối đa (0 = không giới hạn)") {
+                            HStack {
+                                TextField("0", value: $giamToiDa, format: .number)
+                                    .keyboardType(.numberPad)
+                                Text("đ").foregroundColor(.textMuted)
+                            }
                         }
-                    }
-                } else {
-                    Section("Số tiền giảm") {
-                        HStack {
-                            TextField("0", value: $soTienGiam, format: .number)
-                                .keyboardType(.numberPad)
-                            Text("đ").foregroundColor(.textMuted)
+                    } else {
+                        Section("Số tiền giảm") {
+                            HStack {
+                                TextField("0", value: $soTienGiam, format: .number)
+                                    .keyboardType(.numberPad)
+                                Text("đ").foregroundColor(.textMuted)
+                            }
                         }
                     }
                 }
@@ -329,6 +369,30 @@ private struct VoucherEditSheet: View {
                         Text("Thứ trong tuần áp dụng")
                     } footer: {
                         Text(thuChon.isEmpty ? "Đang áp dụng mọi ngày trong tuần." : "Chỉ áp dụng vào: \(thuChon.sorted().compactMap { tenThuTrongTuan[$0] }.joined(separator: ", "))")
+                    }
+                }
+                if dieuKien == "DonToiThieuBac" {
+                    Section {
+                        ForEach($bacThangRows) { $row in
+                            HStack {
+                                TextField("Ngưỡng đơn", value: $row.nguong, format: .number)
+                                    .keyboardType(.numberPad)
+                                Text("đ →").foregroundColor(.textMuted)
+                                TextField("Giảm", value: $row.giam, format: .number)
+                                    .keyboardType(.numberPad)
+                                Text("đ").foregroundColor(.textMuted)
+                            }
+                        }
+                        .onDelete { bacThangRows.remove(atOffsets: $0) }
+                        Button {
+                            bacThangRows.append(BacThangRow(nguong: 0, giam: 0))
+                        } label: {
+                            Label("Thêm bậc", systemImage: "plus.circle")
+                        }
+                    } header: {
+                        Text("Các bậc giảm giá")
+                    } footer: {
+                        Text("Đơn đạt ngưỡng CAO NHẤT nào thì giảm đúng số tiền của bậc đó (không cộng dồn nhiều bậc). Mốc nên cao hơn giá trị đơn trung bình hiện tại, số tiền giảm nên nhỏ hơn giá trị phần khách cần mua thêm để đạt mốc — nếu không quán lỗ dù doanh thu tăng.")
                     }
                 }
                 Section("Hạng khách yêu cầu (cộng thêm vào điều kiện trên)") {
@@ -382,10 +446,11 @@ private struct VoucherEditSheet: View {
                 .controlSize(.large)
                 .disabled(ma.trimmingCharacters(in: .whitespaces).isEmpty
                     || ten.trimmingCharacters(in: .whitespaces).isEmpty
-                    || (loaiGiam == "PhanTram" ? (phanTramGiam <= 0 || phanTramGiam > 100) : soTienGiam <= 0)
+                    || (dieuKien != "DonToiThieuBac" && (loaiGiam == "PhanTram" ? (phanTramGiam <= 0 || phanTramGiam > 100) : soTienGiam <= 0))
                     || (dieuKien == "DonToiThieu" && donToiThieu <= 0)
                     || (dieuKien == "DonThuN" && soDonApDung < 2)
                     || (dieuKien == "KhungGioThapDiem" && gioBatDau >= gioKetThuc)
+                    || (dieuKien == "DonToiThieuBac" && BacThangRow.encode(bacThangRows) == nil)
                     || saving)
                 .padding(.horizontal, 16)
                 .padding(.top, 10)
@@ -435,6 +500,7 @@ private struct VoucherEditSheet: View {
             gioBatDau: dieuKien == "KhungGioThapDiem" ? gioBatDau : nil,
             gioKetThuc: dieuKien == "KhungGioThapDiem" ? gioKetThuc : nil,
             thuTrongTuan: dieuKien == "KhungGioThapDiem" && !thuChon.isEmpty ? thuChon.sorted().map(String.init).joined(separator: ",") : nil,
+            bacThang: dieuKien == "DonToiThieuBac" ? BacThangRow.encode(bacThangRows) : nil,
             mucDich: mucDich.isEmpty ? nil : mucDich,
             hangToiThieu: hangToiThieu.isEmpty ? nil : hangToiThieu,
             dangHoatDong: dangHoatDong)
