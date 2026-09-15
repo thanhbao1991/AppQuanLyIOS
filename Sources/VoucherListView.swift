@@ -151,7 +151,7 @@ private struct VoucherRowView: View {
         case "KhungGioThapDiem":
             let thuText = (item.thuTrongTuan ?? "").split(separator: ",").compactMap { Int($0) }.sorted()
                 .compactMap { tenThuNganGon[$0] }.joined(separator: "/")
-            return "Điều kiện: khung \(item.gioBatDau ?? 0)h-\(item.gioKetThuc ?? 0)h\(thuText.isEmpty ? "" : " (\(thuText))"), đơn thứ 2+ trong ngày"
+            return "Điều kiện: khung \(item.gioBatDau ?? 0)h-\(item.gioKetThuc ?? 0)h\(thuText.isEmpty ? "" : " (\(thuText))")"
         default: return "Điều kiện: \(item.dieuKien)"
         }
     }
@@ -198,7 +198,7 @@ private struct VoucherEditSheet: View {
         ("KhongDieuKien", "Không điều kiện (dịp/lễ — tự bật tắt)"),
         ("DonThuN", "Đơn thứ N (tự nhập)"),
         ("QuayLai", "Khách lâu không mua quay lại (không dùng liên tiếp)"),
-        ("KhungGioThapDiem", "Khung giờ thấp điểm (đơn thứ 2+ trong ngày)"),
+        ("KhungGioThapDiem", "Khung giờ thấp điểm"),
     ]
     // Khớp VoucherLoaiGiam bên Backend.
     private let loaiGiamOptions = [
@@ -315,7 +315,7 @@ private struct VoucherEditSheet: View {
                     Section("Khung giờ áp dụng") {
                         Stepper("Bắt đầu: \(gioBatDau)h", value: $gioBatDau, in: 0...22)
                         Stepper("Kết thúc: \(gioKetThuc)h", value: $gioKetThuc, in: (gioBatDau + 1)...23)
-                        Text("Chỉ áp dụng cho đơn THỨ 2 TRỞ LÊN trong ngày của khách — tránh khách trì hoãn đơn chính để chờ giờ rẻ.")
+                        Text("Áp dụng cho MỌI đơn trong khung giờ này (không giới hạn đơn thứ mấy trong ngày) — nên đặt % giảm nhỏ + trần tối đa thấp để hạn chế rủi ro khách trì hoãn đơn để chờ giờ rẻ.")
                             .font(.caption2).foregroundColor(.textMuted)
                     }
                     Section {
