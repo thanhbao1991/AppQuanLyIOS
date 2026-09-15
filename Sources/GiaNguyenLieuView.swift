@@ -1,3 +1,4 @@
+import Charts
 import SwiftUI
 
 /// Công cụ tra giá nguyên liệu (Menu > Công cụ) — chọn 1 nguyên liệu rồi xem 10 lần mua gần nhất
@@ -47,10 +48,15 @@ struct GiaNguyenLieuView: View {
                     }
                 }
             } else if selected != nil {
-                Section("10 lần mua gần nhất") {
-                    if items.isEmpty {
+                if items.isEmpty {
+                    Section("10 lần mua gần nhất") {
                         Text("Chưa có lần mua nào.").foregroundColor(.textMuted)
-                    } else {
+                    }
+                } else {
+                    Section("Diễn biến giá") {
+                        GiaNguyenLieuChart(items: items)
+                    }
+                    Section("10 lần mua gần nhất") {
                         ForEach(items) { item in
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
@@ -88,5 +94,50 @@ struct GiaNguyenLieuView: View {
 private extension Double {
     var cleanString: String {
         self.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(self)) : String(self)
+    }
+}
+
+/// Đường xu hướng đơn giá qua các lần mua — khớp phong cách KetQua6ThangChart (TinhLuongView).
+/// `items` từ API xếp mới→cũ (NgayGio desc), đảo lại để trục X chạy trái→phải theo thời gian.
+private struct GiaNguyenLieuChart: View {
+    let items: [ChiTieuHangNgayDto]
+
+    private var points: [(id: String, label: String, donGia: Double)] {
+        items.reversed().map { item in
+            let date = HoaDonFormatting.parseIso(item.ngayGio)
+            let label: String
+            if let date {
+                let f = DateFormatter()
+                f.dateFormat = "dd/MM"
+                f.locale = Locale(identifier: "vi_VN")
+                label = f.string(from: date)
+            } else {
+                label = "?"
+            }
+            return (id: item.id, label: label, donGia: item.donGia)
+        }
+    }
+
+    var body: some View {
+        Chart(points, id: \.id) { point in
+            LineMark(x: .value("Ngày", point.label), y: .value("Đơn giá", point.donGia))
+                .foregroundStyle(Color.brandPrimary)
+            PointMark(x: .value("Ngày", point.label), y: .value("Đơn giá", point.donGia))
+                .foregroundStyle(Color.brandPrimary)
+                .symbolSize(60)
+        }
+        .chartXAxis { AxisMarks(values: .automatic) { AxisValueLabel().font(.caption2) } }
+        .chartYAxis {
+            AxisMarks(position: .leading) { value in
+                AxisGridLine()
+                AxisValueLabel {
+                    if let d = value.as(Double.self) {
+                        Text(HoaDonFormatting.moneyShort(d)).font(.caption2)
+                    }
+                }
+            }
+        }
+        .frame(height: 160)
+        .padding(.vertical, 8)
     }
 }
