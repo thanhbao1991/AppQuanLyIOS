@@ -420,19 +420,7 @@ private struct VoucherEditSheet: View {
                         Text("Chỉ áp dụng cho khách CHƯA TỪNG có đơn nào (kể cả không dùng voucher) đạt đủ số lượng này — nếu khách đã tự mua đủ ít nhất 1 lần trước đây, voucher không tạo hành vi mới nên không hiện nữa. Vì vậy mỗi khách chỉ dùng được ĐÚNG 1 LẦN trong đời.")
                     }
                 }
-                if dieuKien == "UpsizeMonMoi" {
-                    Section {
-                        HStack {
-                            TextField("0", value: $giamToiDa, format: .number)
-                                .keyboardType(.numberPad)
-                            Text("đ").foregroundColor(.textMuted)
-                        }
-                    } header: {
-                        Text("Trần giảm tối đa mỗi đơn (bắt buộc)")
-                    } footer: {
-                        Text("Giảm = Số tiền giảm (ở trên) × số ly Size L trong đơn, nhưng KHÔNG VƯỢT trần này — chặn khách gom nhiều ly Size L 1 đơn để ăn hết lượt duy nhất quá đà. Vd Số tiền giảm 5.000đ, trần 20.000đ, đơn có 10 ly Size L: chỉ giảm 20.000đ (tương đương 4 ly), 6 ly còn lại tính đủ tiền.")
-                    }
-                } else {
+                if dieuKien != "UpsizeMonMoi" {
                     Section {
                         Toggle("Chỉ áp dụng khi đơn có Size L", isOn: $yeuCauSizeL)
                     } footer: {
@@ -537,7 +525,7 @@ private struct VoucherEditSheet: View {
             soTienGiam: soTienGiam,
             loaiGiam: loaiGiam,
             phanTramGiam: loaiGiam == "PhanTram" ? phanTramGiam : nil,
-            giamToiDa: (loaiGiam == "PhanTram" || dieuKien == "UpsizeMonMoi") && giamToiDa > 0 ? giamToiDa : nil,
+            giamToiDa: loaiGiam == "PhanTram" && giamToiDa > 0 ? giamToiDa : nil,
             donToiThieu: dieuKien == "DonToiThieu" ? donToiThieu : nil,
             dieuKien: dieuKien,
             soDonApDung: dieuKien == "DonThuN" ? soDonApDung : nil,
