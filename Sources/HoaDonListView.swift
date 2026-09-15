@@ -128,6 +128,7 @@ struct HoaDonListView: View {
                             // biệt trạng thái, cộng badge số đếm góc trên-phải.
                             Image(systemName: activeFilter != nil ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
                                 .font(.title3)
+                                .foregroundColor(.white)
                                 .overlay(alignment: .topTrailing) {
                                     if activeFilter != nil {
                                         Text("\(cachedSorted.count)")
