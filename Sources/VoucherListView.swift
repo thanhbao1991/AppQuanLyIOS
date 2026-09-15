@@ -164,6 +164,8 @@ private struct VoucherRowView: View {
             return "Điều kiện: đơn từ \(item.soLuongToiThieu ?? 0) ly, chỉ khách CHƯA TỪNG tự mua đủ số lượng này (dùng được 1 lần)"
         case "UpsizeMonMoi":
             return "Điều kiện: quà tân thành viên — tặng Size L miễn phí, ĐÚNG 1 LẦN/tài khoản"
+        case "ToppingMienPhi":
+            return "Điều kiện: đơn có từ 2 topping trở lên, ĐÚNG 1 LẦN/tài khoản — giảm bằng giá topping rẻ nhất trong đơn"
         default: return "Điều kiện: \(item.dieuKien)"
         }
     }
@@ -172,6 +174,9 @@ private struct VoucherRowView: View {
         if item.dieuKien == "DonToiThieuBac" {
             let max = BacThangRow.parse(item.bacThang).map(\.giam).max() ?? 0
             return max > 0 ? "-\(Int(max).formatted())đ" : "—"
+        }
+        if item.dieuKien == "ToppingMienPhi" {
+            return "Topping thứ 2 free"
         }
         if item.loaiGiam == "PhanTram" {
             return "-\(Int(item.phanTramGiam ?? 0))%"
@@ -249,6 +254,7 @@ private struct VoucherEditSheet: View {
         ("DonToiThieuBac", "Bậc thang theo giá trị đơn"),
         ("SoLuongToiThieu", "Số lượng ly tối thiểu"),
         ("UpsizeMonMoi", "Quà tân thành viên (Size L, 1 lần/tài khoản)"),
+        ("ToppingMienPhi", "Topping thứ 2 miễn phí (1 lần/tài khoản)"),
     ]
     // Khớp VoucherLoaiGiam bên Backend.
     private let loaiGiamOptions = [
@@ -309,7 +315,7 @@ private struct VoucherEditSheet: View {
                     TextField("Hiện cho khách khi chọn voucher", text: $moTa, axis: .vertical)
                         .lineLimit(2...4)
                 }
-                if dieuKien != "DonToiThieuBac" {
+                if dieuKien != "DonToiThieuBac" && dieuKien != "ToppingMienPhi" {
                     Section("Loại giảm") {
                         Picker("Loại giảm", selection: $loaiGiam) {
                             ForEach(loaiGiamOptions, id: \.0) { value, label in
@@ -420,7 +426,15 @@ private struct VoucherEditSheet: View {
                         Text("Chỉ áp dụng cho khách CHƯA TỪNG có đơn nào (kể cả không dùng voucher) đạt đủ số lượng này — nếu khách đã tự mua đủ ít nhất 1 lần trước đây, voucher không tạo hành vi mới nên không hiện nữa. Vì vậy mỗi khách chỉ dùng được ĐÚNG 1 LẦN trong đời.")
                     }
                 }
-                if dieuKien != "UpsizeMonMoi" {
+                if dieuKien == "ToppingMienPhi" {
+                    Section {
+                        Text("Không cần cấu hình số tiền giảm — tự động giảm ĐÚNG giá của topping RẺ NHẤT trong đơn (đảm bảo luôn đúng nghĩa \"miễn phí 1 topping\", không lỗ hơn giá trị thật dù giá topping khác nhau).")
+                            .font(.caption).foregroundColor(.textMuted)
+                    } header: {
+                        Text("Cách tính giảm")
+                    }
+                }
+                if dieuKien != "UpsizeMonMoi" && dieuKien != "ToppingMienPhi" {
                     Section {
                         Toggle("Chỉ áp dụng khi đơn có Size L", isOn: $yeuCauSizeL)
                     } footer: {
@@ -478,7 +492,7 @@ private struct VoucherEditSheet: View {
                 .controlSize(.large)
                 .disabled(ma.trimmingCharacters(in: .whitespaces).isEmpty
                     || ten.trimmingCharacters(in: .whitespaces).isEmpty
-                    || (dieuKien != "DonToiThieuBac" && (loaiGiam == "PhanTram" ? (phanTramGiam <= 0 || phanTramGiam > 100) : soTienGiam <= 0))
+                    || (dieuKien != "DonToiThieuBac" && dieuKien != "ToppingMienPhi" && (loaiGiam == "PhanTram" ? (phanTramGiam <= 0 || phanTramGiam > 100) : soTienGiam <= 0))
                     || (dieuKien == "DonToiThieu" && donToiThieu <= 0)
                     || (dieuKien == "DonThuN" && soDonApDung < 2)
                     || (dieuKien == "KhungGioThapDiem" && gioBatDau >= gioKetThuc)
@@ -534,7 +548,7 @@ private struct VoucherEditSheet: View {
             thuTrongTuan: dieuKien == "KhungGioThapDiem" && !thuChon.isEmpty ? thuChon.sorted().map(String.init).joined(separator: ",") : nil,
             bacThang: dieuKien == "DonToiThieuBac" ? BacThangRow.encode(bacThangRows) : nil,
             soLuongToiThieu: dieuKien == "SoLuongToiThieu" ? soLuongToiThieu : nil,
-            yeuCauSizeL: dieuKien != "UpsizeMonMoi" && yeuCauSizeL,
+            yeuCauSizeL: dieuKien != "UpsizeMonMoi" && dieuKien != "ToppingMienPhi" && yeuCauSizeL,
             mucDich: mucDich.isEmpty ? nil : mucDich,
             hangToiThieu: hangToiThieu.isEmpty ? nil : hangToiThieu,
             dangHoatDong: dangHoatDong)
