@@ -378,26 +378,11 @@ private struct QuantityPriceRow: View {
                 .foregroundColor(.brandPrimary)
                 .frame(width: unit, alignment: .leading)
 
-                HStack(spacing: 4) {
-                    Button {
-                        thanhTien = max(0, thanhTien - 5000)
-                    } label: {
-                        Text("➖").font(.system(size: 22))
-                    }
-                    .disabled(thanhTien <= 0)
-                    TextField("0", value: $thanhTien, format: .number)
-                        .keyboardType(.numberPad)
-                        .multilineTextAlignment(.trailing)
-                        .textFieldStyle(.roundedBorder)
-                    Button {
-                        thanhTien += 5000
-                    } label: {
-                        Text("➕").font(.system(size: 22))
-                    }
-                }
-                .buttonStyle(.plain)
-                .foregroundColor(.brandPrimary)
-                .frame(width: unit * 1.3, alignment: .center)
+                TextField("0", value: $thanhTien, format: .number)
+                    .keyboardType(.numberPad)
+                    .multilineTextAlignment(.trailing)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: unit * 1.3, alignment: .center)
 
                 VStack(alignment: .trailing, spacing: 1) {
                     Text(HoaDonFormatting.money(donGia))
