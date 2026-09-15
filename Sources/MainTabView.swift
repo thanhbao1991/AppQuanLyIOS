@@ -21,19 +21,21 @@ enum MainTab: CaseIterable {
         }
     }
 
-    /// Emoji thay SF Symbol (đổi 2026-09-13, đồng bộ phong cách emoji đã dùng cho ActionButtonView) —
-    /// emoji không đổi màu theo .foregroundColor như SF Symbol, nên tab đang chọn được đánh dấu bằng
-    /// nền tròn nhạt phía sau icon thay vì đổi màu icon (xem tabBar).
+    /// Đổi lại SF Symbol (revert 2026-09-15, đợt đổi sang emoji 2026-09-13 chỉ áp dụng phần còn lại
+    /// của app) — cho phép tint theo .foregroundColor để đánh dấu tab đang chọn (xem tabBar).
     var icon: String {
         switch self {
-        case .thongKe: "📊"
-        case .hoaDon: "🧾"
-        case .thanhToan: "💳"
-        case .congNo: "⚠️"
-        case .chiTieu: "💵"
-        case .menu: "⚙️"
+        case .thongKe: "chart.pie"
+        case .hoaDon: "doc.text"
+        case .thanhToan: "creditcard"
+        case .congNo: "exclamationmark.circle"
+        case .chiTieu: "banknote"
+        case .menu: "ellipsis.circle"
         }
     }
+
+    /// Bản .fill cùng tên — hiện khi tab đang được chọn, để khớp cảm giác native TabView.
+    var iconFilled: String { "\(icon).fill" }
 }
 
 struct MainTabView: View {
@@ -84,15 +86,12 @@ struct MainTabView: View {
                     selection = tab
                 } label: {
                     VStack(spacing: 3) {
-                        Text(tab.icon)
-                            .font(.system(size: 18))
-                            .frame(width: 30, height: 30)
-                            .background(selection == tab ? Color.brandPrimary.opacity(0.15) : Color.clear)
-                            .clipShape(Circle())
+                        Image(systemName: selection == tab ? tab.iconFilled : tab.icon)
+                            .font(.system(size: 20))
                         Text(tab.label)
                             .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(selection == tab ? .brandPrimary : .textMuted)
                     }
+                    .foregroundColor(selection == tab ? .brandPrimary : .textMuted)
                     .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.plain)
