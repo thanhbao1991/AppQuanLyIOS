@@ -171,9 +171,45 @@ struct CongNoFooterView: View {
     @State private var payAllInput = ""
     @State private var payingAll = false
     @State private var payAllResultMessage: String?
+    /// true = thu tiền mặt, false = chuyển khoản — chọn qua 1 trong 2 nút, dùng chung 1 luồng xác
+    /// nhận/thực thi payAll() bên dưới, khớp cách thuTien(isCash:) nhận cùng 1 tham số ở từng đơn
+    /// (HoaDonDetailView, nút F1/F4).
+    @State private var payAllIsCash = true
+    /// Tổ hợp hoá đơn khớp đúng số tiền khách trả thiếu (xem findMatchingSubset) — chờ xác nhận
+    /// riêng ở alert thứ 2 trước khi thu, KHÔNG tự động thu ngay khi tìm thấy khớp.
+    @State private var matchedSubset: [HoaDonListDto]?
+    @State private var showMatchConfirm = false
+    @State private var showMultiCustomerError = false
 
     private var totalText: String {
         HoaDonFormatting.money(items.reduce(0) { $0 + $1.conLai })
+    }
+
+    /// Định danh khách để so "cùng 1 người" — ưu tiên `khachHangId` (khách đã có hồ sơ, chắc chắn
+    /// đúng); khách lẻ (không có `khachHangId`) coi là CÙNG người chỉ khi trùng cả tên lẫn SĐT hiển
+    /// thị, vì tên trùng (vd nhiều "Khách lẻ") không đủ để gộp.
+    private func customerKey(_ item: HoaDonListDto) -> String {
+        if let id = item.khachHangId, !id.isEmpty { return "kh:\(id)" }
+        return "le:\(item.tenKhachHangText ?? "")|\(item.soDienThoaiText ?? "")"
+    }
+
+    /// Danh sách Công nợ lọc theo món/ghi chú có thể gộp NHIỀU khách khác nhau — thu hàng loạt (Tiền
+    /// mặt/Chuyển khoản) chỉ có ý nghĩa khi toàn bộ `items` đang hiện là CÙNG 1 người, nếu không con
+    /// số tổng cộng dồn chẳng còn nghĩa gì (tiền của khách A lẫn vào nợ khách B). Check này chạy
+    /// TRƯỚC MỌI THỨ — trước cả khi mở alert nhập số tiền, chứ không chỉ trước lúc gọi API.
+    private var isSingleCustomer: Bool {
+        items.isEmpty || Set(items.map(customerKey)).count <= 1
+    }
+
+    private var multiCustomerNames: String {
+        var seen = Set<String>()
+        var names: [String] = []
+        for item in items {
+            let key = customerKey(item)
+            guard seen.insert(key).inserted else { continue }
+            names.append(item.tenKhachHangText?.isEmpty == false ? item.tenKhachHangText! : "Khách lẻ")
+        }
+        return names.joined(separator: ", ")
     }
 
     /// Nợ phát sinh hôm nay — cùng logic gộp NgayNo với items, chỉ lọc thêm theo ngày hiện tại.
@@ -204,9 +240,20 @@ struct CongNoFooterView: View {
 
             Group {
                 if showSendButton && !items.isEmpty {
-                    footerColumnButton(icon: "💵", label: "Thanh toán", color: .successColor) {
-                        payAllInput = ""
-                        showPayAllConfirm = true
+                    footerColumnButton(icon: "💵", label: "Tiền mặt", color: .successColor) {
+                        startPayAll(isCash: true)
+                    }
+                    .disabled(payingAll)
+                } else {
+                    EmptyView()
+                }
+            }
+            .frame(maxWidth: .infinity)
+
+            Group {
+                if showSendButton && !items.isEmpty {
+                    footerColumnButton(icon: "💳", label: "Chuyển khoản", color: .brandPrimary) {
+                        startPayAll(isCash: false)
                     }
                     .disabled(payingAll)
                 } else {
@@ -225,11 +272,11 @@ struct CongNoFooterView: View {
             .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .padding(.horizontal)
-        .padding(.vertical, 8)
+        .padding(.vertical, 4)
         .overlay { if payingAll { ProgressView() } }
         .alert(items.count > 1 ? "Xác nhận thanh toán toàn bộ nợ" : "Xác nhận thanh toán", isPresented: $showPayAllConfirm) {
             // Chỉ bắt gõ lại số tiền khi thu GỘP nhiều hoá đơn cùng lúc — rủi ro bấm nhầm hàng loạt.
-            // Chỉ 1 đơn thì hỏi xác nhận thường là đủ, khớp cách xác nhận F1 trong chi tiết đơn.
+            // Chỉ 1 đơn thì hỏi xác nhận thường là đủ, khớp cách xác nhận F1/F4 trong chi tiết đơn.
             if items.count > 1 {
                 TextField("Nhập lại \(totalText)", text: $payAllInput)
                     .keyboardType(.numberPad)
@@ -237,9 +284,21 @@ struct CongNoFooterView: View {
             Button("Xác nhận") { Task { await payAll() } }
             Button("Huỷ", role: .cancel) {}
         } message: {
+            let ptText = payAllIsCash ? "tiền mặt" : "chuyển khoản"
             Text(items.count > 1
-                 ? "Thu tiền mặt \(items.count) hoá đơn, tổng \(totalText). Nhập lại đúng số tiền để xác nhận."
-                 : "Thu tiền mặt \(totalText) cho hoá đơn này?")
+                 ? "Thu \(ptText) \(items.count) hoá đơn, tổng \(totalText). Nhập đúng tổng để thu hết, hoặc nhập số khách trả thiếu để hệ thống tự tìm tổ hợp hoá đơn cộng khớp đúng số đó."
+                 : "Thu \(ptText) \(totalText) cho hoá đơn này?")
+        }
+        .alert("Không thể thu hàng loạt", isPresented: $showMultiCustomerError) {
+            Button("OK") {}
+        } message: {
+            Text("Danh sách đang hiện gồm nhiều khách khác nhau (\(multiCustomerNames)) — chỉ thu hàng loạt được khi TẤT CẢ hoá đơn cùng 1 khách. Hãy tìm kiếm/lọc lại cho còn đúng 1 người rồi thử lại.")
+        }
+        .alert("Khớp tổ hợp nợ", isPresented: $showMatchConfirm) {
+            Button("Xác nhận") { Task { await payMatchedSubset() } }
+            Button("Huỷ", role: .cancel) { matchedSubset = nil }
+        } message: {
+            Text(matchConfirmMessage)
         }
         .alert("Kết quả", isPresented: Binding(
             get: { payAllResultMessage != nil },
@@ -251,14 +310,85 @@ struct CongNoFooterView: View {
         }
     }
 
+    /// Nội dung alert xác nhận khớp tổ hợp — liệt kê tên khách + ngày nợ từng hoá đơn trong tổ hợp
+    /// tìm được để nhân viên tự soát lại đúng người/đúng đơn trước khi bấm Xác nhận (danh sách Công
+    /// nợ có thể gộp nhiều khách khác nhau khi lọc theo món/ghi chú — dù đã chặn ở bước check "cùng 1
+    /// khách", vẫn hiện chi tiết để soát luôn cả trường hợp trùng tên/nhiều đơn dễ nhầm).
+    private var matchConfirmMessage: String {
+        guard let matchedSubset else { return "" }
+        let ptText = payAllIsCash ? "tiền mặt" : "chuyển khoản"
+        let danhSach = matchedSubset
+            .sorted { ($0.ngayNo ?? "") < ($1.ngayNo ?? "") }
+            .map { item in
+                let ten = item.tenKhachHangText?.isEmpty == false ? item.tenKhachHangText! : "Khách lẻ"
+                return "\(ten) (\(HoaDonFormatting.congNoTime(item.ngayNo)), \(HoaDonFormatting.money(item.conLai)))"
+            }.joined(separator: "\n")
+        let conLaiCount = items.count - matchedSubset.count
+        let conLaiTotal = HoaDonFormatting.money(items.filter { i in !matchedSubset.contains { $0.id == i.id } }.reduce(0) { $0 + $1.conLai })
+        return "Tìm thấy \(matchedSubset.count) hoá đơn cộng đúng \(payAllInput.filter(\.isNumber))đ:\n\(danhSach)\n\nThu \(ptText) đủ các hoá đơn này? Còn lại \(conLaiCount) hoá đơn, tổng \(conLaiTotal) vẫn nợ."
+    }
+
+    /// Tìm 1 tổ hợp trong `items` mà tổng conLai cộng lại khớp CHÍNH XÁC `target`, ƯU TIÊN hoá đơn CŨ
+    /// vào giỏ trước. Thuật toán "lấp đầy giỏ" đơn giản: sắp hoá đơn theo `ngayNo` TĂNG DẦN (cũ →
+    /// mới), rồi lần lượt LẤY từng hoá đơn cho vào giỏ (`stack`); nếu sau đó không dò ra đủ (dư âm/
+    /// hết hoá đơn) thì GỠ hoá đơn vừa lấy ra, chuyển sang thử BỎ QUA nó rồi lấy hoá đơn kế tiếp. Thử
+    /// "lấy" trước "bỏ qua" ở mỗi bước → tổ hợp tìm được luôn ưu tiên hoá đơn cũ nhất có thể.
+    ///
+    /// Chặn bằng ngân sách số bước dò (`stepsBudget`) thay vì giới hạn số lượng hoá đơn — dữ liệu
+    /// thực tế (giá tiền đa dạng) dò ra rất nhanh dù danh sách dài; chỉ input cực đoan mới chạm ngân
+    /// sách, khi đó coi như không dò được (an toàn, không sai kết quả, chỉ là chưa tìm ra).
+    ///
+    /// Nếu có NHIỀU tổ hợp cùng khớp đúng số tiền, chỉ lấy tổ hợp đầu tiên dò ra được — luôn hiện chi
+    /// tiết tên/ngày/tiền để nhân viên tự xác nhận đúng ý trước khi thu, không coi đây là kết quả
+    /// chắc chắn duy nhất đúng.
+    private func findMatchingSubset(target: Int) -> [HoaDonListDto]? {
+        guard target > 0, !items.isEmpty else { return nil }
+        let oldestFirst = items.sorted { ($0.ngayNo ?? "") < ($1.ngayNo ?? "") }
+        let amounts = oldestFirst.map { Int($0.conLai.rounded()) }
+
+        var stack: [Int] = []
+        var stepsBudget = 2_000_000
+
+        func dfs(_ idx: Int, _ remaining: Int) -> Bool {
+            stepsBudget -= 1
+            if stepsBudget <= 0 { return false }
+            if remaining == 0 { return true }
+            if idx >= amounts.count || remaining < 0 { return false }
+
+            // Thử LẤY hoá đơn idx vào giỏ trước (ưu tiên hoá đơn cũ).
+            stack.append(idx)
+            if dfs(idx + 1, remaining - amounts[idx]) { return true }
+            stack.removeLast() // không khớp — gỡ ra
+
+            // Không được thì thử BỎ QUA hoá đơn idx, sang hoá đơn kế tiếp.
+            return dfs(idx + 1, remaining)
+        }
+
+        guard dfs(0, target) else { return nil }
+        return stack.map { oldestFirst[$0] }
+    }
+
+    /// Bước kiểm tra ĐẦU TIÊN trước khi mở bất kỳ alert thu tiền nào — chặn hẳn nếu items đang hiện
+    /// không cùng 1 khách (xem isSingleCustomer). Chỉ khi qua được check này mới cho gõ số tiền/chọn
+    /// phương thức, tránh cộng dồn nợ của nhiều người khác nhau vào 1 lần thu.
+    private func startPayAll(isCash: Bool) {
+        guard isSingleCustomer else {
+            showMultiCustomerError = true
+            return
+        }
+        payAllIsCash = isCash
+        payAllInput = ""
+        showPayAllConfirm = true
+    }
+
     private func footerColumnButton(icon: String, label: String, color: Color, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: 2) {
-                Text(icon)
-                Text(label).font(.caption2.bold())
+            VStack(spacing: 1) {
+                Text(icon).font(.footnote)
+                Text(label).font(.system(size: 10).bold()).lineLimit(1).minimumScaleFactor(0.8)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
+            .padding(.vertical, 4)
         }
         .buttonStyle(.bordered)
         .tint(color)
@@ -270,26 +400,52 @@ struct CongNoFooterView: View {
     private func payAll() async {
         if items.count > 1 {
             let entered = payAllInput.filter(\.isNumber)
-            let expected = String(Int(items.reduce(0) { $0 + $1.conLai }.rounded()))
-            guard !entered.isEmpty, entered == expected else {
-                payAllResultMessage = "Số tiền nhập không khớp \(totalText) — đã huỷ, không có gì thay đổi."
+            let expected = Int(items.reduce(0) { $0 + $1.conLai }.rounded())
+            guard !entered.isEmpty, let enteredValue = Int(entered) else {
+                payAllResultMessage = "Vui lòng nhập số tiền hợp lệ."
+                return
+            }
+            if enteredValue != expected {
+                // Không khớp tổng — thử tìm tổ hợp hoá đơn bất kỳ cộng đúng số khách trả thiếu
+                // (xem findMatchingSubset) trước khi báo huỷ hẳn.
+                if let match = findMatchingSubset(target: enteredValue) {
+                    matchedSubset = match
+                    showMatchConfirm = true
+                } else {
+                    payAllResultMessage = "Số tiền nhập không khớp \(totalText), cũng không khớp tổ hợp nợ nào — đã huỷ, không có gì thay đổi."
+                }
                 return
             }
         }
 
+        await executeThu(items)
+    }
+
+    /// Bấm Xác nhận trên alert "Khớp tổ hợp nợ" — chỉ thu đúng tổ hợp đã tìm thấy, KHÔNG đụng tới các
+    /// hoá đơn còn lại (vẫn giữ nguyên trạng thái nợ).
+    private func payMatchedSubset() async {
+        guard let matchedSubset else { return }
+        await executeThu(matchedSubset)
+        self.matchedSubset = nil
+    }
+
+    /// Thu tuần tự từng hoá đơn trong `targets` qua F1/F4 (giống bấm tay "Tiền mặt"/"Chuyển khoản"
+    /// trong chi tiết đơn) — dùng chung cho cả thu hết (payAll) lẫn thu đúng tổ hợp đã khớp tìm được.
+    private func executeThu(_ targets: [HoaDonListDto]) async {
         payingAll = true
         var failCount = 0
-        for item in items {
+        for item in targets {
             let result = await APIClient.shared.thuTien(
-                hoaDonId: item.id, isCash: true, soTien: item.conLai,
+                hoaDonId: item.id, isCash: payAllIsCash, soTien: item.conLai,
                 ten: item.tenKhachHangText ?? "Khách lẻ", khachHangId: item.khachHangId
             )
             if !result.success { failCount += 1 }
         }
         payingAll = false
+        let ptText = payAllIsCash ? "tiền mặt" : "chuyển khoản"
         payAllResultMessage = failCount == 0
-            ? "Đã thu tiền mặt toàn bộ \(items.count) hoá đơn."
-            : "Thu xong nhưng \(failCount)/\(items.count) hoá đơn lỗi — kiểm tra lại."
+            ? "Đã thu \(ptText) \(targets.count) hoá đơn."
+            : "Thu xong nhưng \(failCount)/\(targets.count) hoá đơn lỗi — kiểm tra lại."
     }
 
     /// Render toàn bộ danh sách (kể cả phần cần cuộn) thành 1 ảnh, copy vào clipboard để dán thẳng
