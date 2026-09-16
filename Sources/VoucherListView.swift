@@ -166,6 +166,8 @@ private struct VoucherRowView: View {
             return "Điều kiện: quà tân thành viên — tặng Size L miễn phí, ĐÚNG 1 LẦN/tài khoản"
         case "ToppingMienPhi":
             return "Điều kiện: đơn có topping, ĐÚNG 1 LẦN/tài khoản"
+        case "MonMoiTraiNghiem":
+            return "Điều kiện: đơn có món khách CHƯA TỪNG đặt, ĐÚNG 1 LẦN/tài khoản — giảm % trên cả đơn"
         default: return "Điều kiện: \(item.dieuKien)"
         }
     }
@@ -252,6 +254,7 @@ private struct VoucherEditSheet: View {
         ("SoLuongToiThieu", "Số lượng ly tối thiểu"),
         ("UpsizeMonMoi", "Quà tân thành viên (Size L, 1 lần/tài khoản)"),
         ("ToppingMienPhi", "Topping miễn phí (1 lần/tài khoản)"),
+        ("MonMoiTraiNghiem", "Trải nghiệm món mới (1 lần/tài khoản)"),
     ]
     // Khớp VoucherLoaiGiam bên Backend.
     private let loaiGiamOptions = [
