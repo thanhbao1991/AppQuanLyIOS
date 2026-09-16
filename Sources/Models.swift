@@ -545,7 +545,7 @@ struct TongNoDto: Decodable {
 struct IdOnlyRequest: Encodable { let id: String }
 struct GanShipperRequest: Encodable { let id: String; let nguoiShip: String; let ngayShip: String; let ngayIn: String }
 
-struct ActionResult { let success: Bool; let message: String? }
+struct ActionResult { let success: Bool; let message: String?; var warnings: [String] = [] }
 
 // ---- Khách hàng (tìm/tạo trong form thêm hoá đơn) ----
 

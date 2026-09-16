@@ -152,6 +152,7 @@ private struct ReceiptReviewSheet: View {
     @State private var billThang = true
     @State private var saving = false
     @State private var errorMessage: String?
+    @State private var warningAlertText: String?
 
     init(date: Date, result: ReceiptParseResultDto, onSaved: @escaping () -> Void) {
         self.date = date
@@ -227,6 +228,16 @@ private struct ReceiptReviewSheet: View {
             }
         }
         .task { nguyenLieuList = await APIClient.shared.getNguyenLieu() }
+        // Đã lưu thành công nhưng có dòng giá lệch lớn so với lần mua gần nhất — chỉ cảnh báo,
+        // không chặn (xem AddExpenseSheet cùng cơ chế).
+        .alert("⚠️ Giá bất thường", isPresented: Binding(
+            get: { warningAlertText != nil },
+            set: { if !$0 { warningAlertText = nil } }
+        )) {
+            Button("Đã hiểu") { onSaved(); dismiss() }
+        } message: {
+            Text(warningAlertText ?? "")
+        }
     }
 
     @ViewBuilder
@@ -329,8 +340,12 @@ private struct ReceiptReviewSheet: View {
         let result = await APIClient.shared.bulkCreateChiTieu(body)
         saving = false
         if result.success {
-            onSaved()
-            dismiss()
+            if !result.warnings.isEmpty {
+                warningAlertText = result.warnings.joined(separator: "\n\n")
+            } else {
+                onSaved()
+                dismiss()
+            }
         } else {
             errorMessage = result.message ?? "Không lưu được."
         }

@@ -414,6 +414,7 @@ struct AddExpenseSheet: View {
     @State private var saving = false
     @State private var errorMessage: String?
     @State private var addingNguyenLieu = false
+    @State private var warningAlertText: String?
 
     /// Rỗng khi chưa gõ gì — danh sách nguyên liệu quá dài để liệt kê hết như dropdown, phải gõ
     /// tìm mới hiện kết quả (khớp cách sửa "Thêm món" bên HoaDonCreateFormView.ProductPickerSheet).
@@ -513,6 +514,17 @@ struct AddExpenseSheet: View {
             }
         }
         .task { nguyenLieuList = await APIClient.shared.getNguyenLieu() }
+        // Backend đã lưu thành công nhưng phát hiện giá lệch lớn so với lần mua gần nhất (xem
+        // CheckGiaBatThuongAsync/ChiTieuHangNgayService) — chỉ cảnh báo, không chặn, đóng sheet
+        // sau khi người dùng bấm xác nhận đã đọc.
+        .alert("⚠️ Giá bất thường", isPresented: Binding(
+            get: { warningAlertText != nil },
+            set: { if !$0 { warningAlertText = nil } }
+        )) {
+            Button("Đã hiểu") { onSaved(); dismiss() }
+        } message: {
+            Text(warningAlertText ?? "")
+        }
     }
 
     private func addNewNguyenLieu() async {
@@ -545,8 +557,12 @@ struct AddExpenseSheet: View {
         let result = await APIClient.shared.createChiTieu(body)
         saving = false
         if result.success {
-            onSaved()
-            dismiss()
+            if let warning = result.warnings.first {
+                warningAlertText = warning
+            } else {
+                onSaved()
+                dismiss()
+            }
         } else {
             errorMessage = result.message ?? "Không thêm được chi tiêu."
         }

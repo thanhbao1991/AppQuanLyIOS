@@ -554,7 +554,8 @@ actor APIClient {
         }
         let success = (obj["isSuccess"] as? Bool) ?? false
         let message = obj["message"] as? String
-        return ActionResult(success: success, message: message)
+        let warnings = (obj["warnings"] as? [String]) ?? []
+        return ActionResult(success: success, message: message, warnings: warnings)
     }
 
     private func isoNow() -> String {
