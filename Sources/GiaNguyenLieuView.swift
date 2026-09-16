@@ -1,7 +1,7 @@
 import Charts
 import SwiftUI
 
-/// Công cụ tra giá nguyên liệu (Menu > Công cụ) — chọn 1 nguyên liệu rồi xem 30 lần mua gần nhất
+/// Công cụ tra giá nguyên liệu (Menu > Công cụ) — chọn 1 nguyên liệu rồi xem 15 lần mua gần nhất
 /// (đơn giá/số lượng/ngày mua) để so giá, tránh phải lật lại từng ngày trong tab Chi tiêu. Đọc
 /// thẳng ChiTieuHangNgay (bản ghi mua hàng), không lưu gì mới — xem
 /// GET /api/ChiTieuHangNgay/gia-gan-day (ChiTieuHangNgayController/Service).
@@ -49,14 +49,14 @@ struct GiaNguyenLieuView: View {
                 }
             } else if selected != nil {
                 if items.isEmpty {
-                    Section("30 lần mua gần nhất") {
+                    Section("15 lần mua gần nhất") {
                         Text("Chưa có lần mua nào.").foregroundColor(.textMuted)
                     }
                 } else {
                     Section("Diễn biến giá") {
                         GiaNguyenLieuChart(items: items)
                     }
-                    Section("30 lần mua gần nhất") {
+                    Section("15 lần mua gần nhất") {
                         ForEach(items) { item in
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
@@ -102,31 +102,29 @@ private extension Double {
 private struct GiaNguyenLieuChart: View {
     let items: [ChiTieuHangNgayDto]
 
-    private var points: [(id: String, label: String, donGia: Double)] {
+    private var points: [(id: String, date: Date, donGia: Double)] {
         items.reversed().map { item in
-            let date = HoaDonFormatting.parseIso(item.ngayGio)
-            let label: String
-            if let date {
-                let f = DateFormatter()
-                f.dateFormat = "dd/MM"
-                f.locale = Locale(identifier: "vi_VN")
-                label = f.string(from: date)
-            } else {
-                label = "?"
-            }
-            return (id: item.id, label: label, donGia: item.donGia)
+            let date = HoaDonFormatting.parseIso(item.ngayGio) ?? .distantPast
+            return (id: item.id, date: date, donGia: item.donGia)
         }
     }
 
     var body: some View {
         Chart(points, id: \.id) { point in
-            LineMark(x: .value("Ngày", point.label), y: .value("Đơn giá", point.donGia))
+            LineMark(x: .value("Ngày", point.date), y: .value("Đơn giá", point.donGia))
                 .foregroundStyle(Color.brandPrimary)
-            PointMark(x: .value("Ngày", point.label), y: .value("Đơn giá", point.donGia))
+            PointMark(x: .value("Ngày", point.date), y: .value("Đơn giá", point.donGia))
                 .foregroundStyle(Color.brandPrimary)
                 .symbolSize(60)
         }
-        .chartXAxis { AxisMarks(values: .automatic) { AxisValueLabel().font(.caption2) } }
+        .chartXAxis {
+            // desiredCount thay vì .automatic trơn — dữ liệu là Date thật nên Charts tự thưa nhãn,
+            // tránh chồng chữ khi có đủ 30 lần mua như trục string cũ.
+            AxisMarks(values: .automatic(desiredCount: 4)) { value in
+                AxisGridLine()
+                AxisValueLabel(format: .dateTime.day().month(), centered: true).font(.caption2)
+            }
+        }
         .chartYAxis {
             AxisMarks(position: .leading) { value in
                 AxisGridLine()
