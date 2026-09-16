@@ -98,6 +98,8 @@ private struct VoucherRowView: View {
                         Text("📈").font(.caption)
                     } else if item.mucDich == "GiuChan" {
                         Text("🛡️").font(.caption)
+                    } else if item.mucDich == "TinhNang" {
+                        Text("🧩").font(.caption)
                     }
                     Spacer()
                     Text(item.dangHoatDong ? "Đang hoạt động" : "Đã tắt")
@@ -298,6 +300,7 @@ private struct VoucherEditSheet: View {
         ("", "Chưa gắn nhãn"),
         ("TangDoanhThu", "📈 Tăng doanh thu"),
         ("GiuChan", "🛡️ Giữ chân"),
+        ("TinhNang", "🧩 Tính năng"),
     ]
 
     init(existing: VoucherDto?, onSaved: @escaping () -> Void) {
