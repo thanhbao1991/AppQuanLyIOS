@@ -127,6 +127,9 @@ private struct VoucherRowView: View {
                 if item.yeuCauSizeL {
                     Text("Chỉ áp dụng khi đơn có Size L").font(.caption2).foregroundColor(.dangerColor)
                 }
+                if let soLanDung = soLanDungCanh(item) {
+                    Text(soLanDung.nhan).font(.caption2).fontWeight(.semibold).foregroundColor(soLanDung.mau)
+                }
             }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -142,6 +145,23 @@ private struct VoucherRowView: View {
                 Label(item.dangHoatDong ? "Tắt" : "Bật", systemImage: item.dangHoatDong ? "pause.circle" : "play.circle")
             }
             .tint(.brandPrimary)
+        }
+    }
+
+    // Cảnh báo mức độ dùng-lại — voucher KHÔNG GIỚI HẠN số lần (mọi đơn đạt điều kiện đều giảm, không
+    // chặn qua VoucherSuDung ở Backend) tiềm ẩn chi phí tăng dần không kiểm soát nếu điều kiện quá dễ
+    // đạt, khác hẳn voucher "1 lần/tài khoản" (chi phí luôn có trần). Staff cần lưu tâm nhóm này khi
+    // xét lại hiệu quả/chi phí voucher — nil (không hiện gì) cho voucher chỉ dùng ĐÚNG 1 lần trong đời.
+    private func soLanDungCanh(_ item: VoucherDto) -> (nhan: String, mau: Color)? {
+        switch item.dieuKien {
+        case "DonToiThieu", "KhongDieuKien", "KhungGioThapDiem", "DonToiThieuBac":
+            return ("🔁 KHÔNG GIỚI HẠN — mọi đơn đạt điều kiện đều được giảm", .dangerColor)
+        case "QuayLai":
+            return ("🔁 Dùng lại được, tối đa 1 lần/tháng/khách", .textMuted)
+        case "SinhNhat":
+            return ("🔁 Dùng lại được, tối đa 1 lần/năm/khách", .textMuted)
+        default:
+            return nil
         }
     }
 
