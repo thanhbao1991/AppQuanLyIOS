@@ -356,9 +356,6 @@ struct VoucherDto: Codable, Identifiable {
     // Chỉ có ý nghĩa khi dieuKien == "KhungGioThapDiem" — "1,3,5" = T2/T4/T6 (1=T2...7=CN), nil/rỗng
     // = mọi thứ. Xem VoucherEntity.ThuTrongTuan bên Backend.
     var thuTrongTuan: String?
-    // Chỉ có ý nghĩa khi dieuKien == "DonToiThieuBac" — "nguong1:giam1,nguong2:giam2,...". Xem
-    // VoucherEntity.BacThang bên Backend.
-    var bacThang: String?
     // Chỉ có ý nghĩa khi dieuKien == "SoLuongToiThieu" — số ly tối thiểu (không tính topping). Xem
     // VoucherEntity.SoLuongToiThieu bên Backend.
     var soLuongToiThieu: Int?
@@ -388,7 +385,6 @@ struct VoucherRequest: Encodable {
     let gioBatDau: Int?
     let gioKetThuc: Int?
     let thuTrongTuan: String?
-    let bacThang: String?
     let soLuongToiThieu: Int?
     let yeuCauSizeL: Bool
     let mucDich: String?
