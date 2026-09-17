@@ -161,9 +161,11 @@ private struct VoucherRowView: View {
         case "QuayLai":
             return ("🔁 Dùng lại được, tối đa 1 lần/tháng/khách", .textMuted)
         case "MonMoiTraiNghiem":
-            return ("🔁 Dùng lại được, tối đa 1 lần/tuần/khách", .textMuted)
+            return ("🔁 Dùng lại được, tối đa 1 lần/tháng/khách", .textMuted)
         case "SinhNhat":
             return ("🔁 Dùng lại được, tối đa 1 lần/năm/khách", .textMuted)
+        case "LenHangBac", "LenHangVang", "LenHangKimCuong":
+            return ("🔁 Tự giới hạn — chỉ nổ đúng đơn khiến khách vượt mốc hạng này, không lặp lại trong tháng", .textMuted)
         default:
             return nil
         }
@@ -176,7 +178,7 @@ private struct VoucherRowView: View {
         case "DonToiThieu": return "Điều kiện: đơn tối thiểu, không giới hạn số lần"
         case "KhongDieuKien": return "Điều kiện: không có, dùng cho dịp/lễ — tự bật tắt"
         case "DonThuN": return "Điều kiện: đúng đơn thứ \(item.soDonApDung ?? 0) của khách"
-        case "QuayLai": return "Điều kiện: đơn quay lại sau ≥30 ngày không mua, không dùng liên tiếp 2 lần"
+        case "QuayLai": return "Điều kiện: đơn quay lại sau ≥14 ngày không mua, không dùng liên tiếp 2 lần"
         case "KhungGioThapDiem":
             let thuText = (item.thuTrongTuan ?? "").split(separator: ",").compactMap { Int($0) }.sorted()
                 .compactMap { tenThuNganGon[$0] }.joined(separator: "/")
@@ -189,11 +191,17 @@ private struct VoucherRowView: View {
         case "UpsizeMonMoi":
             return "Điều kiện: đơn có Size L, ĐÚNG 1 LẦN/tài khoản"
         case "ToppingMienPhi":
-            return "Điều kiện: đơn có topping, ĐÚNG 1 LẦN/tài khoản"
+            return "Điều kiện: đơn có topping, tối đa 3 LẦN/tài khoản"
         case "MonMoiTraiNghiem":
-            return "Điều kiện: đơn có món chưa từng đặt, 1 TUẦN 1 LẦN/tài khoản"
+            return "Điều kiện: đơn có món chưa từng đặt, 1 THÁNG 1 LẦN/tài khoản"
         case "DatLai":
             return "Điều kiện: đơn tạo từ nút \"Đặt lại\", ĐÚNG 1 LẦN/tài khoản"
+        case "LenHangBac":
+            return "Điều kiện: đơn khiến khách VỪA vượt mốc hạng Bạc trong tháng"
+        case "LenHangVang":
+            return "Điều kiện: đơn khiến khách VỪA vượt mốc hạng Vàng trong tháng"
+        case "LenHangKimCuong":
+            return "Điều kiện: đơn khiến khách VỪA vượt mốc hạng Kim Cương trong tháng"
         default: return "Điều kiện: \(item.dieuKien)"
         }
     }
@@ -280,8 +288,11 @@ private struct VoucherEditSheet: View {
         ("SoLuongToiThieu", "Số lượng ly tối thiểu"),
         ("UpsizeMonMoi", "Size L miễn phí (1 lần/tài khoản)"),
         ("ToppingMienPhi", "Topping miễn phí (1 lần/tài khoản)"),
-        ("MonMoiTraiNghiem", "Thử món mới hàng tuần (1 tuần 1 lần)"),
+        ("MonMoiTraiNghiem", "Thử món mới (1 tháng 1 lần)"),
         ("DatLai", "Dùng thử Đặt lại (1 lần/tài khoản)"),
+        ("LenHangBac", "Lên hạng Bạc"),
+        ("LenHangVang", "Lên hạng Vàng"),
+        ("LenHangKimCuong", "Lên hạng Kim Cương"),
     ]
     // Khớp VoucherLoaiGiam bên Backend.
     private let loaiGiamOptions = [
