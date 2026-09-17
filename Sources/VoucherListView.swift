@@ -188,7 +188,7 @@ private struct VoucherRowView: View {
         case "UpsizeMonMoi":
             return "Điều kiện: đơn có Size L, ĐÚNG 1 LẦN/tài khoản"
         case "ToppingMienPhi":
-            return "Điều kiện: đơn có topping, tối đa 3 LẦN/tài khoản"
+            return "Điều kiện: đơn có topping, tối đa 2 LẦN/tài khoản"
         case "MonMoiTraiNghiem":
             return "Điều kiện: đơn có món chưa từng đặt, 1 THÁNG 1 LẦN/tài khoản"
         case "DatLai":
@@ -252,7 +252,7 @@ private struct VoucherEditSheet: View {
         ("KhungGioThapDiem", "Khung giờ thấp điểm"),
         ("SoLuongToiThieu", "Số lượng ly tối thiểu"),
         ("UpsizeMonMoi", "Size L miễn phí (1 lần/tài khoản)"),
-        ("ToppingMienPhi", "Topping miễn phí (1 lần/tài khoản)"),
+        ("ToppingMienPhi", "Topping miễn phí (2 lần/tài khoản)"),
         ("MonMoiTraiNghiem", "Thử món mới (1 tháng 1 lần)"),
         ("DatLai", "Dùng thử Đặt lại (1 lần/tài khoản)"),
         ("LenHangBac", "Lên hạng Bạc"),
