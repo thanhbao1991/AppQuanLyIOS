@@ -11,7 +11,7 @@ struct DeviceSessionsView: View {
     var body: some View {
         Group {
             if !hasLoaded {
-                VStack { Spacer(); ProgressView(); Spacer() }
+                fullScreenLoading()
             } else if sessions.isEmpty {
                 VStack { Spacer(); Text("Không có thiết bị nào").foregroundColor(.textMuted); Spacer() }
             } else {

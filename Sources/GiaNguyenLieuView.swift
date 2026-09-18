@@ -43,7 +43,7 @@ struct GiaNguyenLieuView: View {
                 Section {
                     HStack {
                         Spacer()
-                        ProgressView()
+                        ProgressView().scaleEffect(1.4).tint(.brandPrimary)
                         Spacer()
                     }
                 }

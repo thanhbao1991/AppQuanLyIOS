@@ -45,7 +45,7 @@ struct CongNoListView: View {
                 )
 
                 if !hasLoaded {
-                    Spacer(); ProgressView(); Spacer()
+                    fullScreenLoading()
                 } else {
                     List {
                         if sortedItems.isEmpty {

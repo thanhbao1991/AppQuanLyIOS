@@ -39,7 +39,7 @@ struct ChiTieuListView: View {
                 ) { Task { await load() } }
 
                 if !hasLoaded {
-                    Spacer(); ProgressView(); Spacer()
+                    fullScreenLoading()
                 } else {
                     List {
                         if filteredItems.isEmpty {

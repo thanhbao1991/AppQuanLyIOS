@@ -26,7 +26,7 @@ struct HoaDonDetailView: View {
         NavigationStack {
             Group {
                 if loading {
-                    ProgressView()
+                    fullScreenLoading()
                 } else if let detail {
                     content(detail)
                 } else {

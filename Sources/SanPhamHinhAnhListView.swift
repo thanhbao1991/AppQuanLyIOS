@@ -22,7 +22,7 @@ struct SanPhamHinhAnhListView: View {
             SearchBar(text: $query, placeholder: "Tìm món...")
 
             if loading {
-                Spacer(); ProgressView(); Spacer()
+                fullScreenLoading()
             } else {
                 List {
                     ForEach(filtered) { sp in

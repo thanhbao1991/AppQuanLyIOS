@@ -80,7 +80,7 @@ struct TinhLuongView: View {
         NavigationStack {
             Group {
                 if !hasLoaded {
-                    VStack { Spacer(); ProgressView(); Spacer() }
+                    fullScreenLoading()
                 } else {
                     Form {
                         Section {
@@ -231,7 +231,7 @@ private struct DoanhThuShipperChiTietSheet: View {
         NavigationStack {
             Group {
                 if !hasLoaded {
-                    ProgressView()
+                    fullScreenLoading()
                 } else {
                     List {
                         Section {

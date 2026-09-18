@@ -31,7 +31,7 @@ struct FavoritesImagePicker: View {
                         }
                     }
                 } else if loading {
-                    ProgressView()
+                    fullScreenLoading()
                 } else if assets.isEmpty {
                     Text("Album Yêu thích chưa có ảnh nào").foregroundColor(.textMuted)
                 } else {

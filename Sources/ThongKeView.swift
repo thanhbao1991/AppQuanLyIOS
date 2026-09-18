@@ -61,7 +61,7 @@ struct ThongKeView: View {
                 ) { Task { await load() } }
 
                 if !hasLoaded {
-                    Spacer(); ProgressView(); Spacer()
+                    fullScreenLoading()
                 } else {
                     ScrollView {
                         VStack(spacing: 10) {

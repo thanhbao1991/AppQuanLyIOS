@@ -30,7 +30,7 @@ struct NguyenLieuListView: View {
             SearchBar(text: $searchText, placeholder: "Tìm nguyên liệu...")
 
             if !hasLoaded {
-                Spacer(); ProgressView(); Spacer()
+                fullScreenLoading()
             } else {
                 List {
                     ForEach(filteredItems) { item in

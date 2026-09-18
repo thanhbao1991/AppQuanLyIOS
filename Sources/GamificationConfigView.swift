@@ -14,7 +14,7 @@ struct GamificationConfigView: View {
     var body: some View {
         Group {
             if !hasLoaded {
-                VStack { Spacer(); ProgressView(); Spacer() }
+                fullScreenLoading()
             } else if let configBinding = Binding($config) {
                 GamificationConfigForm(config: configBinding, errorMessage: errorMessage, savedMessage: savedMessage)
             }

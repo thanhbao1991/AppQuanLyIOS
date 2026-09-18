@@ -54,7 +54,7 @@ struct GioThapDiemView: View {
         List {
             if loading {
                 Section {
-                    HStack { Spacer(); ProgressView(); Spacer() }
+                    fullScreenLoading()
                 }
             } else if itemsGio.allSatisfy({ $0.doanhThu == 0 }) {
                 Section {

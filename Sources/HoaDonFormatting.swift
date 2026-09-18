@@ -21,6 +21,16 @@ extension Color {
     }
 }
 
+/// Vòng loading toàn màn hình dùng chung mọi tab — mặc định ProgressView() màu xám hệ thống, kích
+/// thước nhỏ, dễ tưởng app treo trên nền sáng (cùng feedback đã sửa bên AppDatHangIOS 2026-09-18:
+/// "mờ lắm, cứ tưởng app bị treo"). Phóng to 1.4x + tint brandPrimary cho rõ ràng là đang tải.
+func fullScreenLoading() -> some View {
+    ProgressView()
+        .scaleEffect(1.4)
+        .tint(.brandPrimary)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+}
+
 enum HoaDonFormatting {
     static let moneyFormatter: NumberFormatter = {
         let f = NumberFormatter()

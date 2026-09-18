@@ -147,9 +147,7 @@ struct HoaDonListView: View {
                 ) { Task { await load() } }
 
                 if !hasLoaded {
-                    Spacer()
-                    ProgressView()
-                    Spacer()
+                    fullScreenLoading()
                 } else {
                     List {
                         if cachedSorted.isEmpty {
@@ -692,7 +690,7 @@ private struct AppOrderPickerSheet: View {
         NavigationStack {
             Group {
                 if loading {
-                    ProgressView()
+                    fullScreenLoading()
                 } else if let loadError {
                     Text(loadError).foregroundColor(.dangerColor)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -801,7 +799,7 @@ private struct KhachGoiSomSheet: View {
         NavigationStack {
             Group {
                 if loading {
-                    ProgressView()
+                    fullScreenLoading()
                 } else if items.isEmpty {
                     Text("Chưa có dữ liệu khách hay gọi trước 7h.")
                         .foregroundColor(.textMuted)

@@ -31,7 +31,7 @@ struct ThongKeThangView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 if !hasLoaded {
-                    Spacer(); ProgressView(); Spacer()
+                    fullScreenLoading()
                 } else {
                     ScrollView {
                         VStack(spacing: 10) {
@@ -311,7 +311,7 @@ struct KhachHangNoDetailSheet: View {
         NavigationStack {
             VStack(spacing: 0) {
                 if !hasLoaded {
-                    Spacer(); ProgressView(); Spacer()
+                    fullScreenLoading()
                 } else {
                     List {
                         ForEach(filtered) { item in
@@ -374,7 +374,7 @@ struct ThanhToanChiTietSheet: View {
         NavigationStack {
             Group {
                 if !hasLoaded {
-                    ProgressView()
+                    fullScreenLoading()
                 } else {
                     List {
                         Section {
@@ -469,7 +469,7 @@ struct DoanhThuChiTietSheet: View {
         NavigationStack {
             Group {
                 if !hasLoaded {
-                    ProgressView()
+                    fullScreenLoading()
                 } else {
                     List {
                         Section {

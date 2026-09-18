@@ -11,7 +11,7 @@ struct VoucherListView: View {
     var body: some View {
         Group {
             if !hasLoaded {
-                VStack { Spacer(); ProgressView(); Spacer() }
+                fullScreenLoading()
             } else {
                 List {
                     if items.isEmpty {

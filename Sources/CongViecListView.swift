@@ -21,7 +21,7 @@ struct CongViecListView: View {
                 SearchBar(text: $searchText, placeholder: "Tìm việc...")
 
                 if !hasLoaded {
-                    Spacer(); ProgressView(); Spacer()
+                    fullScreenLoading()
                 } else {
                     List {
                         if sortedItems.isEmpty {

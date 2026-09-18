@@ -123,7 +123,7 @@ struct HoaDonEditFormView: View {
         NavigationStack {
             Group {
                 if loading {
-                    ProgressView()
+                    fullScreenLoading()
                 } else if let loadError {
                     Text(loadError).foregroundColor(.dangerColor)
                 } else {
