@@ -44,13 +44,15 @@ struct GiaNguyenLieuView: View {
 
             if searchText.isEmpty {
                 if !yeuThichList.isEmpty {
-                    Section("⭐ Hay mua") {
+                    Section("⭐ Online") {
                         ForEach(yeuThichList) { row($0) }
                     }
                 }
-                if !topList.isEmpty {
+                // Món đã ⭐ nằm nhóm trên rồi — nhóm này bù thêm cho đủ tổng 30 dòng.
+                let conLai = topList.filter { $0.yeuThich != true }.prefix(max(30 - yeuThichList.count, 0))
+                if !conLai.isEmpty {
                     Section("Chi nhiều nhất năm nay") {
-                        ForEach(topList.filter { $0.yeuThich != true }) { row($0) }
+                        ForEach(Array(conLai)) { row($0) }
                     }
                 }
             } else {
@@ -107,8 +109,8 @@ struct GiaNguyenLieuView: View {
         }
     }
 
-    /// Cộng ThanhTien theo nguyên liệu qua các tháng từ đầu năm (gọi song song từng tháng), lấy 15
-    /// nguyên liệu chi nhiều nhất còn đang dùng.
+    /// Cộng ThanhTien theo nguyên liệu qua các tháng từ đầu năm (gọi song song từng tháng), xếp theo
+    /// chi nhiều nhất (còn đang dùng); phần cắt đủ 30 dòng làm ở body sau khi trừ món đã ⭐.
     private func loadTop() async {
         let cal = Calendar.current
         let now = Date()
@@ -127,7 +129,6 @@ struct GiaNguyenLieuView: View {
         topIds = tong.sorted { $0.value > $1.value }
             .compactMap { byId[$0.key] }
             .filter { !$0.ngungSuDung }
-            .prefix(15)
             .map { $0.id }
     }
 
