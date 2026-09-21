@@ -11,6 +11,8 @@ struct GiaNguyenLieuView: View {
     @State private var selected: NguyenLieuDto?
     @State private var items: [ChiTieuHangNgayDto] = []
     @State private var loading = false
+    /// Nguyên liệu chi nhiều nhất từ đầu năm — hiện dưới ô tìm khi chưa gõ để chọn nhanh.
+    @State private var topList: [NguyenLieuDto] = []
 
     /// Rỗng khi chưa gõ gì — khớp cách AddExpenseSheet (ChiTieuListView) tránh liệt kê hết danh
     /// sách nguyên liệu quá dài như dropdown.
@@ -21,14 +23,14 @@ struct GiaNguyenLieuView: View {
 
     var body: some View {
         List {
-            Section("Nguyên liệu") {
+            Section(searchText.isEmpty && !topList.isEmpty ? "Chi nhiều nhất năm nay" : "Nguyên liệu") {
                 TextField("Tìm nguyên liệu...", text: $searchText)
                 // Gõ tiếp bất cứ lúc nào để tìm nguyên liệu khác — không còn nút "Đổi" chặn giữa,
                 // chỉ ẩn tên đã chọn đi khi đang gõ để nhường chỗ cho kết quả tìm.
                 if let selected, searchText.isEmpty {
                     Text(selected.ten).bold().foregroundColor(.brandPrimary)
                 }
-                ForEach(filteredList.prefix(30)) { nl in
+                ForEach(searchText.isEmpty ? topList : Array(filteredList.prefix(30))) { nl in
                     Button {
                         selected = nl
                         searchText = ""
@@ -81,7 +83,34 @@ struct GiaNguyenLieuView: View {
         .toolbarBackground(Color.brandPrimary, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
-        .task { nguyenLieuList = await APIClient.shared.getNguyenLieu() }
+        .task {
+            nguyenLieuList = await APIClient.shared.getNguyenLieu()
+            await loadTop()
+        }
+    }
+
+    /// Cộng ThanhTien theo nguyên liệu qua các tháng từ đầu năm (gọi song song từng tháng), lấy 15
+    /// nguyên liệu chi nhiều nhất còn đang dùng.
+    private func loadTop() async {
+        let cal = Calendar.current
+        let now = Date()
+        let year = cal.component(.year, from: now)
+        let month = cal.component(.month, from: now)
+        var tong: [String: Double] = [:]
+        await withTaskGroup(of: [ChiTieuHangNgayDto].self) { group in
+            for m in 1...month {
+                group.addTask { await APIClient.shared.getChiTieuByMonth(year: year, month: m) }
+            }
+            for await rows in group {
+                for r in rows { tong[r.nguyenLieuId, default: 0] += r.thanhTien }
+            }
+        }
+        let byId = Dictionary(uniqueKeysWithValues: nguyenLieuList.map { ($0.id, $0) })
+        topList = tong.sorted { $0.value > $1.value }
+            .compactMap { byId[$0.key] }
+            .filter { !$0.ngungSuDung }
+            .prefix(15)
+            .map { $0 }
     }
 
     private func loadGia(_ nl: NguyenLieuDto) async {
