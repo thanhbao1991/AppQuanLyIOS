@@ -59,7 +59,18 @@ struct GiaNguyenLieuView: View {
                 // (không có đề xuất) nằm dưới theo tên. ⭐ trên từng dòng vẫn bấm để ghim/bỏ ghim.
                 if !goiYList.isEmpty {
                     Section("Gợi ý mua") {
-                        ForEach(goiYList) { row($0.nl, $0.d) }
+                        ForEach(goiYList) { item in
+                            row(item.nl, item.d)
+                                // Vuốt trái → "Ngừng dùng": loại nguyên liệu không còn mua khỏi danh sách gợi ý
+                                // (đặt NgungSuDung, hoàn tác được ở màn Nguyên liệu). Không full-swipe để khỏi lỡ tay.
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    Button(role: .destructive) {
+                                        Task { await ngungSuDung(item.nl) }
+                                    } label: {
+                                        Label("Ngừng dùng", systemImage: "nosign")
+                                    }
+                                }
+                        }
                     }
                 } else if canMuaLoaded {
                     Section("Gợi ý mua") {
@@ -119,6 +130,16 @@ struct GiaNguyenLieuView: View {
                     .foregroundColor(nl.yeuThich == true ? .yellow : .textMuted)
             }
             .buttonStyle(.borderless)
+        }
+    }
+
+    /// Đánh dấu ngừng sử dụng — ẩn dòng ngay (goiYList lọc theo ngungSuDung), lỗi thì hoàn lại.
+    private func ngungSuDung(_ nl: NguyenLieuDto) async {
+        guard let i = nguyenLieuList.firstIndex(where: { $0.id == nl.id }) else { return }
+        nguyenLieuList[i].ngungSuDung = true
+        if !(await APIClient.shared.setNguyenLieuNgungSuDung(id: nl.id, value: true)),
+           let j = nguyenLieuList.firstIndex(where: { $0.id == nl.id }) {
+            nguyenLieuList[j].ngungSuDung = false
         }
     }
 

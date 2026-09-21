@@ -277,7 +277,7 @@ struct NguyenLieuDto: Decodable, Identifiable {
     let ten: String
     let donViTinh: String?
     let giaNhap: Double
-    let ngungSuDung: Bool
+    var ngungSuDung: Bool
     let thuTu: Int
     /// Liên kết tồn kho bán hàng — màn "Cập nhật nguyên liệu" (NguyenLieuListView) KHÔNG cho sửa 2
     /// field này, chỉ đọc rồi gửi lại y nguyên khi Update, tránh vô tình xoá mất liên kết tồn kho
