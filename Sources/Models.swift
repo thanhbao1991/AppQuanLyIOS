@@ -257,8 +257,6 @@ struct NguyenLieuDto: Decodable, Identifiable {
     /// (UpdateAsync bên Backend ghi đè toàn bộ field, thiếu 2 field này sẽ set về null/0).
     let nguyenLieuBanHangId: String?
     let heSoQuyDoiBanHang: Double?
-    let danhMucChiTieuId: String?
-    let tenDanhMucChiTieu: String?
 }
 
 struct NguyenLieuCreateRequest: Encodable {
@@ -275,12 +273,6 @@ struct NguyenLieuUpdateRequest: Encodable {
     let thuTu: Int
     let nguyenLieuBanHangId: String?
     let heSoQuyDoiBanHang: Double?
-    let danhMucChiTieuId: String?
-}
-
-struct DanhMucChiTieuDto: Decodable, Identifiable, Hashable {
-    let id: String
-    let ten: String
 }
 
 // ---- Công việc nội bộ ----

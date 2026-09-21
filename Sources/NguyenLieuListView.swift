@@ -1,26 +1,16 @@
 import SwiftUI
 
-/// Quản trị danh mục nguyên liệu (Menu > Công cụ) — thêm/sửa/xoá/đổi nhóm chi tiêu, thay cho phải mở
+/// Quản trị danh mục nguyên liệu (Menu > Công cụ) — thêm/sửa/xoá, thay cho phải mở
 /// Desktop mỗi khi cần chỉnh sửa nhỏ. GET/POST/PUT/DELETE /api/NguyenLieu, giống hệt VoucherListView
 /// về mặt bố cục (list + sheet sửa).
 struct NguyenLieuListView: View {
     @State private var items: [NguyenLieuDto] = []
-    @State private var danhMucs: [DanhMucChiTieuDto] = []
     @State private var hasLoaded = false
     @State private var searchText = ""
     @State private var showAdd = false
     @State private var editing: NguyenLieuDto?
-    /// nil = tất cả nhóm; "" (rỗng) = chỉ nguyên liệu chưa gắn nhóm nào.
-    @State private var filterDanhMucId: String?
-
     private var filteredItems: [NguyenLieuDto] {
-        var list = items
-        if let filterDanhMucId {
-            list = filterDanhMucId.isEmpty
-                ? list.filter { $0.danhMucChiTieuId == nil }
-                : list.filter { $0.danhMucChiTieuId == filterDanhMucId }
-        }
-        let sorted = list.sorted { $0.ten.localizedStandardCompare($1.ten) == .orderedAscending }
+        let sorted = items.sorted { $0.ten.localizedStandardCompare($1.ten) == .orderedAscending }
         guard !searchText.isEmpty else { return sorted }
         return sorted.filter { $0.ten.matchesSearch(searchText) }
     }
@@ -52,48 +42,20 @@ struct NguyenLieuListView: View {
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Menu {
-                    Button {
-                        filterDanhMucId = nil
-                    } label: {
-                        if filterDanhMucId == nil { Label("Tất cả nhóm", systemImage: "checkmark") }
-                        else { Text("Tất cả nhóm") }
-                    }
-                    Button {
-                        filterDanhMucId = ""
-                    } label: {
-                        if filterDanhMucId == "" { Label("Chưa có nhóm", systemImage: "checkmark") }
-                        else { Text("Chưa có nhóm") }
-                    }
-                    Divider()
-                    ForEach(danhMucs) { dm in
-                        Button {
-                            filterDanhMucId = dm.id
-                        } label: {
-                            if filterDanhMucId == dm.id { Label(dm.ten, systemImage: "checkmark") }
-                            else { Text(dm.ten) }
-                        }
-                    }
-                } label: {
-                    Image(systemName: filterDanhMucId == nil ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
-                }
                 Button { showAdd = true } label: { Image(systemName: "plus") }
             }
         }
         .task { await load() }
         .sheet(isPresented: $showAdd) {
-            NguyenLieuEditSheet(existing: nil, danhMucs: danhMucs) { Task { await load() } }
+            NguyenLieuEditSheet(existing: nil) { Task { await load() } }
         }
         .sheet(item: $editing) { item in
-            NguyenLieuEditSheet(existing: item, danhMucs: danhMucs) { Task { await load() } }
+            NguyenLieuEditSheet(existing: item) { Task { await load() } }
         }
     }
 
     private func load() async {
-        async let itemsTask = APIClient.shared.getNguyenLieu()
-        async let danhMucTask = APIClient.shared.getDanhMucChiTieuList()
-        items = await itemsTask
-        danhMucs = await danhMucTask
+        items = await APIClient.shared.getNguyenLieu()
         hasLoaded = true
     }
 
@@ -133,14 +95,6 @@ private struct NguyenLieuRowView: View {
                     if let donViTinh = item.donViTinh, !donViTinh.isEmpty {
                         Text(donViTinh).font(.caption2).foregroundColor(.textMuted)
                     }
-                    if let tenDanhMuc = item.tenDanhMucChiTieu, !tenDanhMuc.isEmpty {
-                        Text(tenDanhMuc)
-                            .font(.caption2)
-                            .foregroundColor(.brandPrimary)
-                            .padding(.horizontal, 6).padding(.vertical, 2)
-                            .background(Color.brandPrimary.pastelBackground())
-                            .clipShape(Capsule())
-                    }
                 }
             }
             .padding(12)
@@ -161,7 +115,6 @@ private struct NguyenLieuRowView: View {
 
 private struct NguyenLieuEditSheet: View {
     let existing: NguyenLieuDto?
-    let danhMucs: [DanhMucChiTieuDto]
     let onSaved: () -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -169,19 +122,16 @@ private struct NguyenLieuEditSheet: View {
     @State private var donViTinh: String
     @State private var giaNhap: Double
     @State private var ngungSuDung: Bool
-    @State private var danhMucChiTieuId: String?
     @State private var saving = false
     @State private var errorMessage: String?
 
-    init(existing: NguyenLieuDto?, danhMucs: [DanhMucChiTieuDto], onSaved: @escaping () -> Void) {
+    init(existing: NguyenLieuDto?, onSaved: @escaping () -> Void) {
         self.existing = existing
-        self.danhMucs = danhMucs
         self.onSaved = onSaved
         _ten = State(initialValue: existing?.ten ?? "")
         _donViTinh = State(initialValue: existing?.donViTinh ?? "")
         _giaNhap = State(initialValue: existing?.giaNhap ?? 0)
         _ngungSuDung = State(initialValue: existing?.ngungSuDung ?? false)
-        _danhMucChiTieuId = State(initialValue: existing?.danhMucChiTieuId)
     }
 
     var body: some View {
@@ -196,15 +146,6 @@ private struct NguyenLieuEditSheet: View {
                         TextField("0", value: $giaNhap, format: .number)
                             .keyboardType(.numberPad)
                             .multilineTextAlignment(.trailing)
-                    }
-                }
-
-                Section("Nhóm chi tiêu") {
-                    Picker("Nhóm", selection: $danhMucChiTieuId) {
-                        Text("Không thuộc nhóm nào").tag(String?.none)
-                        ForEach(danhMucs) { dm in
-                            Text(dm.ten).tag(String?.some(dm.id))
-                        }
                     }
                 }
 
@@ -259,8 +200,7 @@ private struct NguyenLieuEditSheet: View {
             thuTu: existing?.thuTu ?? 0,
             // Giữ nguyên liên kết tồn kho bán hàng — không cho sửa ở màn này, xem NguyenLieuDto.
             nguyenLieuBanHangId: existing?.nguyenLieuBanHangId,
-            heSoQuyDoiBanHang: existing?.heSoQuyDoiBanHang,
-            danhMucChiTieuId: danhMucChiTieuId
+            heSoQuyDoiBanHang: existing?.heSoQuyDoiBanHang
         )
 
         let result: ActionResult

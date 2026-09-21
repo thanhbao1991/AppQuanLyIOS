@@ -292,13 +292,6 @@ actor APIClient {
         return await executeAction(req)
     }
 
-    func getDanhMucChiTieuList() async -> [DanhMucChiTieuDto] {
-        let req = makeRequest("/api/DanhMucChiTieu")
-        let (data, _) = await send(req)
-        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[DanhMucChiTieuDto]>.self, from: data), env.isSuccess else { return [] }
-        return env.data ?? []
-    }
-
     func getCongViecList() async -> [CongViecNoiBoDto] {
         let req = makeRequest("/api/CongViecNoiBo")
         let (data, _) = await send(req)
