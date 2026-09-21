@@ -128,9 +128,15 @@ private struct GiaNguyenLieuDetailView: View {
     let nguyenLieu: NguyenLieuDto
     @State private var items: [ChiTieuHangNgayDto] = []
     @State private var loading = true
+    /// Tải riêng, không chặn danh sách giá — AI trả chậm hơn, xong lúc nào hiện lúc đó.
+    @State private var deXuat: MuaHangDeXuatDto?
+    @State private var deXuatLoading = true
 
     var body: some View {
         List {
+            if deXuatLoading || deXuat != nil {
+                Section("Đề xuất mua tiếp") { deXuatCard }
+            }
             if loading {
                 Section {
                     HStack {
@@ -172,9 +178,51 @@ private struct GiaNguyenLieuDetailView: View {
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .task {
-            items = await APIClient.shared.getGiaNguyenLieuGanDay(nguyenLieuId: nguyenLieu.id)
+            async let giaTask = APIClient.shared.getGiaNguyenLieuGanDay(nguyenLieuId: nguyenLieu.id)
+            async let deXuatTask = APIClient.shared.getDeXuatMua(nguyenLieuId: nguyenLieu.id)
+            items = await giaTask
             loading = false
+            deXuat = await deXuatTask
+            deXuatLoading = false
         }
+    }
+
+    @ViewBuilder
+    private var deXuatCard: some View {
+        if let d = deXuat {
+            let ngay = HoaDonFormatting.parseIso(d.ngayDeXuat)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(ngay.map { $0.formatted(.dateTime.weekday(.wide).day().month()) } ?? d.ngayDeXuat)
+                        .font(.headline)
+                    Spacer()
+                    Text(conLaiText(d.soNgayConLai))
+                        .font(.subheadline.bold())
+                        .foregroundColor(d.soNgayConLai <= 0 ? .red : .brandPrimary)
+                }
+                if let sl = d.soLuongDeXuat {
+                    Text("Nên mua khoảng \(sl.cleanString)")
+                        .font(.subheadline)
+                }
+                Text((d.nguonAI ? "✨ AI: " : "") + d.lyDo)
+                    .font(.caption)
+                    .foregroundColor(.textMuted)
+            }
+            .padding(.vertical, 2)
+        } else {
+            HStack {
+                Spacer()
+                ProgressView().tint(.brandPrimary)
+                Text("AI đang tính...").font(.caption).foregroundColor(.textMuted)
+                Spacer()
+            }
+        }
+    }
+
+    private func conLaiText(_ n: Int) -> String {
+        if n < 0 { return "Quá hạn \(-n) ngày" }
+        if n == 0 { return "Hôm nay" }
+        return "Còn \(n) ngày"
     }
 }
 

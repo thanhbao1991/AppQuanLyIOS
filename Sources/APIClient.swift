@@ -167,6 +167,14 @@ actor APIClient {
         return env.data ?? []
     }
 
+    /// Đề xuất ngày mua tiếp theo (AI đọc lịch sử mua) — nil nếu chưa đủ lịch sử hoặc lỗi.
+    func getDeXuatMua(nguyenLieuId: String) async -> MuaHangDeXuatDto? {
+        let req = makeRequest("/api/ChiTieuHangNgay/de-xuat-mua?nguyenLieuId=\(nguyenLieuId)")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<MuaHangDeXuatDto>.self, from: data), env.isSuccess else { return nil }
+        return env.data
+    }
+
     /// Bật/tắt ⭐ nguyên liệu (PATCH riêng, không qua Update để không ghi đè các field khác).
     func setNguyenLieuYeuThich(id: String, value: Bool) async -> Bool {
         let req = makeRequest("/api/NguyenLieu/\(id)/yeu-thich?value=\(value)", method: "PATCH")
