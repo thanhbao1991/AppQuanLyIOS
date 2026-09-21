@@ -1,0 +1,179 @@
+import SwiftUI
+
+/// Danh sách thiết bị đang đăng nhập tài khoản hiện tại — giống trang "Tài khoản Apple" của iOS.
+/// GET/DELETE /api/Auth/sessions. Chỉ có ở đây (không có trên Desktop/Android) — iOS là nơi duy nhất
+/// xem/gỡ thiết bị, dù các phiên của Desktop/Android cũng hiện trong danh sách này.
+struct DeviceSessionsView: View {
+    @State private var sessions: [PhienDangNhapDto] = []
+    @State private var loading = false
+    @State private var hasLoaded = false
+
+    var body: some View {
+        Group {
+            if !hasLoaded {
+                fullScreenLoading()
+            } else if sessions.isEmpty {
+                VStack { Spacer(); Text("Không có thiết bị nào").foregroundColor(.textMuted); Spacer() }
+            } else {
+                List {
+                    ForEach(groupedSessions, id: \.platform) { group in
+                        Section(group.label) {
+                            ForEach(group.sessions) { session in
+                                SessionRowView(session: session)
+                                    .listRowInsets(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12))
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
+                                    .swipeActions(edge: .trailing) {
+                                        Button(role: .destructive) {
+                                            Task { await revoke(session) }
+                                        } label: {
+                                            EmojiLabel("Gỡ", "🗑️")
+                                        }
+                                    }
+                            }
+                        }
+                    }
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .background(Color(.systemGroupedBackground))
+                .refreshable { await load() }
+            }
+        }
+        .navigationTitle("Thiết bị đăng nhập")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .task { await load() }
+    }
+
+    // Thứ tự cố định iOS → Máy tính → Android → khác, ghim thiết bị hiện tại lên đầu nhóm của nó,
+    // trong mỗi nhóm sắp theo tên tài khoản rồi tên thiết bị — tránh lộn xộn khi nhiều tài khoản
+    // cùng đăng nhập nhiều loại máy như trong ảnh user gửi.
+    private var groupedSessions: [(platform: String, label: String, sessions: [PhienDangNhapDto])] {
+        let order: [String: Int] = ["iOS": 0, "Desktop": 1, "Android": 2]
+        let labels: [String: String] = ["iOS": "iPhone", "Desktop": "Máy tính", "Android": "Android"]
+        let platforms = Set(sessions.map { $0.nenTang ?? "" })
+        return platforms.sorted { (order[$0] ?? 99) < (order[$1] ?? 99) }.map { platform in
+            let group = sessions
+                .filter { ($0.nenTang ?? "") == platform }
+                .sorted { a, b in
+                    if a.laThietBiHienTai != b.laThietBiHienTai { return a.laThietBiHienTai }
+                    let ta = a.tenTaiKhoan ?? "", tb = b.tenTaiKhoan ?? ""
+                    if ta != tb { return ta < tb }
+                    return (a.thietBi ?? "") < (b.thietBi ?? "")
+                }
+            return (platform, labels[platform] ?? "Khác", group)
+        }
+    }
+
+    private func load() async {
+        loading = true
+        sessions = await APIClient.shared.getSessions()
+        loading = false
+        hasLoaded = true
+    }
+
+    private func revoke(_ session: PhienDangNhapDto) async {
+        let result = await APIClient.shared.revokeSession(id: session.id)
+        if result.success {
+            sessions.removeAll { $0.id == session.id }
+        }
+    }
+}
+
+private struct SessionRowView: View {
+    let session: PhienDangNhapDto
+
+    // Icon + nhãn theo nền tảng — phân biệt rõ máy tính/điện thoại, không chỉ dựa vào ThietBi tự do
+    // (dễ trùng/gây nhầm với tên tài khoản, ví dụ user đặt tên máy trùng "ADMIN").
+    private var platformIcon: String {
+        switch session.nenTang {
+        case "Desktop": return "🖥️"
+        case "Android": return "🤖"
+        case "iOS": return "📱"
+        default: return "❓"
+        }
+    }
+
+    private var platformLabel: String? {
+        switch session.nenTang {
+        case "Desktop": return "Máy tính"
+        case "Android": return "Android"
+        case "iOS": return "iPhone"
+        default: return nil
+        }
+    }
+
+    // Thiết bị này màu xanh lá phân biệt ngay giữa 1 danh sách dài — khớp badge "Thiết bị này".
+    private var accentColor: Color { session.laThietBiHienTai ? .successColor : .brandPrimary }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            ZStack {
+                Circle().fill(accentColor.opacity(0.16)).frame(width: 40, height: 40)
+                Text(platformIcon)
+                    .font(.system(size: 16))
+                    .foregroundColor(accentColor)
+            }
+
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 6) {
+                    Text(session.thietBi?.isEmpty == false ? session.thietBi! : "Thiết bị không tên")
+                        .font(.subheadline.bold())
+                    if session.laThietBiHienTai {
+                        Text("Thiết bị này")
+                            .font(.caption2.bold())
+                            .padding(.horizontal, 7).padding(.vertical, 2)
+                            .background(Color.successColor)
+                            .foregroundColor(.white)
+                            .clipShape(Capsule())
+                    }
+                    Spacer()
+                }
+
+                HStack(spacing: 4) {
+                    if let platformLabel {
+                        Text(platformLabel).font(.caption.bold()).foregroundColor(accentColor)
+                    }
+                    // Chỉ có giá trị khi người xem là "admin" — xem được session của mọi tài khoản.
+                    if let tk = session.tenTaiKhoan, !tk.isEmpty {
+                        Text("· \(tk)").font(.caption).foregroundColor(.textMuted)
+                    }
+                }
+
+                HStack(spacing: 14) {
+                    EmojiLabel(DeviceSessionsView.formatUtc(session.ngayTao), "➡️")
+                    EmojiLabel(DeviceSessionsView.formatUtc(session.hetHan), "🕐")
+                }
+                .font(.caption2)
+                .foregroundColor(.textMuted)
+            }
+        }
+        .padding(12)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+}
+
+extension DeviceSessionsView {
+    // Backend trả DateTime dạng "yyyy-MM-ddTHH:mm:ss.fffffff" (Kind=Unspecified nhưng thực chất là
+    // UTC) — KHÔNG dùng HoaDonFormatting.congNoTime vì formatter đó không set timeZone khi parse,
+    // đọc nhầm giờ UTC thành giờ máy (lệch 7h so với giờ VN thật). Cắt phần fractional-second (thừa
+    // hơn .SSS mà DateFormatter chuẩn hỗ trợ) rồi parse tường minh với timeZone UTC, xuất ra theo
+    // giờ máy hiện tại.
+    static func formatUtc(_ iso: String) -> String {
+        let base = String(iso.prefix(19)) // "yyyy-MM-ddTHH:mm:ss"
+        let inFormatter = DateFormatter()
+        inFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        inFormatter.locale = Locale(identifier: "en_US_POSIX")
+        inFormatter.timeZone = TimeZone(identifier: "UTC")
+        guard let date = inFormatter.date(from: base) else { return "--:-- --/--" }
+
+        let outFormatter = DateFormatter()
+        outFormatter.dateFormat = "HH:mm dd/MM"
+        outFormatter.locale = Locale(identifier: "vi_VN")
+        return outFormatter.string(from: date)
+    }
+}

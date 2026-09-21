@@ -1,0 +1,931 @@
+import MessageUI
+import SwiftUI
+import UIKit
+
+private struct PhotoTarget: Identifiable { let id: String }
+
+struct HoaDonDetailView: View {
+    let hoaDonId: String
+    let onChanged: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var detail: HoaDonDetailDto?
+    @State private var loading = true
+    @State private var busy = false
+    @State private var errorText: String?
+    @State private var showShipperPicker = false
+    @State private var pendingAction: PendingAction?
+    @State private var copiedFeedback = false
+    @State private var showSmsComposer = false
+    @State private var qrImage: UIImage?
+    @State private var showEditForm = false
+    /// SanPhamId -> HinhAnh — API /HoaDon/{id} không kèm ảnh (chỉ ChiTietHoaDon, không join SanPham),
+    /// nên tự tra qua catalog (khớp cách Desktop gán HinhAnh client-side theo SanPhamId, xem
+    /// ChiTietHoaDonDto.cs).
+    @State private var hinhAnhMap: [String: String] = [:]
+    /// Món đang được đổi/thêm ảnh từ màn này: ảnh chưa có -> chụp camera, đã có -> chọn album Yêu thích.
+    @State private var photoCameraId: String?
+    @State private var photoLibraryId: String?
+    @State private var uploadingPhotoId: String?
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if loading {
+                    fullScreenLoading()
+                } else if let detail {
+                    content(detail)
+                } else {
+                    Text("Không tải được hoá đơn").foregroundColor(.textMuted)
+                }
+            }
+            .navigationTitle("Chi tiết hoá đơn")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Đóng") { dismiss() }
+                }
+                if let detail {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        HStack(spacing: 6) {
+                            Text(HoaDonFormatting.phanLoaiLabel(detail.phanLoai))
+                                .font(.caption.bold())
+                                .foregroundColor(HoaDonFormatting.phanLoaiColor(detail.phanLoai))
+                            if (detail.phanLoai == "Ship" || detail.phanLoai == "AppDatHang"),
+                               let nguoiShip = detail.nguoiShip, !nguoiShip.isEmpty {
+                                ShipperAvatarView(name: nguoiShip, size: 20)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .task { await load() }
+        .sheet(item: Binding(
+            get: { photoLibraryId.map(PhotoTarget.init) },
+            set: { photoLibraryId = $0?.id }
+        )) { target in
+            FavoritesImagePicker { data in
+                photoLibraryId = nil
+                Task { await uploadPhoto(sanPhamId: target.id, data: data) }
+            }
+        }
+        .fullScreenCover(item: Binding(
+            get: { photoCameraId.map(PhotoTarget.init) },
+            set: { photoCameraId = $0?.id }
+        )) { target in
+            CameraPicker { image in
+                photoCameraId = nil
+                guard let image, let data = image.resizedForMenuUpload().jpegData(compressionQuality: 0.75) else { return }
+                Task { await uploadPhoto(sanPhamId: target.id, data: data) }
+            }
+            .ignoresSafeArea()
+        }
+        .sheet(isPresented: $showShipperPicker) {
+            shipperPickerSheet
+        }
+        .sheet(isPresented: $showEditForm) {
+            HoaDonEditFormView(hoaDonId: hoaDonId) {
+                onChanged()
+                Task { await load() }
+            }
+        }
+        .sheet(isPresented: $showSmsComposer) {
+            if let detail {
+                // Không có SĐT vẫn mở soạn sẵn nội dung — nhân viên tự chọn người nhận trong app
+                // Tin nhắn, chỉ bỏ qua bước prefill recipient.
+                let phone = detail.soDienThoaiText?.isEmpty == false ? [detail.soDienThoaiText!] : []
+                SMSComposerView(recipients: phone, body: BillTextBuilder.smsText(detail)) {
+                    showSmsComposer = false
+                }
+            }
+        }
+        .confirmationDialog(
+            pendingAction?.title ?? "",
+            isPresented: Binding(get: { pendingAction != nil }, set: { if !$0 { pendingAction = nil } }),
+            titleVisibility: .visible
+        ) {
+            if let pendingAction {
+                Button(pendingAction.confirmLabel, role: pendingAction.destructive ? .destructive : nil) {
+                    Task { await execute(pendingAction) }
+                }
+                Button("Huỷ", role: .cancel) {}
+            }
+        }
+    }
+
+    /// Mọi thao tác đụng tiền/dữ liệu thật đều phải qua bước "Xác nhận" — khớp ConfirmDialog.Show
+    /// bên Desktop (DeleteAsync/RollbackAsync/GhiNoAsync đều mở dialog trước khi gọi API).
+    private enum PendingAction: Identifiable {
+        case tienMat, chuyenKhoan, rollback, ghiNo, xoa, doiPhuongThuc, doiPhanLoai
+        case ship(String)
+
+        var id: String {
+            switch self {
+            case .tienMat: return "tienMat"
+            case .chuyenKhoan: return "chuyenKhoan"
+            case .rollback: return "rollback"
+            case .ghiNo: return "ghiNo"
+            case .xoa: return "xoa"
+            case .doiPhuongThuc: return "doiPhuongThuc"
+            case .doiPhanLoai: return "doiPhanLoai"
+            case .ship(let name): return "ship-\(name)"
+            }
+        }
+
+        var title: String {
+            switch self {
+            case .tienMat: return "Thu tiền mặt?"
+            case .chuyenKhoan: return "Thu chuyển khoản?"
+            case .rollback: return "Hoàn tác thanh toán?"
+            case .ghiNo: return "Ghi nợ hoá đơn này?"
+            case .xoa: return "Xoá hoá đơn này?"
+            case .doiPhuongThuc: return "Đổi phương thức thanh toán?"
+            case .doiPhanLoai: return "Đổi phân loại đơn?"
+            case .ship(let name): return "Gán shipper \(name)?"
+            }
+        }
+
+        var confirmLabel: String {
+            switch self {
+            case .xoa: return "Xoá"
+            case .ghiNo: return "Ghi nợ"
+            case .rollback: return "Hoàn tác"
+            case .ship: return "Xác nhận"
+            default: return "Xác nhận"
+            }
+        }
+
+        var destructive: Bool {
+            if case .xoa = self { return true }
+            return false
+        }
+    }
+
+    private func content(_ d: HoaDonDetailDto) -> some View {
+        ScrollView {
+            VStack(spacing: 14) {
+                if let errorText {
+                    Text(errorText).foregroundColor(.dangerColor).font(.footnote)
+                }
+
+                DetailCard {
+                    HStack(alignment: .top, spacing: 10) {
+                        Text("👤")
+                            .font(.title2)
+                            .foregroundColor(.brandPrimary)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(d.tenKhachHangText?.isEmpty == false ? d.tenKhachHangText! : (d.tenBan.map { "Bàn \($0)" } ?? "Khách lẻ"))
+                                .font(.title3.bold())
+                            if let sdt = d.soDienThoaiText, !sdt.isEmpty { phoneRow(sdt) }
+                            if let dc = d.diaChiText, !dc.isEmpty { iconRow("📍", dc) }
+                        }
+                        Spacer()
+                        if let qrImage {
+                            Image(uiImage: qrImage)
+                                .resizable()
+                                .interpolation(.none)
+                                .frame(width: 90, height: 90)
+                        }
+                    }
+                    if let gc = d.ghiChu, !gc.isEmpty { iconRow("📝", gc) }
+                    if let tk = d.tenTaiKhoan, !tk.isEmpty { iconRow("➕👤", "Tạo bởi: \(tk)") }
+                }
+
+                if let chiTiet = d.chiTietHoaDons, !chiTiet.isEmpty {
+                    DetailCard {
+                        HStack {
+                            EmojiLabel("Món", "☕").font(.headline)
+                            Spacer()
+                            Text("\(chiTiet.reduce(0) { $0 + $1.soLuong }) ly")
+                                .font(.caption.bold())
+                                .foregroundColor(.brandPrimary)
+                                .padding(.horizontal, 8).padding(.vertical, 3)
+                                .background(Color.brandPrimary.opacity(0.12))
+                                .clipShape(Capsule())
+                        }
+                        ForEach(Array(chiTiet.enumerated()), id: \.element.id) { index, ct in
+                            if index > 0 { Divider() }
+                            itemRow(ct, allToppings: d.chiTietHoaDonToppings ?? [])
+                        }
+                    }
+                }
+
+                DetailCard(tint: tongTienTint(d)) {
+                    infoRow("Tổng tiền", HoaDonFormatting.money(d.tongTien))
+                    if d.giamGia > 0 { infoRow("Giảm giá", HoaDonFormatting.money(d.giamGia)) }
+                    infoRow("Thành tiền", HoaDonFormatting.money(d.thanhTien))
+                    infoRow("Đã thu", HoaDonFormatting.money(d.daThu))
+                    Divider()
+                    HStack {
+                        Text("CÒN LẠI").font(.caption.bold()).foregroundColor(.textMuted)
+                        Spacer()
+                        Text(HoaDonFormatting.money(d.conLai))
+                            .font(.title3.bold())
+                            .foregroundColor(d.conLai > 0 ? .dangerColor : .successColor)
+                    }
+                    // "Nợ đơn khác" (không phải "Tổng nợ khách") vì con số này CHỈ TÍNH các đơn khác
+                    // của cùng khách — KHÔNG gồm "Còn lại" của chính đơn đang xem (xem
+                    // HoaDonQueryService.GetByIdAsync, subquery loại trừ "AND h.Id != @id"). Nhãn cũ
+                    // dễ hiểu lầm là đã gộp.
+                    if let no = d.tongNoKhachHang, no != 0 { infoRow("Nợ đơn khác", HoaDonFormatting.money(no)) }
+                    // Khách có nợ đơn khác > 0 → cộng sẵn "Tổng cộng" (Còn lại + Nợ đơn khác) để nhân
+                    // viên khỏi cộng tay khi thu tiền khách tại quầy/ship.
+                    if let no = d.tongNoKhachHang, no > 0 {
+                        Divider()
+                        HStack {
+                            Text("TỔNG CỘNG").font(.caption.bold()).foregroundColor(.dangerColor)
+                            Spacer()
+                            Text(HoaDonFormatting.money(d.conLai + no))
+                                .font(.title3.bold())
+                                .foregroundColor(.dangerColor)
+                        }
+                    }
+                }
+
+                actionButtons(d)
+            }
+            .padding()
+        }
+        .disabled(busy)
+        .overlay { if busy { ProgressView() } }
+    }
+
+    private func itemRow(_ ct: ChiTietHoaDonResponseDto, allToppings: [ChiTietHoaDonToppingResponseDto]) -> some View {
+        let toppings = Self.toppingParts(ct.toppingText, allToppings: allToppings)
+        let toppingTien = toppings.reduce(0.0) { $0 + $1.tien }
+        let hinhAnh = ct.sanPhamId.flatMap { hinhAnhMap[$0] }
+        return HStack(alignment: .center, spacing: 10) {
+            itemThumbnail(hinhAnh, ten: ct.tenSanPham, sanPhamId: ct.sanPhamId)
+            Text("\(ct.soLuong)")
+                .font(.caption.bold())
+                .foregroundColor(.white)
+                .frame(width: 22, height: 22)
+                .background(Circle().fill(Color.brandPrimary))
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(ct.tenSanPham)\(bienTheSuffix(ct.tenBienThe))").font(.subheadline.bold())
+                if !toppings.isEmpty {
+                    Text(toppings.map(\.text).joined(separator: ", "))
+                        .font(.caption).foregroundColor(.brandPrimary)
+                }
+                if let note = ct.noteText, !note.isEmpty {
+                    Text(note).font(.caption).italic().foregroundColor(.warningColor)
+                }
+            }
+            Spacer()
+            Text(HoaDonFormatting.money(ct.donGia * Double(ct.soLuong) + toppingTien))
+                .font(.subheadline.bold())
+        }
+    }
+
+    @ViewBuilder
+    private func itemThumbnail(_ hinhAnh: String?, ten: String, sanPhamId: String?) -> some View {
+        Group {
+            if uploadingPhotoId != nil && uploadingPhotoId == sanPhamId {
+                ProgressView().frame(width: 36, height: 36)
+            } else if let hinhAnh, let url = URL(string: hinhAnh) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    default:
+                        Color.textMuted.opacity(0.12)
+                    }
+                }
+                .frame(width: 36, height: 36)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .contentShape(Rectangle())
+                .onTapGesture { if let sanPhamId { photoLibraryId = sanPhamId } }
+            } else {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.textMuted.opacity(0.12))
+                    .frame(width: 36, height: 36)
+                    .overlay(Text("📷").font(.system(size: 18)))
+                    .contentShape(Rectangle())
+                    .onTapGesture { if let sanPhamId { photoCameraId = sanPhamId } }
+            }
+        }
+    }
+
+    private func uploadPhoto(sanPhamId: String, data: Data) async {
+        uploadingPhotoId = sanPhamId
+        defer { uploadingPhotoId = nil }
+        let (url, message) = await APIClient.shared.uploadSanPhamHinhAnh(id: sanPhamId, imageData: data)
+        if let url {
+            // Backend giữ nguyên tên file mỗi lần đổi ảnh -> gắn query cache-bust để AsyncImage tải lại.
+            hinhAnhMap[sanPhamId] = url + "?v=\(Int(Date().timeIntervalSince1970))"
+        } else {
+            errorText = message ?? "Không cập nhật được ảnh."
+        }
+    }
+
+    /// toppingText dạng "Trân châu, Thạch x2" (BuildToppingText Desktop) chỉ có TÊN, không có GIÁ —
+    /// khớp tên với đơn giá trong d.chiTietHoaDonToppings (đơn giá 1 loại topping cố định, không đổi
+    /// theo món/dòng nào áp dụng) để vừa tính tiền vừa ghi giá ngay sau tên topping ("Trân châu
+    /// +5.000"), thay vì hiện tên trơn không ai biết tốn thêm bao nhiêu.
+    fileprivate static func toppingParts(_ toppingText: String?, allToppings: [ChiTietHoaDonToppingResponseDto]) -> [(text: String, tien: Double)] {
+        guard let toppingText, !toppingText.isEmpty else { return [] }
+        return toppingText.split(separator: ",").compactMap { part -> (text: String, tien: Double)? in
+            let trimmed = part.trimmingCharacters(in: .whitespaces)
+            guard !trimmed.isEmpty else { return nil }
+            var name = trimmed
+            var qty = 1
+            if let range = trimmed.range(of: #"\s+x(\d+)$"#, options: .regularExpression) {
+                name = String(trimmed[trimmed.startIndex..<range.lowerBound])
+                qty = Int(trimmed[range].trimmingCharacters(in: CharacterSet(charactersIn: " x"))) ?? 1
+            }
+            guard let top = allToppings.first(where: { $0.ten == name }) else { return (trimmed, 0) }
+            let tien = top.gia * Double(qty)
+            let label = qty > 1 ? "\(name) x\(qty)" : name
+            return ("\(label) +\(HoaDonFormatting.moneyShort(tien))", tien)
+        }
+    }
+
+    /// Icon + mã phím tắt (F1/F4/Esc/F12/Del) khớp WrapPanel "Action buttons" trong
+    /// HoaDonTabControl.xaml (Desktop) — nhân viên đã quen dùng phím tắt này hàng ngày trên máy tính
+    /// quán, mã tắt "quen mặt" với họ hơn là chữ đầy đủ; caption nhỏ bên dưới giữ lại chữ đầy đủ cho
+    /// người mới. (F2/F3/F9 in/copy ảnh không áp dụng cho mobile.)
+    private func actionButtons(_ d: HoaDonDetailDto) -> some View {
+        // Ghi nợ bắt buộc phải có khách hàng — khớp guard "Hoá đơn chưa có thông tin khách hàng!"
+        // trong GhiNoAsync (Desktop Actions.cs). Không có KhachHangId thì không có ai để ghi nợ.
+        let chuaGhiNo = d.ngayNo?.isEmpty ?? true
+        let payments = d.payments ?? []
+        let singlePaymentBank = payments.count == 1 ? payments[0].phuongThucThanhToanId.lowercased() == PaymentMethod.chuyenKhoanId : nil
+        let twoColumns = [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)]
+        // Nhóm nút phụ (Sửa/Xoá/Ship/Ghi nợ/Đổi phương thức/Hoàn tác/Đổi phân loại) co còn ~nửa cỡ,
+        // xếp 4 cột thay vì 2 — chỉ Tiền mặt/Chuyển khoản (2 nút thu tiền chính) giữ nguyên cỡ lớn.
+        let fourColumns = [GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6)]
+
+        // "Gửi SMS" luôn hiện kể cả hoá đơn không có SĐT — soạn sẵn nội dung, nhân viên tự chọn
+        // người nhận trong app Tin nhắn. Chỉ ẩn khi máy không hỗ trợ gửi SMS thật (không SIM/không
+        // cấu hình Tin nhắn — canSendText() false, hiện nút cũng không bấm được).
+        let canSms = MFMessageComposeViewController.canSendText()
+
+        // Khớp guard UpdateAsync (Backend, HoaDonCrudService): đã có thanh toán VÀ không phải đơn
+        // hôm nay thì server chặn sửa món/tiền — ẩn nút thay vì để bấm xong mới báo lỗi.
+        let canEdit = payments.isEmpty || (d.ngayGio?.hasPrefix(DateNavFormat.queryDate.string(from: Date())) ?? true)
+
+        return VStack(spacing: 8) {
+            HStack(spacing: 8) {
+                ActionButtonView(
+                    icon: copiedFeedback ? "✅" : "🧾", code: nil,
+                    caption: copiedFeedback ? "Đã copy" : "Gửi Bill", color: .brandPrimary
+                ) {
+                    Task { await copyBillImage(d) }
+                }
+
+                if canSms {
+                    ActionButtonView(icon: "💬", code: nil, caption: "Gửi SMS", color: .brandPrimary) {
+                        showSmsComposer = true
+                    }
+                }
+            }
+
+            if d.conLai > 0 {
+                HStack(spacing: 8) {
+                    ActionButtonView(icon: "💵", code: "F1", caption: "Tiền mặt", color: .successColor, prominent: true) {
+                        pendingAction = .tienMat
+                    }
+                    ActionButtonView(icon: "💳", code: "F4", caption: "Chuyển khoản", color: .brandPrimary, prominent: true) {
+                        pendingAction = .chuyenKhoan
+                    }
+                }
+            }
+
+            // 7 ô cố định 4 cột (co nửa cỡ so với Tiền mặt/Chuyển khoản ở trên), LUÔN hiển thị đủ ở
+            // mọi hoá đơn — nút nào không áp dụng thì mờ đi + không bấm được (disabled) thay vì
+            // ẩn/để trống, vừa giữ đúng vị trí từng nút vừa không còn chỗ trống trong grid. Thứ tự
+            // ưu tiên nút hay áp dụng lên trên-trái: Sửa/Xoá → Ship/Ghi nợ → Đổi phương thức/Hoàn
+            // tác (chỉ áp dụng khi đã thu đủ) → Đổi phân loại.
+            let showSua = canEdit
+            // Đơn đã ghi nợ tuyệt đối không cho xoá cứng — chỉ còn Hoàn tác (rollback, wipe hết thanh
+            // toán/ship/nợ về trạng thái mới) là lựa chọn an toàn duy nhất. Khớp guard NgayNo bên
+            // Desktop (DeleteAsync).
+            let showXoa = chuaGhiNo
+            // AppDatHang cùng cần gán shipper y hệt Ship — thiếu điều kiện này thì staff KHÔNG GÁN
+            // ĐƯỢC SHIPPER cho đơn app khách qua mobile (mirror bug đã sửa ở Desktop
+            // HoaDonTabControl.Actions.cs EscAsync).
+            let showShip = d.phanLoai == "Ship" || d.phanLoai == "AppDatHang"
+            let showGhiNo = d.conLai > 0 && chuaGhiNo && d.khachHangId != nil
+            // Có dòng SePay webhook tự thu (tuDongLuc != nil) thì KHÔNG cho đổi phương thức lẫn
+            // hoàn tác — cả hai đều xoá/đổi dòng thanh toán, làm lệch đối soát với tiền thật đã vào
+            // tài khoản ngân hàng. Khớp guard Backend HoaDonTrangThaiService.RollbackAsync và
+            // ChiTietHoaDonThanhToanService.DoiPhuongThucAsync.
+            let coTuDong = payments.contains { $0.tuDongLuc != nil }
+            let showDoiPhuongThuc = d.conLai <= 0 && singlePaymentBank != nil && !coTuDong
+            let showHoanTac = d.conLai <= 0 && !coTuDong
+            // Rút gọn "Tiền mặt"/"Chuyển khoản" thành "TM"/"CK" cho vừa nút compact (4 cột), kèm icon
+            // đổi theo hướng đích giống doiPhanLoaiIcon bên dưới (trước đây dùng chung 1 icon 🔄 cố
+            // định không phân biệt đổi sang gì).
+            let doiPhuongThucCaption = singlePaymentBank.map { $0 ? "Đổi sang TM" : "Đổi sang CK" } ?? "Đổi phương thức TT"
+            let doiPhuongThucIcon = singlePaymentBank.map { $0 ? "💵" : "💳" } ?? "🔄"
+            let doiPhuongThucColor: Color = singlePaymentBank == true ? .successColor : .brandPrimary
+
+            // Đổi nhanh Ship <-> Mua về (khớp Backend HoaDonTrangThaiService.DoiPhanLoaiAsync, chỉ
+            // toggle 2 phân loại này) — cùng guard "không sửa được đơn đã thu tiền ngày cũ" với nút
+            // Sửa đơn (canEdit), vì đổi phân loại cũng làm lệch báo cáo doanh thu theo phân loại hồi
+            // tố y hệt sửa món/tiền.
+            let showDoiPhanLoai = (d.phanLoai == "Ship" || d.phanLoai == "Mv") && canEdit
+            // Emoji/màu gợi liên tưởng đúng bộ icon PhanLoai dùng chung toàn app (HoaDonQuickFilter.
+            // systemIcon: Ship="scooter", Mv="bag.fill" — HoaDonFormatting.phanLoaiColor) — hiện
+            // icon/màu của phân loại SẼ CHUYỂN ĐẾN (giống cách doiPhuongThucColor ở trên tô màu theo
+            // phương thức đích, không phải phương thức hiện tại).
+            let doiPhanLoaiCaption = d.phanLoai == "Ship" ? "Đổi sang Mv" : "Đổi sang Ship"
+            let doiPhanLoaiIcon = d.phanLoai == "Ship" ? "🛍️" : "🛵"
+            let doiPhanLoaiColor = HoaDonFormatting.phanLoaiColor(d.phanLoai == "Ship" ? "Mv" : "Ship")
+
+            // Thứ tự theo yêu cầu: hàng 1 = Esc/F12/Sửa/Del (thao tác trên đơn), hàng 2 = Đổi phân
+            // loại/Đổi phương thức/Hoàn tác (thao tác trên thanh toán), ô cuối để trống.
+            LazyVGrid(columns: fourColumns, spacing: 6) {
+                ActionButtonView(icon: "🛵", code: "Esc", caption: "Đi Ship", color: .pinkColor, compact: true, disabled: !showShip) {
+                    showShipperPicker = true
+                }
+                ActionButtonView(icon: "⚠️", code: "F12", caption: "Ghi nợ", color: .dangerColor, compact: true, disabled: !showGhiNo) {
+                    pendingAction = .ghiNo
+                }
+                ActionButtonView(icon: "✏️", code: nil, caption: "Sửa đơn", color: .warningColor, compact: true, disabled: !showSua) {
+                    showEditForm = true
+                }
+                ActionButtonView(icon: "🗑️", code: "Del", caption: "Xoá đơn", color: .dangerColor, compact: true, disabled: !showXoa) {
+                    pendingAction = .xoa
+                }
+
+                ActionButtonView(icon: doiPhanLoaiIcon, code: nil, caption: doiPhanLoaiCaption, color: doiPhanLoaiColor, compact: true, disabled: !showDoiPhanLoai) {
+                    pendingAction = .doiPhanLoai
+                }
+                ActionButtonView(icon: doiPhuongThucIcon, code: nil, caption: doiPhuongThucCaption, color: doiPhuongThucColor, compact: true, disabled: !showDoiPhuongThuc) {
+                    pendingAction = .doiPhuongThuc
+                }
+                ActionButtonView(icon: "❌", code: nil, caption: "Xoá thanh toán", color: .warningColor, compact: true, disabled: !showHoanTac) {
+                    pendingAction = .rollback
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    /// Màu khung "CÒN LẠI/TỔNG CỘNG": đỏ nếu còn ghi nợ, xanh lá nếu đã thu đủ bằng tiền mặt, xanh
+    /// dương nếu đã thu đủ bằng chuyển khoản — mặc định xám khi chưa thu hoặc thu bằng nhiều phương
+    /// thức lẫn lộn (không đoán màu khi không rõ ràng).
+    private func tongTienTint(_ d: HoaDonDetailDto) -> Color? {
+        if (d.tongNoKhachHang ?? 0) > 0 { return .dangerColor }
+        guard d.conLai <= 0 else { return nil }
+        let payments = d.payments ?? []
+        guard !payments.isEmpty else { return nil }
+        if payments.allSatisfy({ $0.phuongThucThanhToanId.lowercased() == PaymentMethod.chuyenKhoanId }) { return .brandPrimary }
+        if payments.allSatisfy({ $0.phuongThucThanhToanId.lowercased() == PaymentMethod.tienMatId }) { return .successColor }
+        return nil
+    }
+
+    /// "Mặc định"/"Size Chuẩn"/"Chuẩn" là biến thể mặc định — khớp HoaDonTabControl.Board.cs
+    /// và SanPhamSearchBox.xaml.cs (Desktop), không cần hiển thị vì không mang thêm thông tin.
+    private func bienTheSuffix(_ tenBienThe: String?) -> String {
+        guard let tenBienThe, !tenBienThe.isEmpty,
+              !["Mặc định", "Size Chuẩn", "Chuẩn"].contains(tenBienThe) else { return "" }
+        return " (\(tenBienThe))"
+    }
+
+    /// Chọn shipper bằng thẻ bấm (khớp ShipperDialog bên Desktop — 2 shipper cố định Khánh/Nhã,
+    /// KHÔNG cho gõ tay tên tuỳ ý) thay vì TextField tự do như trước.
+    private var shipperPickerSheet: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                Text("Chọn shipper").font(.headline)
+                HStack(spacing: 20) {
+                    ForEach(["Khánh", "Nhã"], id: \.self) { name in
+                        Button {
+                            showShipperPicker = false
+                            pendingAction = .ship(name)
+                        } label: {
+                            VStack(spacing: 8) {
+                                ShipperAvatarView(name: name, size: 68)
+                                Text(name).font(.subheadline.bold())
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                Spacer()
+            }
+            .padding(.top, 24)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Huỷ") { showShipperPicker = false }
+                }
+            }
+        }
+        .presentationDetents([.height(220)])
+        .presentationDragIndicator(.visible)
+    }
+
+    /// SĐT dưới tên khách hàng — nhấp để gọi (thay cho icon SĐT trên card danh sách đã bỏ).
+    private func phoneRow(_ sdt: String) -> some View {
+        let digits = sdt.filter { $0.isNumber || $0 == "+" }
+        return Group {
+            if let url = URL(string: "tel:\(digits)") {
+                Link(destination: url) {
+                    HStack(spacing: 4) {
+                        Text("📞").font(.caption2)
+                        Text(sdt)
+                    }
+                    .foregroundColor(.brandPrimary)
+                }
+            } else {
+                Text(sdt).foregroundColor(.textMuted)
+            }
+        }
+        .font(.subheadline)
+    }
+
+    private func infoRow(_ label: String, _ value: String) -> some View {
+        HStack {
+            Text(label).foregroundColor(.textMuted)
+            Spacer()
+            Text(value).multilineTextAlignment(.trailing)
+        }
+        .font(.subheadline)
+    }
+
+    /// Dòng phụ trong card khách hàng (địa chỉ/ghi chú) — icon nhỏ bên trái thay vì nhãn chữ, gọn hơn.
+    private func iconRow(_ icon: String, _ text: String) -> some View {
+        HStack(alignment: .top, spacing: 6) {
+            // Emoji thay SF Symbol (đổi 2026-09-13) — mất màu .textMuted trên icon (emoji không ăn
+            // foregroundColor), chấp nhận đánh đổi để đồng bộ phong cách.
+            Text(icon).font(.caption).frame(width: 14)
+            Text(text).font(.subheadline).foregroundColor(.textMuted)
+            Spacer()
+        }
+    }
+
+    private func execute(_ action: PendingAction) async {
+        guard let d = detail else { return }
+        switch action {
+        case .tienMat:
+            await run { await thuTien(isCash: true, d: d) }
+        case .chuyenKhoan:
+            await run { await thuTien(isCash: false, d: d) }
+        case .rollback:
+            await run { await APIClient.shared.rollback(hoaDonId: hoaDonId) }
+        case .ghiNo:
+            await run { await APIClient.shared.ghiNo(hoaDonId: hoaDonId) }
+        case .xoa:
+            await run { await APIClient.shared.delete(hoaDonId: hoaDonId) }
+        case .doiPhuongThuc:
+            guard let paymentId = d.payments?.first?.id else { return }
+            await run { await APIClient.shared.doiPhuongThucThanhToan(id: paymentId) }
+        case .doiPhanLoai:
+            await run { await APIClient.shared.doiPhanLoaiHoaDon(hoaDonId: hoaDonId) }
+        case .ship(let name):
+            await run { await APIClient.shared.ganShipper(hoaDonId: hoaDonId, nguoiShip: name) }
+        }
+    }
+
+    private func thuTien(isCash: Bool, d: HoaDonDetailDto) async -> ActionResult {
+        await APIClient.shared.thuTien(
+            hoaDonId: hoaDonId, isCash: isCash, soTien: d.conLai,
+            ten: d.tenKhachHangText ?? "Khách lẻ", khachHangId: d.khachHangId
+        )
+    }
+
+    private func run(_ action: () async -> ActionResult) async {
+        busy = true
+        let result = await action()
+        busy = false
+        if result.success {
+            onChanged()
+            await load()
+        } else {
+            errorText = result.message ?? "Thao tác thất bại."
+        }
+    }
+
+    private func load() async {
+        loading = true
+        async let d = APIClient.shared.getHoaDonDetail(hoaDonId)
+        async let sp = APIClient.shared.getSanPhamList()
+        detail = await d
+        hinhAnhMap = Dictionary(uniqueKeysWithValues: await sp.compactMap { p in p.hinhAnh.map { (p.id, $0) } })
+        loading = false
+        await loadQrImage()
+    }
+
+    /// QR hiển thị ngay trong màn chi tiết (không chỉ trong ảnh "Gửi Bill") — cùng addInfo/amount
+    /// với copyBillImage nên khách quét đúng y hệt nội dung CK sẽ dùng khi gửi bill.
+    private func loadQrImage() async {
+        guard let d = detail else { qrImage = nil; return }
+        let addInfo = d.billAddInfo ?? ""
+        let amount = BillTextBuilder.amount(d)
+        let data = await APIClient.shared.getBillQrImage(amount: amount, addInfo: addInfo)
+        qrImage = data.flatMap { UIImage(data: $0) }
+    }
+
+    /// Render chi tiết hoá đơn thành ảnh, copy vào clipboard để dán thẳng vào chat Zalo/Facebook —
+    /// khớp cách "Gửi Bill Nợ" bên CongNoListView, dùng ImageRenderer để vẽ hết nội dung kể cả phần
+    /// đang cuộn ngoài viewport. Kèm mã QR VietQR lấy qua Backend /api/HoaDon/bill-qr — proxy này
+    /// dùng chung BankQrConfig với Desktop nên đổi tài khoản ngân hàng ở 1 chỗ là mọi client cùng
+    /// ra 1 mã QR. addInfo đọc thẳng `d.billAddInfo` (Backend tính sẵn, khớp 1:1
+    /// BankQrConfig.BuildAddInfo/HoaDonPrinter Desktop) — không tự build lại ở client nữa (đã bỏ
+    /// fallback, Backend luôn trả field này rồi).
+    private func copyBillImage(_ d: HoaDonDetailDto) async {
+        let addInfo = d.billAddInfo ?? ""
+        let amount = BillTextBuilder.amount(d)
+
+        let qrData = await APIClient.shared.getBillQrImage(amount: amount, addInfo: addInfo)
+        let qrImage = qrData.flatMap { UIImage(data: $0) }
+
+        let content = BillDetailSnapshotView(d: d, qrImage: qrImage)
+        let renderer = ImageRenderer(content: content)
+        renderer.scale = UIScreen.main.scale
+        guard let uiImage = renderer.uiImage else { return }
+        UIPasteboard.general.image = uiImage
+
+        copiedFeedback = true
+        Task {
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            copiedFeedback = false
+        }
+    }
+}
+
+/// Nội dung bill dạng hoá đơn giấy monospace — port 1:1 HoaDonPrinter.BuildContent/BuildFooterContent
+/// (Desktop) để "Gửi Bill" trên mobile ra đúng y hệt bill in/preview bên quầy. Vài phần Desktop có mà
+/// DTO mobile không trả (điểm thưởng, số dư ví) được bỏ qua có chủ đích — không đoán số liệu.
+enum BillTextBuilder {
+    private static let footerWidth = 27
+    private static let headerWidth = 32
+
+    /// Khớp HoaDonPrinter.BuildMaHoaDon (Desktop) / buildMaHoaDonBill (Mobile JS).
+    static func buildMaHoaDon(_ id: String) -> String { "HD" + id.prefix(8) }
+
+    /// Số tiền gộp nợ đơn khác (xem amount(_:)) — thay vì liệt kê hết (dễ vượt giới hạn ký tự nội
+    /// dung CK của ngân hàng, ~140-210 ký tự), chỉ ghi mã đơn hiện tại (đầu) và mã đơn nợ cuối cùng
+    /// (cuối), nối bằng " DEN " (chữ, không ký tự đặc biệt như "...." — nhiều app ngân hàng lọc bỏ
+    /// dấu chấm lặp trong nội dung CK). Khớp HoaDonPrinter.BuildAddInfo (Desktop). Việc ghi nhận
+    /// thanh toán KHÔNG phụ thuộc chuỗi này — xem ThuChuyenKhoanTuNganHangAsync chỉ cần mã đầu
+    /// tiên + tra nợ cũ từ DB.
+    static func buildCodesWithNoKhac(_ ma: String, _ maNoKhac: [String]?) -> String {
+        guard let maNoKhac, let last = maNoKhac.last else { return ma }
+        return "\(ma) DEN \(last)"
+    }
+
+    /// Khớp HoaDonPrinter.GetAmount (Desktop): còn nợ + còn lại nếu có nợ, không thì còn lại/thành tiền.
+    static func amount(_ d: HoaDonDetailDto) -> Double {
+        let bill = d.conLai > 0 ? d.conLai : d.thanhTien
+        if let no = d.tongNoKhachHang, no > 0 { return no + d.conLai }
+        return bill
+    }
+
+    /// Khớp HoaDonPrinter.ToAsciiNoDiacritics (Desktop) / toAsciiNoDiacritics (Mobile JS).
+    static func toAsciiNoDiacritics(_ s: String, upper: Bool = true) -> String {
+        guard !s.isEmpty else { return "" }
+        let folded = s.folding(options: .diacriticInsensitive, locale: Locale(identifier: "vi_VN"))
+            .replacingOccurrences(of: "đ", with: "d")
+            .replacingOccurrences(of: "Đ", with: "D")
+        return upper ? folded.uppercased() : folded
+    }
+
+    /// Tin SMS soạn sẵn cho khách không có Zalo/Facebook để nhận "Gửi Bill" — cố giữ GSM-7 thuần
+    /// (không dấu, không ký tự lạ) để 1 tin SMS đủ chứa (~160 ký tự), tránh vỡ thành 2 đoạn tốn
+    /// tiền hơn. KHÔNG kèm tên chủ TK (dài, đã có sẵn trên trang link QR) — chỉ STK + tên ngân
+    /// hàng đủ để khách nhận diện, đổi lại nhường chỗ cho link trang QR (xem HoaDonController.
+    /// GetBillQrByHoaDonId) tự vẽ đủ số tiền/QR/thông tin đầy đủ khi khách bấm vào.
+    static func smsText(_ d: HoaDonDetailDto) -> String {
+        // TongSoLuong (HoaDonDto, Backend) chưa từng được populate ở đâu — luôn 0, không dùng được.
+        // Tự cộng từ chiTietHoaDons (đã có sẵn trong HoaDonDetailDto) thay vì tin field đó.
+        let soLy = d.chiTietHoaDons?.reduce(0) { $0 + $1.soLuong } ?? 0
+        let amountVnd = Int(amount(d).rounded())
+        // ND chỉ ghi mã đơn (không kèm tên khách như billAddInfo dùng cho QR) — ThuChuyenKhoanTuNganHangAsync
+        // chỉ cần mã đầu tiên để đối chiếu tự động, không cần tên (xem buildCodesWithNoKhac).
+        let ma = buildMaHoaDon(d.id)
+        let maCode = buildCodesWithNoKhac(ma, d.maHoaDonNoKhac)
+        // "VietinBank" (viết hoa chữ đầu) chỉ để hiển thị đẹp trong SMS — d.bankName ("VIETINBANK")
+        // là mã ngân hàng dùng cho VietQR API, không đổi cách viết đó (giữ nguyên BankQrConfig).
+        let bankDisplay = "VietinBank"
+        let stk = d.bankAccountNo ?? ""
+        // Dùng mã ngắn "HDxxxxxxxx" thay vì Guid đầy đủ (36 ký tự) — Backend tự tra Guid thật từ 8
+        // hex đầu (xem HoaDonController.GetBillQrByHoaDonId/ResolveIdByShortCodeAsync).
+        // ĐÃ THỬ domain gốc denncoffee.uk (Prefs.publicBase) 2026-08-22 nhưng rollback ngay trong
+        // ngày — dùng chung cert với api.denncoffee.uk khiến app bị treo do HTTP/2 connection
+        // coalescing giữa 2 host (xem Prefs.swift + memory project_sms_qr_link_bare_domain).
+        let link = "\(Prefs.apiBase)/api/HoaDon/\(ma)/qr"
+        let amountFormatter = NumberFormatter()
+        amountFormatter.numberStyle = .decimal
+        amountFormatter.groupingSeparator = "."
+        let amountText = amountFormatter.string(from: NSNumber(value: amountVnd)) ?? "\(amountVnd)"
+        return """
+            DENN: Cam on quy khach!
+            Don \(soLy) ly: \(amountText)d
+            \(bankDisplay) STK: \(stk)
+            ND: \(maCode)
+            Ma QR: \(link)
+            """
+    }
+
+    static func build(_ d: HoaDonDetailDto) -> String {
+        var sb = ""
+        addCenterText(&sb, "ĐENN", width: headerWidth)
+        addCenterText(&sb, "02 Lý Thường Kiệt", width: headerWidth)
+        addCenterText(&sb, "0889 664 007", width: headerWidth)
+        sb += "===========================\n"
+
+        if d.khachHangId != nil {
+            sb += "KH: \(d.tenKhachHangText ?? "")\n"
+            if let dc = d.diaChiText { sb += "\(dc)\n" }
+            sb += "\(formatPhone(d.soDienThoaiText))\n"
+        }
+        sb += "\n"
+
+        let allToppings = d.chiTietHoaDonToppings ?? []
+        for ct in d.chiTietHoaDons ?? [] where ct.donGia > 0 {
+            let bienThe = (ct.tenBienThe?.isEmpty == false && ct.tenBienThe != "Size Chuẩn") ? " (\(ct.tenBienThe!))" : ""
+            // Cộng thêm toppingTien vào thành tiền dòng — khớp itemRow trên màn hình chi tiết (dòng
+            // 242), tránh lệch giữa hiển thị app và text gửi khách khi món có topping.
+            let toppings = HoaDonDetailView.toppingParts(ct.toppingText, allToppings: allToppings)
+            let toppingTien = toppings.reduce(0.0) { $0 + $1.tien }
+            sb += "- \(ct.tenSanPham)\(bienThe)\n"
+            sb += "   \(ct.soLuong) x \(moneyPlain(ct.donGia)) = \(moneyPlain(ct.donGia * Double(ct.soLuong) + toppingTien))\n"
+            // In kèm giá từng topping ("Kem Flan x2 +16k") thay vì chỉ tên trơn — khớp cách hiển thị
+            // trên màn hình chi tiết (itemRow), tránh khách không biết +16k đến từ đâu.
+            for topping in toppings {
+                sb += "      + \(topping.text)\n"
+            }
+            if let note = ct.noteText, !note.isEmpty {
+                sb += "      * \(note)\n"
+            }
+            sb += "\n"
+        }
+
+        sb += "---------------------------\n"
+        if d.giamGia > 0 {
+            addRow(&sb, "TỔNG CỘNG:", d.tongTien)
+            addRow(&sb, "Giảm giá:", d.giamGia)
+            addRow(&sb, "Thành tiền:", d.thanhTien)
+        } else {
+            addRow(&sb, "Thành tiền:", d.thanhTien)
+        }
+        if d.daThu > 0 {
+            addRow(&sb, "Đã thu:", d.daThu)
+            addRow(&sb, "Còn lại:", d.conLai)
+        }
+        if let no = d.tongNoKhachHang, no > 0 {
+            sb += "---------------------------\n"
+            addRow(&sb, "Công nợ:", no)
+            addRow(&sb, "TỔNG:", no + d.conLai)
+        }
+        sb += "===========================\n"
+
+        // Canh giữa dòng cảm ơn theo bề rộng nội dung thực tế — khớp Desktop (footerWidth tính từ
+        // dòng dài nhất đã có, không phải width=32 mặc định của header).
+        let bodyWidth = sb.split(separator: "\n", omittingEmptySubsequences: false).map(\.count).max() ?? headerWidth
+
+        addCenterText(&sb, "Quán nhỏ cảm ơn to.", width: bodyWidth)
+        addCenterText(&sb, "Cảm ơn bạn đã tin yêu quán.", width: bodyWidth)
+        addCenterText(&sb, "Đenn ♥", width: bodyWidth)
+
+        return sb.trimmingCharacters(in: .newlines)
+    }
+
+    private static func moneyPlain(_ v: Double) -> String {
+        HoaDonFormatting.moneyFormatter.string(from: NSNumber(value: v)) ?? "\(Int(v))"
+    }
+
+    private static func formatPhone(_ phone: String?) -> String {
+        guard let phone, !phone.isEmpty else { return "" }
+        let d = phone.filter(\.isNumber)
+        if d.count == 10 {
+            return "\(d.prefix(4)) \(d.dropFirst(4).prefix(3)) \(d.dropFirst(7))"
+        } else if d.count == 11 {
+            return "\(d.prefix(3)) \(d.dropFirst(3).prefix(4)) \(d.dropFirst(7))"
+        }
+        return phone
+    }
+
+    private static func addRow(_ sb: inout String, _ left: String, _ right: Double, width: Int = footerWidth) {
+        let r = moneyPlain(right)
+        let space = max(1, width - left.count - r.count)
+        sb += left + String(repeating: " ", count: space) + r + "\n"
+    }
+
+    private static func addCenterText(_ sb: inout String, _ text: String, width: Int) {
+        let space = max(0, (width - text.count) / 2)
+        sb += String(repeating: " ", count: space) + text + "\n"
+    }
+}
+
+/// Layout riêng để render ảnh "Gửi Bill" — nền trắng cố định để ảnh dán vào chat luôn đọc được bất
+/// kể theme máy, độc lập với ScrollView (không rasterize hết nội dung ngoài viewport).
+private struct BillDetailSnapshotView: View {
+    let d: HoaDonDetailDto
+    let qrImage: UIImage?
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Text(BillTextBuilder.build(d))
+                .font(.system(size: 13, weight: .regular, design: .monospaced))
+                .foregroundColor(.black)
+                .fixedSize()
+
+            if let qrImage {
+                Image(uiImage: qrImage)
+                    .resizable()
+                    .interpolation(.none)
+                    .frame(width: 200, height: 200)
+            }
+        }
+        .padding(16)
+        .background(Color.white)
+    }
+}
+
+/// Khối card bo góc dùng cho từng nhóm thông tin trong các màn "chi tiết" (HoaDonDetailView,
+/// ThanhToanDetailView) — thay cho danh sách phẳng ngăn cách bằng Divider trước đây, phân tách rõ
+/// ràng hơn. Internal để dùng chung xuyên suốt app.
+struct DetailCard<Content: View>: View {
+    let content: Content
+    /// Khi set (vd .dangerColor cho đơn có nợ), nền card đổi sang pastel màu này thay vì màu xám
+    /// mặc định — nhấn mạnh trực quan ngay trên card, không cần đọc số.
+    var tint: Color?
+
+    init(tint: Color? = nil, @ViewBuilder content: () -> Content) {
+        self.tint = tint
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) { content }
+            .padding(14)
+            .background(tint?.pastelBackground() ?? Color(.secondarySystemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+}
+
+/// Dùng chung cho mọi màn "chi tiết" có action button (HoaDonDetailView, ThanhToanDetailView) —
+/// khớp icon + mã tắt + caption 1 kiểu xuyên suốt app.
+struct ActionButtonView: View {
+    /// Emoji thay cho SF Symbol (đổi 2026-09-12, khớp phong cách emoji đã dùng ở AppDatHangIOS).
+    let icon: String
+    let code: String?
+    let caption: String
+    let color: Color
+    var prominent: Bool = false
+    /// Nút phụ (không phải Tiền mặt/Chuyển khoản) co còn ~nửa kích thước, xếp 4 cột thay vì 2 —
+    /// nhóm nút chính F1/F4 giữ nguyên cỡ lớn ở trên, phần còn lại chỉ cần bấm được, không cần to
+    /// bằng 2 nút thu tiền chính (xem actionButtons()).
+    var compact: Bool = false
+    /// Nút không áp dụng cho hoá đơn hiện tại vẫn HIỂN THỊ (mờ đi) thay vì ẩn hẳn — giữ đúng vị trí
+    /// cố định trong actionButtons(), tránh chỗ trống trong grid mà vẫn không bấm được.
+    var disabled: Bool = false
+    let action: () -> Void
+
+    init(icon: String, code: String?, caption: String, color: Color, prominent: Bool = false, compact: Bool = false, disabled: Bool = false, action: @escaping () -> Void) {
+        self.icon = icon
+        self.code = code
+        self.caption = caption
+        self.color = color
+        self.prominent = prominent
+        self.compact = compact
+        self.disabled = disabled
+        self.action = action
+    }
+
+    private var label: some View {
+        VStack(spacing: compact ? 0 : 1) {
+            HStack(spacing: compact ? 2 : 4) {
+                Text(icon)
+                if let code {
+                    Text(code).fontWeight(.bold)
+                }
+            }
+            .font(compact ? .system(size: 11) : .footnote)
+            Text(caption)
+                .font(compact ? .system(size: 9) : .caption2)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, compact ? 2 : 4)
+        // Emoji KHÔNG đổi màu theo .tint() như Image(systemName:) trước đây (glyph màu cố định) —
+        // disabled=true trước đây tự mờ đi qua .tint(.gray), giờ phải tự thêm opacity mới thấy được
+        // trạng thái "không bấm được", không thì icon emoji vẫn hiện sặc sỡ dù nút đang disabled.
+        .opacity(disabled ? 0.4 : 1)
+    }
+
+    var body: some View {
+        if prominent {
+            Button(action: action) { label }
+                .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.roundedRectangle(radius: 12))
+                .tint(disabled ? .gray : color)
+                .disabled(disabled)
+        } else {
+            Button(action: action) { label }
+                .buttonStyle(.bordered)
+                .buttonBorderShape(.roundedRectangle(radius: 12))
+                .tint(disabled ? .gray : color)
+                .disabled(disabled)
+        }
+    }
+}

@@ -1,0 +1,97 @@
+name: Build unsigned iOS IPA
+
+# Build chạy trên macOS runner của GitHub (không cần Mac thật) — output là .ipa CHƯA KÝ.
+# Ký + cài thật làm ở máy Windows bằng Sideloadly (dùng Apple ID cá nhân), KHÔNG ký trong CI
+# để khỏi phải nhét Apple ID/2FA vào secrets.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  test:
+    # Job riêng, chạy trên simulator (không -sdk iphoneos như job build) — build cho thiết bị thật
+    # không code-sign được thì cũng không chạy test được (XCTest cần app thật thực thi, không chỉ
+    # build). Test target thêm 2026-09-06, xem Tests/ — trước đó app này không có test nào.
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Run unit tests (iOS Simulator)
+        # Không chỉ đích danh model ("iPhone 16") — GitHub âm thầm đổi simulator mặc định trên
+        # image macos-15 theo thời gian (2026-09-08 từng gãy CI vì "iPhone 16" biến mất khỏi
+        # runner). Tự dò 1 simulator iPhone có sẵn (bất kỳ) trên máy thay vì hardcode tên.
+        run: |
+          set -e
+          UDID=$(xcrun simctl list devices available \
+            | grep -m1 -E 'iPhone [0-9]+ \(' \
+            | grep -oE '[0-9A-F]{8}-([0-9A-F]{4}-){3}[0-9A-F]{12}')
+          if [ -z "$UDID" ]; then
+            echo "Khong tim thay simulator iPhone nao kha dung"
+            xcrun simctl list devices available
+            exit 1
+          fi
+          echo "Dung simulator: $UDID"
+          xcodebuild test \
+            -project AppMobileIOS.xcodeproj \
+            -scheme AppMobileIOS \
+            -destination "id=$UDID" \
+            CODE_SIGNING_ALLOWED=NO
+
+  build:
+    # macos-14 chỉ có Xcode 15.4 sẵn — xcodegen bản mới ghi project file format 77 (Xcode 16+),
+    # Xcode 15.4 không mở được ("future Xcode project file format"). macos-15 có Xcode 16 mặc định.
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      # CFBundleShortVersionString/CFBundleVersion trong project.yml cố định "1.0"/"1" (không đổi
+      # bao giờ) — stamp gitSha+build time vào đây để app hiện được đang chạy bản build nào (xem
+      # trong Menu > cạnh tên tài khoản), tránh nhầm "chưa cài bản mới" như Backend đã làm với
+      # /health/ui. Info.plist do xcodegen SINH RA ở bước trên (info.path trong project.yml), nên
+      # phải patch SAU generate, TRƯỚC build.
+      - name: Stamp build version into Info.plist
+        run: |
+          SHORT_SHA=$(git rev-parse --short=8 HEAD)
+          BUILD_TIME=$(date -u +%Y%m%d%H%M%S)
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${SHORT_SHA}" Sources/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${BUILD_TIME}" Sources/Info.plist
+
+      - name: Build unsigned .app
+        run: |
+          xcodebuild \
+            -project AppMobileIOS.xcodeproj \
+            -scheme AppMobileIOS \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            build
+
+      - name: Package unsigned .ipa
+        run: |
+          set -e
+          APP_PATH="build/Build/Products/Release-iphoneos/AppMobileIOS.app"
+          mkdir -p Payload
+          cp -r "$APP_PATH" Payload/
+          zip -r AppMobileIOS-unsigned.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AppMobileIOS-unsigned-ipa
+          path: AppMobileIOS-unsigned.ipa
