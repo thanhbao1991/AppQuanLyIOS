@@ -12,7 +12,17 @@ struct GiaNguyenLieuView: View {
     @State private var items: [ChiTieuHangNgayDto] = []
     @State private var loading = false
     /// Nguyên liệu chi nhiều nhất từ đầu năm — hiện dưới ô tìm khi chưa gõ để chọn nhanh.
-    @State private var topList: [NguyenLieuDto] = []
+    @State private var topIds: [String] = []
+
+    private var topList: [NguyenLieuDto] {
+        let byId = Dictionary(uniqueKeysWithValues: nguyenLieuList.map { ($0.id, $0) })
+        return topIds.compactMap { byId[$0] }
+    }
+
+    private var yeuThichList: [NguyenLieuDto] {
+        nguyenLieuList.filter { $0.yeuThich == true && !$0.ngungSuDung }
+            .sorted { $0.ten.localizedCompare($1.ten) == .orderedAscending }
+    }
 
     /// Rỗng khi chưa gõ gì — khớp cách AddExpenseSheet (ChiTieuListView) tránh liệt kê hết danh
     /// sách nguyên liệu quá dài như dropdown.
@@ -23,21 +33,29 @@ struct GiaNguyenLieuView: View {
 
     var body: some View {
         List {
-            Section(searchText.isEmpty && !topList.isEmpty ? "Chi nhiều nhất năm nay" : "Nguyên liệu") {
+            Section("Nguyên liệu") {
                 TextField("Tìm nguyên liệu...", text: $searchText)
                 // Gõ tiếp bất cứ lúc nào để tìm nguyên liệu khác — không còn nút "Đổi" chặn giữa,
                 // chỉ ẩn tên đã chọn đi khi đang gõ để nhường chỗ cho kết quả tìm.
                 if let selected, searchText.isEmpty {
                     Text(selected.ten).bold().foregroundColor(.brandPrimary)
                 }
-                ForEach(searchText.isEmpty ? topList : Array(filteredList.prefix(30))) { nl in
-                    Button {
-                        selected = nl
-                        searchText = ""
-                        Task { await loadGia(nl) }
-                    } label: {
-                        Text(nl.ten)
+            }
+
+            if searchText.isEmpty {
+                if !yeuThichList.isEmpty {
+                    Section("⭐ Hay mua") {
+                        ForEach(yeuThichList) { row($0) }
                     }
+                }
+                if !topList.isEmpty {
+                    Section("Chi nhiều nhất năm nay") {
+                        ForEach(topList.filter { $0.yeuThich != true }) { row($0) }
+                    }
+                }
+            } else {
+                Section("Kết quả") {
+                    ForEach(filteredList.prefix(30)) { row($0) }
                 }
             }
 
@@ -106,11 +124,41 @@ struct GiaNguyenLieuView: View {
             }
         }
         let byId = Dictionary(uniqueKeysWithValues: nguyenLieuList.map { ($0.id, $0) })
-        topList = tong.sorted { $0.value > $1.value }
+        topIds = tong.sorted { $0.value > $1.value }
             .compactMap { byId[$0.key] }
             .filter { !$0.ngungSuDung }
             .prefix(15)
-            .map { $0 }
+            .map { $0.id }
+    }
+
+    /// Dòng nguyên liệu: chạm tên để xem giá, chạm ⭐ để ghim/bỏ ghim (cập nhật ngay, lỗi thì hoàn lại).
+    private func row(_ nl: NguyenLieuDto) -> some View {
+        HStack {
+            Button {
+                selected = nl
+                searchText = ""
+                Task { await loadGia(nl) }
+            } label: {
+                Text(nl.ten).frame(maxWidth: .infinity, alignment: .leading)
+            }
+            Button {
+                Task { await toggleYeuThich(nl) }
+            } label: {
+                Image(systemName: nl.yeuThich == true ? "star.fill" : "star")
+                    .foregroundColor(nl.yeuThich == true ? .yellow : .textMuted)
+            }
+            .buttonStyle(.borderless)
+        }
+    }
+
+    private func toggleYeuThich(_ nl: NguyenLieuDto) async {
+        guard let i = nguyenLieuList.firstIndex(where: { $0.id == nl.id }) else { return }
+        let value = nguyenLieuList[i].yeuThich != true
+        nguyenLieuList[i].yeuThich = value
+        if !(await APIClient.shared.setNguyenLieuYeuThich(id: nl.id, value: value)),
+           let j = nguyenLieuList.firstIndex(where: { $0.id == nl.id }) {
+            nguyenLieuList[j].yeuThich = !value
+        }
     }
 
     private func loadGia(_ nl: NguyenLieuDto) async {

@@ -257,6 +257,8 @@ struct NguyenLieuDto: Decodable, Identifiable {
     /// (UpdateAsync bên Backend ghi đè toàn bộ field, thiếu 2 field này sẽ set về null/0).
     let nguyenLieuBanHangId: String?
     let heSoQuyDoiBanHang: Double?
+    /// ⭐ ghim lên đầu màn Giá nguyên liệu — optional để không vỡ khi backend cũ chưa trả field.
+    var yeuThich: Bool?
 }
 
 struct NguyenLieuCreateRequest: Encodable {

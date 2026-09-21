@@ -167,6 +167,12 @@ actor APIClient {
         return env.data ?? []
     }
 
+    /// Bật/tắt ⭐ nguyên liệu (PATCH riêng, không qua Update để không ghi đè các field khác).
+    func setNguyenLieuYeuThich(id: String, value: Bool) async -> Bool {
+        let req = makeRequest("/api/NguyenLieu/\(id)/yeu-thich?value=\(value)", method: "PATCH")
+        return await executeAction(req).success
+    }
+
     func createChiTieu(_ body: ChiTieuHangNgayCreateRequest) async -> ActionResult {
         let req = makeRequest("/api/ChiTieuHangNgay", method: "POST", body: jsonBody(body))
         return await executeAction(req)
