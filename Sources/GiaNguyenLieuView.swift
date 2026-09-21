@@ -193,7 +193,7 @@ private struct GiaNguyenLieuDetailView: View {
             let ngay = HoaDonFormatting.parseIso(d.ngayDeXuat)
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(ngay.map { $0.formatted(.dateTime.weekday(.wide).day().month()) } ?? d.ngayDeXuat)
+                    Text(ngay.map { $0.formatted(.dateTime.weekday(.wide).day().month().locale(Locale(identifier: "vi_VN"))) } ?? d.ngayDeXuat)
                         .font(.headline)
                     Spacer()
                     Text(conLaiText(d.soNgayConLai))
@@ -201,7 +201,7 @@ private struct GiaNguyenLieuDetailView: View {
                         .foregroundColor(d.soNgayConLai <= 0 ? .red : .brandPrimary)
                 }
                 if let sl = d.soLuongDeXuat {
-                    Text("Nên mua khoảng \(sl.cleanString)")
+                    Text("Nên mua khoảng \(sl.cleanString)" + (nguyenLieu.donViTinh.map { " \($0)" } ?? ""))
                         .font(.subheadline)
                 }
                 Text((d.nguonAI ? "✨ AI: " : "") + d.lyDo)
