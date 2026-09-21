@@ -42,8 +42,8 @@ struct GiaNguyenLieuView: View {
                         ForEach(yeuThichList) { row($0) }
                     }
                 }
-                // Món đã ⭐ nằm nhóm trên rồi — nhóm này bù thêm cho đủ tổng 30 dòng.
-                let conLai = topList.filter { $0.yeuThich != true }.prefix(max(30 - yeuThichList.count, 0))
+                // Món đã ⭐ nằm nhóm trên rồi — nhóm này vẫn đủ 30 món chi nhiều nhất còn lại.
+                let conLai = topList.filter { $0.yeuThich != true }.prefix(30)
                 if !conLai.isEmpty {
                     Section("Chi nhiều nhất năm nay") {
                         ForEach(Array(conLai)) { row($0) }
