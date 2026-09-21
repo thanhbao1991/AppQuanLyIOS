@@ -167,6 +167,14 @@ actor APIClient {
         return env.data ?? []
     }
 
+    /// Danh sách nguyên liệu cần mua sắp tới (đến hạn/trễ hạn), gấp nhất trước — tính bằng công thức, không AI.
+    func getCanMua() async -> [MuaHangDeXuatDto] {
+        let req = makeRequest("/api/ChiTieuHangNgay/can-mua")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[MuaHangDeXuatDto]>.self, from: data), env.isSuccess else { return [] }
+        return env.data ?? []
+    }
+
     /// Đề xuất ngày mua tiếp theo (AI đọc lịch sử mua) — nil nếu chưa đủ lịch sử hoặc lỗi.
     func getDeXuatMua(nguyenLieuId: String) async -> MuaHangDeXuatDto? {
         let req = makeRequest("/api/ChiTieuHangNgay/de-xuat-mua?nguyenLieuId=\(nguyenLieuId)")

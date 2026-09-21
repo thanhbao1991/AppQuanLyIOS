@@ -191,7 +191,11 @@ struct ChiTieuHangNgayDto: Decodable, Identifiable {
 
 /// Đề xuất ngày mua tiếp theo của 1 nguyên liệu (GET /api/ChiTieuHangNgay/de-xuat-mua) — nguonAI=false
 /// nghĩa là backend rơi về ước lượng thống kê (AI lỗi/hết quota), UI không gắn nhãn AI.
-struct MuaHangDeXuatDto: Decodable {
+struct MuaHangDeXuatDto: Decodable, Identifiable {
+    /// Chỉ có ở danh sách cần mua (GET /api/ChiTieuHangNgay/can-mua); thẻ 1 nguyên liệu để nil.
+    let nguyenLieuId: String?
+    let ten: String?
+    var id: String { nguyenLieuId ?? ngayDeXuat }
     let ngayDeXuat: String
     let soNgayConLai: Int
     let soLuongDeXuat: Double?

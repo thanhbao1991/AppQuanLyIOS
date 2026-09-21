@@ -10,17 +10,35 @@ struct GiaNguyenLieuView: View {
     @State private var searchText = ""
     @State private var selected: NguyenLieuDto?
     @State private var showDetail = false
-    /// Nguyên liệu chi nhiều nhất từ đầu năm — hiện dưới ô tìm khi chưa gõ để chọn nhanh.
-    @State private var topIds: [String] = []
-
-    private var topList: [NguyenLieuDto] {
-        let byId = Dictionary(uniqueKeysWithValues: nguyenLieuList.map { ($0.id, $0) })
-        return topIds.compactMap { byId[$0] }
-    }
+    /// Nguyên liệu cần mua sắp tới (đến hạn/trễ hạn) — hiện dưới ô tìm khi chưa gõ, gấp nhất trước.
+    @State private var canMua: [MuaHangDeXuatDto] = []
+    @State private var canMuaLoaded = false
 
     private var yeuThichList: [NguyenLieuDto] {
         nguyenLieuList.filter { $0.yeuThich == true && !$0.ngungSuDung }
             .sorted { $0.ten.localizedCompare($1.ten) == .orderedAscending }
+    }
+
+    /// Nguyên liệu cần mua (có đề xuất) + nguyên liệu ⭐ chưa đến hạn (d = nil).
+    private struct GoiYItem: Identifiable {
+        let nl: NguyenLieuDto
+        let d: MuaHangDeXuatDto?
+        var id: String { nl.id }
+    }
+
+    private var goiYList: [GoiYItem] {
+        let byId = Dictionary(uniqueKeysWithValues: nguyenLieuList.map { ($0.id, $0) })
+        var result: [GoiYItem] = []
+        var seen = Set<String>()
+        for d in canMua {
+            if let id = d.nguyenLieuId, let nl = byId[id], !nl.ngungSuDung, seen.insert(id).inserted {
+                result.append(GoiYItem(nl: nl, d: d))
+            }
+        }
+        for nl in yeuThichList where seen.insert(nl.id).inserted {
+            result.append(GoiYItem(nl: nl, d: nil))
+        }
+        return result
     }
 
     /// Rỗng khi chưa gõ gì — khớp cách AddExpenseSheet (ChiTieuListView) tránh liệt kê hết danh
@@ -37,16 +55,15 @@ struct GiaNguyenLieuView: View {
             }
 
             if searchText.isEmpty {
-                if !yeuThichList.isEmpty {
-                    Section("⭐ Online") {
-                        ForEach(yeuThichList) { row($0) }
+                // Gộp "cần mua" + ⭐ Online: việc đến hạn/trễ hạn xếp gấp nhất trước, món ⭐ chưa đến hạn
+                // (không có đề xuất) nằm dưới theo tên. ⭐ trên từng dòng vẫn bấm để ghim/bỏ ghim.
+                if !goiYList.isEmpty {
+                    Section("Gợi ý mua") {
+                        ForEach(goiYList) { row($0.nl, $0.d) }
                     }
-                }
-                // Món đã ⭐ nằm nhóm trên rồi — nhóm này vẫn đủ 30 món chi nhiều nhất còn lại.
-                let conLai = topList.filter { $0.yeuThich != true }.prefix(30)
-                if !conLai.isEmpty {
-                    Section("Chi nhiều nhất năm nay") {
-                        ForEach(Array(conLai)) { row($0) }
+                } else if canMuaLoaded {
+                    Section("Gợi ý mua") {
+                        Text("Chưa có nguyên liệu nào đến hạn mua.").foregroundColor(.textMuted)
                     }
                 }
             } else {
@@ -66,41 +83,34 @@ struct GiaNguyenLieuView: View {
         }
         .task {
             nguyenLieuList = await APIClient.shared.getNguyenLieu()
-            await loadTop()
+            canMua = await APIClient.shared.getCanMua()
+            canMuaLoaded = true
         }
-    }
-
-    /// Cộng ThanhTien theo nguyên liệu qua các tháng từ đầu năm (gọi song song từng tháng), xếp theo
-    /// chi nhiều nhất (còn đang dùng); phần cắt đủ 30 dòng làm ở body sau khi trừ món đã ⭐.
-    private func loadTop() async {
-        let cal = Calendar.current
-        let now = Date()
-        let year = cal.component(.year, from: now)
-        let month = cal.component(.month, from: now)
-        var tong: [String: Double] = [:]
-        await withTaskGroup(of: [ChiTieuHangNgayDto].self) { group in
-            for m in 1...month {
-                group.addTask { await APIClient.shared.getChiTieuByMonth(year: year, month: m) }
-            }
-            for await rows in group {
-                for r in rows { tong[r.nguyenLieuId, default: 0] += r.thanhTien }
-            }
-        }
-        let byId = Dictionary(uniqueKeysWithValues: nguyenLieuList.map { ($0.id, $0) })
-        topIds = tong.sorted { $0.value > $1.value }
-            .compactMap { byId[$0.key] }
-            .filter { !$0.ngungSuDung }
-            .map { $0.id }
     }
 
     /// Dòng nguyên liệu: chạm tên để xem giá, chạm ⭐ để ghim/bỏ ghim (cập nhật ngay, lỗi thì hoàn lại).
-    private func row(_ nl: NguyenLieuDto) -> some View {
+    /// Có đề xuất `d` thì hiện thêm số lượng thường mua + mức gấp (trễ/hôm nay/còn N ngày).
+    private func row(_ nl: NguyenLieuDto, _ d: MuaHangDeXuatDto? = nil) -> some View {
         HStack {
             Button {
                 selected = nl
                 showDetail = true
             } label: {
-                Text(nl.ten).frame(maxWidth: .infinity, alignment: .leading)
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(nl.ten).foregroundColor(.primary)
+                        if let sl = d?.soLuongDeXuat {
+                            Text("Thường mua \(sl.cleanString)" + (nl.donViTinh.map { " \($0)" } ?? ""))
+                                .font(.caption).foregroundColor(.textMuted)
+                        }
+                    }
+                    Spacer()
+                    if let d {
+                        Text(d.soNgayConLai < 0 ? "Trễ \(-d.soNgayConLai) ngày" : d.soNgayConLai == 0 ? "Hôm nay" : "Còn \(d.soNgayConLai) ngày")
+                            .font(.caption.bold())
+                            .foregroundColor(d.soNgayConLai <= 0 ? .red : .brandPrimary)
+                    }
+                }
             }
             Button {
                 Task { await toggleYeuThich(nl) }
