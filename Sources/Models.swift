@@ -200,6 +200,18 @@ struct MuaHangDeXuatDto: Decodable {
     let soLanMuaDaDung: Int
 }
 
+/// Việc nên làm sớm, đề xuất từ lịch sử tick xong (GET /api/CongViecNoiBo/de-xuat).
+struct CongViecDeXuatDto: Decodable, Identifiable {
+    let congViecId: String
+    let ten: String
+    let lanCuoiLam: String?
+    let ngayDeXuat: String
+    let soNgayConLai: Int
+    let lyDo: String
+    let nguonAI: Bool
+    var id: String { congViecId }
+}
+
 struct ChiTieuHangNgayCreateRequest: Encodable {
     let ten: String
     let soLuong: Double

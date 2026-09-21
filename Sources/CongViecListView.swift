@@ -9,6 +9,8 @@ struct CongViecListView: View {
     @State private var searchText = ""
     @State private var adding = false
     @State private var errorMessage: String?
+    /// Tải riêng sau danh sách việc — AI trả chậm, không chặn màn hình.
+    @State private var deXuat: [CongViecDeXuatDto] = []
 
     private var sortedItems: [CongViecNoiBoDto] {
         items
@@ -24,6 +26,11 @@ struct CongViecListView: View {
                     fullScreenLoading()
                 } else {
                     List {
+                        if searchText.isEmpty && !deXuat.isEmpty {
+                            Section("Đề xuất nên làm") {
+                                ForEach(deXuat) { deXuatRow($0) }
+                            }
+                        }
                         if sortedItems.isEmpty {
                             if items.isEmpty {
                                 Text("Chưa có việc nào")
@@ -86,6 +93,23 @@ struct CongViecListView: View {
         items = await APIClient.shared.getCongViecList()
         loading = false
         hasLoaded = true
+        deXuat = await APIClient.shared.getCongViecDeXuat()
+    }
+
+    private func deXuatRow(_ d: CongViecDeXuatDto) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack {
+                Text(d.ten).font(.subheadline.bold())
+                Spacer()
+                Text(d.soNgayConLai < 0 ? "Trễ \(-d.soNgayConLai) ngày" : d.soNgayConLai == 0 ? "Hôm nay" : "Còn \(d.soNgayConLai) ngày")
+                    .font(.caption.bold())
+                    .foregroundColor(d.soNgayConLai <= 0 ? .red : .brandPrimary)
+            }
+            Text((d.nguonAI ? "✨ AI: " : "") + d.lyDo)
+                .font(.caption)
+                .foregroundColor(.textMuted)
+        }
+        .padding(.vertical, 2)
     }
 
     private func toggle(_ item: CongViecNoiBoDto, done: Bool) async {

@@ -319,6 +319,14 @@ actor APIClient {
         return await executeAction(req)
     }
 
+    /// Việc nên làm sớm theo lịch sử làm (AI/thống kê) — rỗng nếu chưa đủ lịch sử hoặc lỗi.
+    func getCongViecDeXuat() async -> [CongViecDeXuatDto] {
+        let req = makeRequest("/api/CongViecNoiBo/de-xuat")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[CongViecDeXuatDto]>.self, from: data), env.isSuccess else { return [] }
+        return env.data ?? []
+    }
+
     func updateCongViec(id: String, ten: String, daHoanThanh: Bool, ngayGio: String?) async -> ActionResult {
         let body = CongViecNoiBoRequest(ten: ten, daHoanThanh: daHoanThanh, ngayGio: ngayGio)
         let req = makeRequest("/api/CongViecNoiBo/\(id)", method: "PUT", body: jsonBody(body))
