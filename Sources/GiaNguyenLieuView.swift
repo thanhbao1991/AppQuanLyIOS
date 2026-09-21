@@ -9,8 +9,7 @@ struct GiaNguyenLieuView: View {
     @State private var nguyenLieuList: [NguyenLieuDto] = []
     @State private var searchText = ""
     @State private var selected: NguyenLieuDto?
-    @State private var items: [ChiTieuHangNgayDto] = []
-    @State private var loading = false
+    @State private var showDetail = false
     /// Nguyên liệu chi nhiều nhất từ đầu năm — hiện dưới ô tìm khi chưa gõ để chọn nhanh.
     @State private var topIds: [String] = []
 
@@ -35,11 +34,6 @@ struct GiaNguyenLieuView: View {
         List {
             Section("Nguyên liệu") {
                 TextField("Tìm nguyên liệu...", text: $searchText)
-                // Gõ tiếp bất cứ lúc nào để tìm nguyên liệu khác — không còn nút "Đổi" chặn giữa,
-                // chỉ ẩn tên đã chọn đi khi đang gõ để nhường chỗ cho kết quả tìm.
-                if let selected, searchText.isEmpty {
-                    Text(selected.ten).bold().foregroundColor(.brandPrimary)
-                }
             }
 
             if searchText.isEmpty {
@@ -60,49 +54,16 @@ struct GiaNguyenLieuView: View {
                     ForEach(filteredList.prefix(30)) { row($0) }
                 }
             }
-
-            if loading {
-                Section {
-                    HStack {
-                        Spacer()
-                        ProgressView().scaleEffect(1.4).tint(.brandPrimary)
-                        Spacer()
-                    }
-                }
-            } else if selected != nil {
-                if items.isEmpty {
-                    Section("15 lần mua gần nhất") {
-                        Text("Chưa có lần mua nào.").foregroundColor(.textMuted)
-                    }
-                } else {
-                    Section("Diễn biến giá") {
-                        GiaNguyenLieuChart(items: items)
-                    }
-                    Section("15 lần mua gần nhất") {
-                        ForEach(items) { item in
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(HoaDonFormatting.congNoTime(item.ngayGio))
-                                        .font(.subheadline)
-                                    Text("SL \(item.soLuong.cleanString)")
-                                        .font(.caption)
-                                        .foregroundColor(.textMuted)
-                                }
-                                Spacer()
-                                Text(HoaDonFormatting.money(item.donGia))
-                                    .font(.subheadline.bold())
-                                    .foregroundColor(.brandPrimary)
-                            }
-                        }
-                    }
-                }
-            }
         }
         .navigationTitle("Giá nguyên liệu")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color.brandPrimary, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
+        // Chạm tên → sang màn riêng xem giá (thay vì kéo xuống cuối danh sách).
+        .navigationDestination(isPresented: $showDetail) {
+            if let selected { GiaNguyenLieuDetailView(nguyenLieu: selected) }
+        }
         .task {
             nguyenLieuList = await APIClient.shared.getNguyenLieu()
             await loadTop()
@@ -137,8 +98,7 @@ struct GiaNguyenLieuView: View {
         HStack {
             Button {
                 selected = nl
-                searchText = ""
-                Task { await loadGia(nl) }
+                showDetail = true
             } label: {
                 Text(nl.ten).frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -161,11 +121,60 @@ struct GiaNguyenLieuView: View {
             nguyenLieuList[j].yeuThich = !value
         }
     }
+}
 
-    private func loadGia(_ nl: NguyenLieuDto) async {
-        loading = true
-        items = await APIClient.shared.getGiaNguyenLieuGanDay(nguyenLieuId: nl.id)
-        loading = false
+/// Màn xem giá 1 nguyên liệu: biểu đồ + 15 lần mua gần nhất.
+private struct GiaNguyenLieuDetailView: View {
+    let nguyenLieu: NguyenLieuDto
+    @State private var items: [ChiTieuHangNgayDto] = []
+    @State private var loading = true
+
+    var body: some View {
+        List {
+            if loading {
+                Section {
+                    HStack {
+                        Spacer()
+                        ProgressView().scaleEffect(1.4).tint(.brandPrimary)
+                        Spacer()
+                    }
+                }
+            } else if items.isEmpty {
+                Section("15 lần mua gần nhất") {
+                    Text("Chưa có lần mua nào.").foregroundColor(.textMuted)
+                }
+            } else {
+                Section("Diễn biến giá") {
+                    GiaNguyenLieuChart(items: items)
+                }
+                Section("15 lần mua gần nhất") {
+                    ForEach(items) { item in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(HoaDonFormatting.congNoTime(item.ngayGio))
+                                    .font(.subheadline)
+                                Text("SL \(item.soLuong.cleanString)")
+                                    .font(.caption)
+                                    .foregroundColor(.textMuted)
+                            }
+                            Spacer()
+                            Text(HoaDonFormatting.money(item.donGia))
+                                .font(.subheadline.bold())
+                                .foregroundColor(.brandPrimary)
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle(nguyenLieu.ten)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .task {
+            items = await APIClient.shared.getGiaNguyenLieuGanDay(nguyenLieuId: nguyenLieu.id)
+            loading = false
+        }
     }
 }
 
