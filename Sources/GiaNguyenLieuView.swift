@@ -59,18 +59,7 @@ struct GiaNguyenLieuView: View {
                 // (không có đề xuất) nằm dưới theo tên. ⭐ trên từng dòng vẫn bấm để ghim/bỏ ghim.
                 if !goiYList.isEmpty {
                     Section("Gợi ý mua") {
-                        ForEach(goiYList) { item in
-                            row(item.nl, item.d)
-                                // Vuốt trái → "Ngừng dùng": loại nguyên liệu không còn mua khỏi danh sách gợi ý
-                                // (đặt NgungSuDung, hoàn tác được ở màn Nguyên liệu). Không full-swipe để khỏi lỡ tay.
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    Button(role: .destructive) {
-                                        Task { await ngungSuDung(item.nl) }
-                                    } label: {
-                                        Label("Ngừng dùng", systemImage: "nosign")
-                                    }
-                                }
-                        }
+                        ForEach(goiYList) { row($0.nl, $0.d) }
                     }
                 } else if canMuaLoaded {
                     Section("Gợi ý mua") {
@@ -130,6 +119,17 @@ struct GiaNguyenLieuView: View {
                     .foregroundColor(nl.yeuThich == true ? .yellow : .textMuted)
             }
             .buttonStyle(.borderless)
+            // Nút "Ngừng dùng" cạnh ⭐: loại nguyên liệu không còn mua khỏi danh sách (đặt NgungSuDung,
+            // bật lại được ở màn Nguyên liệu). Không hiện ở món đã ngừng dùng (kết quả tìm kiếm).
+            if !nl.ngungSuDung {
+                Button {
+                    Task { await ngungSuDung(nl) }
+                } label: {
+                    Image(systemName: "nosign").foregroundColor(.textMuted)
+                }
+                .buttonStyle(.borderless)
+                .padding(.leading, 8)
+            }
         }
     }
 
