@@ -71,7 +71,9 @@ struct VoucherListView: View {
             soLuongToiThieu: item.soLuongToiThieu,
             yeuCauSizeL: item.yeuCauSizeL,
             mucDich: item.mucDich,
-            hangToiThieu: item.hangToiThieu, dangHoatDong: !item.dangHoatDong))
+            hangToiThieu: item.hangToiThieu, dangHoatDong: !item.dangHoatDong,
+            ngayBatDau: item.ngayBatDau, ngayKetThuc: item.ngayKetThuc,
+            soNgayHienTruoc: item.soNgayHienTruoc, lapLaiHangNam: item.lapLaiHangNam))
         await load()
     }
 
@@ -125,6 +127,9 @@ private struct VoucherRowView: View {
                 Text(nhanDieuKien(item)).font(.caption2).foregroundColor(.brandPrimary)
                 if let hangToiThieu = item.hangToiThieu, !hangToiThieu.isEmpty {
                     Text("Chỉ hạng \(hangToiThieu) trở lên").font(.caption2).foregroundColor(.dangerColor)
+                }
+                if let ngayHieuLuc = nhanNgayHieuLuc(item) {
+                    Text(ngayHieuLuc).font(.caption2).foregroundColor(.dangerColor)
                 }
                 if item.yeuCauSizeL {
                     Text("Chỉ áp dụng khi đơn có Size L").font(.caption2).foregroundColor(.dangerColor)
@@ -203,6 +208,19 @@ private struct VoucherRowView: View {
         }
     }
 
+    // Hiển thị khoảng ngày hiệu lực (nil nếu không giới hạn) — dùng dd/MM cho lặp hằng năm vì năm vô
+    // nghĩa, yyyy-MM-dd cho khoảng tuyệt đối.
+    private func nhanNgayHieuLuc(_ item: VoucherDto) -> String? {
+        guard let batDau = item.ngayBatDau, let date = DateNavFormat.queryDate.date(from: batDau) else { return nil }
+        let formatter = item.lapLaiHangNam ? DateNavFormat.dayTitle : DateNavFormat.queryDate
+        var text = "📅 Từ \(formatter.string(from: date))"
+        if let ketThucStr = item.ngayKetThuc, let ketThuc = DateNavFormat.queryDate.date(from: ketThucStr) {
+            text += " đến \(formatter.string(from: ketThuc))"
+        }
+        if item.lapLaiHangNam { text += " (lặp hằng năm)" }
+        return text
+    }
+
     private func nhanUuDai(_ item: VoucherDto) -> String {
         if item.loaiGiam == "PhanTram" {
             return "-\(Int(item.phanTramGiam ?? 0))%"
@@ -238,6 +256,16 @@ private struct VoucherEditSheet: View {
     @State private var hangToiThieu: String
     @State private var mucDich: String
     @State private var dangHoatDong: Bool
+    /// Voucher lễ tết: giới hạn theo khoảng ngày — false = không giới hạn (mặc định, khớp voucher
+    /// thường xuyên như APPFIRST/HAPPYHOUR...).
+    @State private var coNgayHieuLuc: Bool
+    @State private var ngayBatDau: Date
+    @State private var ngayKetThuc: Date
+    /// true = chỉ ngày/tháng của ngayBatDau/ngayKetThuc có nghĩa, năm bị bỏ qua bên Backend — dùng cho
+    /// lễ dương lịch cố định ngày (NOEL, TETDUONG...). Lễ âm lịch (TRUNGTHU, TETAL) phải để false, tự
+    /// sửa tay ngày dương mỗi năm.
+    @State private var lapLaiHangNam: Bool
+    @State private var soNgayHienTruoc: Int
     @State private var saving = false
     @State private var errorMessage: String?
 
@@ -300,6 +328,13 @@ private struct VoucherEditSheet: View {
         _hangToiThieu = State(initialValue: existing?.hangToiThieu ?? "")
         _mucDich = State(initialValue: existing?.mucDich ?? "")
         _dangHoatDong = State(initialValue: existing?.dangHoatDong ?? true)
+        let batDauParsed = existing?.ngayBatDau.flatMap { DateNavFormat.queryDate.date(from: $0) }
+        let ketThucParsed = existing?.ngayKetThuc.flatMap { DateNavFormat.queryDate.date(from: $0) }
+        _coNgayHieuLuc = State(initialValue: batDauParsed != nil)
+        _ngayBatDau = State(initialValue: batDauParsed ?? Date())
+        _ngayKetThuc = State(initialValue: ketThucParsed ?? Date())
+        _lapLaiHangNam = State(initialValue: existing?.lapLaiHangNam ?? false)
+        _soNgayHienTruoc = State(initialValue: existing?.soNgayHienTruoc ?? 3)
     }
 
     var body: some View {
@@ -424,6 +459,21 @@ private struct VoucherEditSheet: View {
                     }
                 }
                 Section {
+                    Toggle("Giới hạn theo khoảng ngày (voucher lễ/tết)", isOn: $coNgayHieuLuc)
+                    if coNgayHieuLuc {
+                        DatePicker("Bắt đầu", selection: $ngayBatDau, displayedComponents: .date)
+                        DatePicker("Kết thúc", selection: $ngayKetThuc, displayedComponents: .date)
+                        Toggle("Lặp lại hằng năm (bỏ qua năm, chỉ tính ngày/tháng)", isOn: $lapLaiHangNam)
+                        Stepper("Hiện trước: \(soNgayHienTruoc) ngày", value: $soNgayHienTruoc, in: 0...14)
+                    }
+                } footer: {
+                    if coNgayHieuLuc {
+                        Text("Cộng DỒN với \"Đang hoạt động\" bên dưới — ngoài khoảng ngày này thì dù đang bật vẫn không áp dụng được. Lễ âm lịch (Trung Thu, Tết) đổi ngày dương mỗi năm nên KHÔNG bật lặp hằng năm, phải tự sửa lại ngày hằng năm.")
+                    } else {
+                        Text("Không bật = voucher dùng được mọi lúc (miễn \"Đang hoạt động\" bật), phù hợp voucher thường xuyên.")
+                    }
+                }
+                Section {
                     Toggle("Đang hoạt động (hiện cho khách)", isOn: $dangHoatDong)
                 }
                 if let errorMessage {
@@ -517,7 +567,11 @@ private struct VoucherEditSheet: View {
             yeuCauSizeL: dieuKien != "UpsizeMonMoi" && dieuKien != "ToppingMienPhi" && yeuCauSizeL,
             mucDich: mucDich.isEmpty ? nil : mucDich,
             hangToiThieu: hangToiThieu.isEmpty ? nil : hangToiThieu,
-            dangHoatDong: dangHoatDong)
+            dangHoatDong: dangHoatDong,
+            ngayBatDau: coNgayHieuLuc ? DateNavFormat.queryDate.string(from: ngayBatDau) : nil,
+            ngayKetThuc: coNgayHieuLuc ? DateNavFormat.queryDate.string(from: ngayKetThuc) : nil,
+            soNgayHienTruoc: coNgayHieuLuc ? soNgayHienTruoc : nil,
+            lapLaiHangNam: coNgayHieuLuc && lapLaiHangNam)
         let result: ActionResult
         if let existing {
             result = await APIClient.shared.updateVoucher(id: existing.id, req)

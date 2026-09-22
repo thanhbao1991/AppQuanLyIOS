@@ -390,6 +390,16 @@ struct VoucherDto: Codable, Identifiable {
     // VoucherMucDich bên Backend.
     var mucDich: String?
     var dangHoatDong: Bool
+    // Khoảng NGÀY hiệu lực — nil = không giới hạn. Dạng "yyyy-MM-dd" (KHÔNG dùng kiểu Date: JSONDecoder
+    // trần không set dateDecodingStrategy, 1 field Date lỗi decode là hỏng cả struct — xem
+    // VoucherDto.cs bên Backend / DateNavFormat.queryDate).
+    var ngayBatDau: String?
+    var ngayKetThuc: String?
+    // Số ngày hiện trước cho khách thấy dạng "sắp diễn ra" — chỉ có ý nghĩa khi có ngayBatDau.
+    var soNgayHienTruoc: Int?
+    // true = khoảng ngày lặp lại hằng năm, chỉ ngày/tháng có nghĩa (năm trong ngayBatDau/ngayKetThuc
+    // bị bỏ qua bên Backend).
+    var lapLaiHangNam: Bool = false
 }
 
 struct VoucherRequest: Encodable {
@@ -411,6 +421,10 @@ struct VoucherRequest: Encodable {
     let mucDich: String?
     let hangToiThieu: String?
     let dangHoatDong: Bool
+    let ngayBatDau: String?
+    let ngayKetThuc: String?
+    let soNgayHienTruoc: Int?
+    let lapLaiHangNam: Bool
 }
 
 // ---- Cấu hình ngưỡng/số tiền gamification (app khách AppDatHangIOS) ----
