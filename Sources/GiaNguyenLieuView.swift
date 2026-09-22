@@ -41,6 +41,15 @@ struct GiaNguyenLieuView: View {
         return result
     }
 
+    /// Tách "Gợi ý mua" thành 2 nhóm: nhóm 1 là nguyên liệu đã ⭐, nhóm 2 là phần còn lại (đến hạn/trễ hạn nhưng chưa ⭐).
+    private var goiYYeuThich: [GoiYItem] {
+        goiYList.filter { $0.nl.yeuThich == true }
+    }
+
+    private var goiYKhac: [GoiYItem] {
+        goiYList.filter { $0.nl.yeuThich != true }
+    }
+
     /// Rỗng khi chưa gõ gì — khớp cách AddExpenseSheet (ChiTieuListView) tránh liệt kê hết danh
     /// sách nguyên liệu quá dài như dropdown.
     private var filteredList: [NguyenLieuDto] {
@@ -64,13 +73,17 @@ struct GiaNguyenLieuView: View {
             }
 
             if searchText.isEmpty {
-                // Gộp "cần mua" + ⭐ Online: việc đến hạn/trễ hạn xếp gấp nhất trước, món ⭐ chưa đến hạn
-                // (không có đề xuất) nằm dưới theo tên. ⭐ trên từng dòng vẫn bấm để ghim/bỏ ghim.
-                if !goiYList.isEmpty {
-                    Section("Gợi ý mua") {
-                        ForEach(goiYList) { row($0.nl, $0.d) }
+                // Tách nhóm ⭐ riêng với nhóm đến hạn/trễ hạn còn lại. ⭐ trên từng dòng vẫn bấm để ghim/bỏ ghim.
+                if !goiYYeuThich.isEmpty {
+                    Section("⭐ Yêu thích") {
+                        ForEach(goiYYeuThich) { row($0.nl, $0.d) }
                     }
-                } else if canMuaLoaded {
+                }
+                if !goiYKhac.isEmpty {
+                    Section("Gợi ý mua") {
+                        ForEach(goiYKhac) { row($0.nl, $0.d) }
+                    }
+                } else if canMuaLoaded && goiYYeuThich.isEmpty {
                     Section("Gợi ý mua") {
                         Text("Chưa có nguyên liệu nào đến hạn mua.").foregroundColor(.textMuted)
                     }
