@@ -731,7 +731,6 @@ private struct ImageOrderPickerSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var images: [Data] = []
-    @State private var showCamera = false
     @State private var loading = false
     @State private var loadError: String?
 
@@ -768,17 +767,11 @@ private struct ImageOrderPickerSheet: View {
                     .frame(height: 100)
                 }
 
-                HStack(spacing: 20) {
-                    PhotosPicker(selection: $pickerItems, maxSelectionCount: 6, matching: .images) {
-                        Label("Chọn ảnh", systemImage: "photo.on.rectangle")
-                    }
-                    .onChange(of: pickerItems) { items in
-                        Task { await loadPicked(items) }
-                    }
-
-                    Button { showCamera = true } label: {
-                        Label("Chụp ảnh", systemImage: "camera")
-                    }
+                PhotosPicker(selection: $pickerItems, maxSelectionCount: 6, matching: .images) {
+                    Label("Chọn ảnh", systemImage: "photo.on.rectangle")
+                }
+                .onChange(of: pickerItems) { items in
+                    Task { await loadPicked(items) }
                 }
                 .disabled(loading)
 
@@ -815,14 +808,6 @@ private struct ImageOrderPickerSheet: View {
                     Button("Đóng") { dismiss() }.disabled(loading)
                 }
             }
-        }
-        .fullScreenCover(isPresented: $showCamera) {
-            CameraPicker { image in
-                showCamera = false
-                guard let image, let data = image.jpegData(compressionQuality: 0.85) else { return }
-                images.append(data)
-            }
-            .ignoresSafeArea()
         }
     }
 
