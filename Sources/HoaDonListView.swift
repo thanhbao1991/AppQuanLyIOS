@@ -828,8 +828,13 @@ private struct ImageOrderPickerSheet: View {
 
     private func loadPicked(_ items: [PhotosPickerItem]) async {
         for item in items {
-            if let data = try? await item.loadTransferable(type: Data.self) {
-                images.append(data)
+            // Thư viện ảnh trả nguyên định dạng gốc (thường PNG cho screenshot) nhưng ta luôn khai
+            // "image/jpeg" khi upload (APIClient.parseOrderImages) — Claude (khác gpt-5-nano) kiểm
+            // tra khớp media type/byte thật rất chặt, lệch là 400 luôn. Ép về JPEG thật ngay khi
+            // nạp, khỏi phải dò định dạng lúc build multipart.
+            if let raw = try? await item.loadTransferable(type: Data.self),
+               let ui = UIImage(data: raw), let jpeg = ui.jpegData(compressionQuality: 0.9) {
+                images.append(jpeg)
             }
         }
         pickerItems = []
