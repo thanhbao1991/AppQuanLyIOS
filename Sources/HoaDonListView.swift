@@ -1,4 +1,5 @@
 import Combine
+import PhotosUI
 import SwiftUI
 import UIKit
 
@@ -255,6 +256,20 @@ struct HoaDonListView: View {
                             presetWarnings: warnings
                         )
                     }
+                },
+                onPickFromImage: { items, ghiChu, warnings, tenKhach, sdt, diaChi in
+                    Task {
+                        try? await Task.sleep(nanoseconds: 400_000_000)
+                        creatingPending = PendingCreate(
+                            phanLoai: "Ship",
+                            presetItems: items,
+                            presetGhiChu: ghiChu,
+                            presetWarnings: warnings,
+                            presetTenKhach: tenKhach,
+                            presetSdt: sdt,
+                            presetDiaChi: diaChi
+                        )
+                    }
                 }
             )
         }
@@ -266,7 +281,10 @@ struct HoaDonListView: View {
                 presetTenBienThe: pending.presetTenBienThe,
                 presetItems: pending.presetItems,
                 presetGhiChu: pending.presetGhiChu,
-                presetWarnings: pending.presetWarnings
+                presetWarnings: pending.presetWarnings,
+                presetTenKhach: pending.presetTenKhach,
+                presetSdt: pending.presetSdt,
+                presetDiaChi: pending.presetDiaChi
             ) { newId in
                 Task {
                     await load()
@@ -451,6 +469,12 @@ private struct PendingCreate: Identifiable {
     var presetItems: [DraftChiTiet] = []
     var presetGhiChu: String? = nil
     var presetWarnings: [String] = []
+    /// "Bắt đơn từ ảnh" — điền sẵn vào Ô NHẬP TAY (khác presetKhachHangId là 1 KhachHang CÓ SẴN),
+    /// vì AI chỉ đọc được text thô từ ảnh chat, không tự khớp/tạo KhachHang — HoaDonKhachHangService
+    /// tự lo khớp SĐT/tạo mới lúc lưu đơn y hệt khi nhân viên gõ tay.
+    var presetTenKhach: String? = nil
+    var presetSdt: String? = nil
+    var presetDiaChi: String? = nil
     var id: String { phanLoai + (presetKhachHangId ?? "") + String(presetItems.count) }
 }
 
@@ -583,10 +607,13 @@ private struct AddHoaDonSheet: View {
     let onPickGoiSom: (String, String, String) -> Void
     /// (items, ghiChu, warnings, khachHangId) — đơn đã map sẵn món từ store, xem AppOrderPickerSheet.
     let onPickAppOrder: ([DraftChiTiet], String, [String], String?) -> Void
+    /// (items, ghiChu, warnings, tenKhach, sdt, diaChi) — xem ImageOrderPickerSheet.
+    let onPickFromImage: ([DraftChiTiet], String, [String], String?, String?, String?) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var showGoiSom = false
     @State private var showAppOrder = false
+    @State private var showImageOrder = false
 
     // Không có "App" ở đây: đơn App chỉ được tạo qua "Bắt đơn App" (nút riêng bên dưới, lấy từ store).
     private let categories: [(code: String, icon: String)] = [
@@ -639,6 +666,18 @@ private struct AddHoaDonSheet: View {
                     .buttonBorderShape(.roundedRectangle(radius: 12))
                     .tint(.dangerColor)
 
+                    Button { showImageOrder = true } label: {
+                        HStack {
+                            Text("📸")
+                            Text("Bắt đơn từ ảnh — chat khách đặt món")
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.caption)
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.roundedRectangle(radius: 12))
+                    .tint(.brandPrimary)
+
                     Spacer()
                 }
                 .padding()
@@ -668,8 +707,165 @@ private struct AddHoaDonSheet: View {
                 onPickAppOrder(items, ghiChu, warnings, khachHangId)
             }
         }
+        .sheet(isPresented: $showImageOrder) {
+            ImageOrderPickerSheet { items, ghiChu, warnings, tenKhach, sdt, diaChi in
+                showImageOrder = false
+                dismiss()
+                onPickFromImage(items, ghiChu, warnings, tenKhach, sdt, diaChi)
+            }
+        }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+    }
+}
+
+/// "Bắt đơn từ ảnh" — chọn/chụp 1-nhiều ảnh màn hình chat khách đặt món, gửi AI đọc (xem
+/// OrderFromImageService, Backend). Chỉ những món khớp được SanPhamBienThe thật mới đưa vào draft —
+/// món không khớp bị bỏ (giữ nguyên convention của "Bắt đơn App"), chỉ còn lại trong warnings để nhân
+/// viên tự thêm tay bên form tạo đơn. tenKhach/sdt/diaChi chỉ là gợi ý điền sẵn ô nhập tay, KHÔNG tự
+/// tạo/khớp KhachHang ở đây.
+private struct ImageOrderPickerSheet: View {
+    /// (items, ghiChu, warnings, tenKhach, sdt, diaChi)
+    let onPick: ([DraftChiTiet], String, [String], String?, String?, String?) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var pickerItems: [PhotosPickerItem] = []
+    @State private var images: [Data] = []
+    @State private var showCamera = false
+    @State private var loading = false
+    @State private var loadError: String?
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                if images.isEmpty {
+                    Text("Chọn 1-nhiều ảnh chụp màn hình tin nhắn khách đặt món (cuộn xuống tin mới nhất nếu chat dài).")
+                        .font(.subheadline)
+                        .foregroundColor(.textMuted)
+                        .multilineTextAlignment(.center)
+                        .padding()
+                } else {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(images.indices, id: \.self) { i in
+                                if let ui = UIImage(data: images[i]) {
+                                    ZStack(alignment: .topTrailing) {
+                                        Image(uiImage: ui).resizable().scaledToFill()
+                                            .frame(width: 90, height: 90).clipped()
+                                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                                        Button { images.remove(at: i) } label: {
+                                            Image(systemName: "xmark.circle.fill")
+                                                .foregroundColor(.white)
+                                                .background(Circle().fill(Color.black.opacity(0.6)))
+                                        }
+                                        .padding(4)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+                    .frame(height: 100)
+                }
+
+                HStack(spacing: 20) {
+                    PhotosPicker(selection: $pickerItems, maxSelectionCount: 6, matching: .images) {
+                        Label("Chọn ảnh", systemImage: "photo.on.rectangle")
+                    }
+                    .onChange(of: pickerItems) { items in
+                        Task { await loadPicked(items) }
+                    }
+
+                    Button { showCamera = true } label: {
+                        Label("Chụp ảnh", systemImage: "camera")
+                    }
+                }
+                .disabled(loading)
+
+                if let loadError {
+                    Text(loadError).foregroundColor(.dangerColor).font(.footnote)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
+
+                Spacer()
+
+                Button {
+                    Task { await process() }
+                } label: {
+                    Text(loading ? "Đang đọc..." : "Xử lý (\(images.count) ảnh)")
+                        .fontWeight(.bold)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.brandPrimary)
+                .controlSize(.large)
+                .disabled(images.isEmpty || loading)
+                .padding(.horizontal)
+                .padding(.bottom, 8)
+            }
+            .padding(.top)
+            .navigationTitle("Bắt đơn từ ảnh")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Đóng") { dismiss() }.disabled(loading)
+                }
+            }
+        }
+        .fullScreenCover(isPresented: $showCamera) {
+            CameraPicker { image in
+                showCamera = false
+                guard let image, let data = image.jpegData(compressionQuality: 0.85) else { return }
+                images.append(data)
+            }
+            .ignoresSafeArea()
+        }
+    }
+
+    private func loadPicked(_ items: [PhotosPickerItem]) async {
+        for item in items {
+            if let data = try? await item.loadTransferable(type: Data.self) {
+                images.append(data)
+            }
+        }
+        pickerItems = []
+    }
+
+    private func process() async {
+        loading = true
+        loadError = nil
+        defer { loading = false }
+        let (result, message) = await APIClient.shared.parseOrderImages(images: images)
+        guard let result, !result.items.isEmpty else {
+            loadError = message ?? "Không đọc được đơn nào từ ảnh."
+            return
+        }
+
+        // Chỉ món đã khớp SanPhamBienThe thật mới đưa vào draft — cùng convention "Bắt đơn App"
+        // (buildDraftItems): món không khớp giữ lại trong warnings, nhân viên tự thêm tay.
+        let draftItems = result.items.compactMap { line -> DraftChiTiet? in
+            guard let btId = line.sanPhamBienTheId else { return nil }
+            return DraftChiTiet(
+                sanPhamBienTheId: btId,
+                tenSanPham: line.tenSanPham ?? line.rawText,
+                tenBienThe: line.tenBienThe ?? "",
+                soLuong: line.soLuong,
+                donGia: line.donGia,
+                noteText: line.noteText ?? ""
+            )
+        }
+
+        if draftItems.isEmpty {
+            loadError = "Không khớp được món nào với thực đơn — thử ảnh rõ hơn hoặc thêm tay."
+            return
+        }
+
+        dismiss()
+        onPick(draftItems, result.ghiChu ?? "", result.warnings, result.tenKhach, result.soDienThoai, result.diaChi)
     }
 }
 

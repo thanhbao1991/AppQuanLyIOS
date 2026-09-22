@@ -282,16 +282,13 @@ private struct GiaNguyenLieuDetailView: View {
                     Text("Nên mua khoảng \(sl.cleanString)" + (nguyenLieu.donViTinh.map { " \($0)" } ?? ""))
                         .font(.subheadline)
                 }
-                Text((d.nguonAI ? "✨ AI: " : "") + d.lyDo)
-                    .font(.caption)
-                    .foregroundColor(.textMuted)
             }
             .padding(.vertical, 2)
         } else {
             HStack {
                 Spacer()
                 ProgressView().tint(.brandPrimary)
-                Text("AI đang tính...").font(.caption).foregroundColor(.textMuted)
+                Text("Đang tính...").font(.caption).foregroundColor(.textMuted)
                 Spacer()
             }
         }

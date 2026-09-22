@@ -244,6 +244,27 @@ struct ReceiptParseResultDto: Decodable {
     let lines: [ReceiptParseLineDto]
 }
 
+// ---- "Bắt đơn từ ảnh" — đọc chat khách đặt món qua AI (xem OrderFromImageService, Backend) ----
+
+struct OrderFromImageLineDto: Decodable {
+    let rawText: String
+    let soLuong: Int
+    let noteText: String?
+    let sanPhamBienTheId: String?
+    let tenSanPham: String?
+    let tenBienThe: String?
+    let donGia: Double
+}
+
+struct OrderFromImageResultDto: Decodable {
+    let tenKhach: String?
+    let soDienThoai: String?
+    let diaChi: String?
+    let ghiChu: String?
+    let items: [OrderFromImageLineDto]
+    let warnings: [String]
+}
+
 struct ChiTieuHangNgayBulkItemRequest: Encodable {
     let nguyenLieuId: String
     let ten: String?

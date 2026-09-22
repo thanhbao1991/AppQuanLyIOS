@@ -18,6 +18,12 @@ struct HoaDonCreateFormView: View {
     var presetItems: [DraftChiTiet] = []
     var presetGhiChu: String? = nil
     var presetWarnings: [String] = []
+    /// Preset từ "Bắt đơn từ ảnh" (xem HoaDonListView.ImageOrderPickerSheet) — điền sẵn Ô NHẬP TAY
+    /// (khác presetKhachHangId là 1 KhachHang có sẵn), vì AI chỉ đọc text thô từ ảnh chat, không tự
+    /// khớp/tạo KhachHang — HoaDonKhachHangService tự lo khớp SĐT/tạo mới lúc lưu đơn.
+    var presetTenKhach: String? = nil
+    var presetSdt: String? = nil
+    var presetDiaChi: String? = nil
     let onCreated: (String) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -677,6 +683,13 @@ struct HoaDonCreateFormView: View {
         }
         if !presetWarnings.isEmpty {
             presetWarningBanner = presetWarnings.joined(separator: "\n")
+        }
+        // Chỉ điền khi CHƯA chọn 1 KhachHang có sẵn (presetKhachHangId) — 2 nguồn preset không xảy
+        // ra cùng lúc trong thực tế (khác nút bấm ở AddHoaDonSheet) nhưng giữ điều kiện cho chắc.
+        if selectedKhach == nil {
+            if let presetTenKhach, !presetTenKhach.isEmpty { tenKhach = presetTenKhach }
+            if let presetSdt, !presetSdt.isEmpty { sdt = presetSdt }
+            if let presetDiaChi, !presetDiaChi.isEmpty { diaChi = presetDiaChi }
         }
     }
 

@@ -225,6 +225,34 @@ actor APIClient {
         return (env.data, env.isSuccess ? nil : (env.message ?? "Đọc ảnh thất bại."))
     }
 
+    /// "Bắt đơn từ ảnh" — multipart/form-data nhiều field "images" (1-nhiều ảnh cùng 1 cuộc hội thoại,
+    /// vd chụp cuộn màn hình). Cùng cách dựng body với parseReceipt(), chỉ khác nhiều field ảnh.
+    func parseOrderImages(images: [Data]) async -> (result: OrderFromImageResultDto?, message: String?) {
+        let boundary = "Boundary-\(UUID().uuidString)"
+        var body = Data()
+        for (i, imageData) in images.enumerated() {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"images\"; filename=\"chat\(i).jpg\"\r\n".data(using: .utf8)!)
+            body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+            body.append(imageData)
+            body.append("\r\n".data(using: .utf8)!)
+        }
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+
+        var req = URLRequest(url: URL(string: Prefs.apiBase + "/api/HoaDon/parse-order-images")!)
+        req.httpMethod = "POST"
+        req.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        if let token = Prefs.token { req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        req.httpBody = body
+
+        let (data, _) = await send(req)
+        guard let data else { return (nil, "Không có phản hồi từ server.") }
+        guard let env = try? JSONDecoder().decode(ApiEnvelope<OrderFromImageResultDto>.self, from: data) else {
+            return (nil, "Không đọc được phản hồi từ server.")
+        }
+        return (env.data, env.isSuccess ? nil : (env.message ?? "Đọc ảnh thất bại."))
+    }
+
     /// Đổi/thêm ảnh món — multipart/form-data field "image", cùng cách dựng body với parseReceipt().
     /// Backend lưu vào wwwroot/menu-images, trả về URL ảnh mới (data: String) để cập nhật UI ngay
     /// không cần tải lại cả danh sách.
