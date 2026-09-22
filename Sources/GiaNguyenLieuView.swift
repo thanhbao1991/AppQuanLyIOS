@@ -48,6 +48,15 @@ struct GiaNguyenLieuView: View {
         return nguyenLieuList.filter { $0.ten.matchesSearch(searchText) }
     }
 
+    /// Tách kết quả tìm kiếm: nhóm 1 là nguyên liệu đã ⭐, nhóm 2 là phần còn lại.
+    private var filteredYeuThich: [NguyenLieuDto] {
+        filteredList.filter { $0.yeuThich == true }
+    }
+
+    private var filteredKhac: [NguyenLieuDto] {
+        filteredList.filter { $0.yeuThich != true }
+    }
+
     var body: some View {
         List {
             Section("Nguyên liệu") {
@@ -67,8 +76,15 @@ struct GiaNguyenLieuView: View {
                     }
                 }
             } else {
-                Section("Kết quả") {
-                    ForEach(filteredList.prefix(30)) { row($0) }
+                if !filteredYeuThich.isEmpty {
+                    Section("⭐ Yêu thích") {
+                        ForEach(filteredYeuThich.prefix(30)) { row($0) }
+                    }
+                }
+                if !filteredKhac.isEmpty {
+                    Section("Kết quả") {
+                        ForEach(filteredKhac.prefix(30)) { row($0) }
+                    }
                 }
             }
         }
@@ -119,13 +135,21 @@ struct GiaNguyenLieuView: View {
                     .foregroundColor(nl.yeuThich == true ? .yellow : .textMuted)
             }
             .buttonStyle(.borderless)
-            // Nút "Ngừng dùng" cạnh ⭐: loại nguyên liệu không còn mua khỏi danh sách (đặt NgungSuDung,
-            // bật lại được ở màn Nguyên liệu). Không hiện ở món đã ngừng dùng (kết quả tìm kiếm).
+            // Nút "Ngừng dùng" cạnh ⭐: loại nguyên liệu không còn mua khỏi danh sách (đặt NgungSuDung).
             if !nl.ngungSuDung {
                 Button {
                     Task { await ngungSuDung(nl) }
                 } label: {
                     Image(systemName: "nosign").foregroundColor(.textMuted)
+                }
+                .buttonStyle(.borderless)
+                .padding(.leading, 8)
+            } else if !searchText.isEmpty {
+                // Nguyên liệu đã ngừng dùng chỉ xuất hiện lại khi tìm kiếm — thêm nút bỏ đánh dấu ngay tại đây.
+                Button {
+                    Task { await boNgungSuDung(nl) }
+                } label: {
+                    Image(systemName: "arrow.uturn.backward.circle").foregroundColor(.brandPrimary)
                 }
                 .buttonStyle(.borderless)
                 .padding(.leading, 8)
@@ -140,6 +164,16 @@ struct GiaNguyenLieuView: View {
         if !(await APIClient.shared.setNguyenLieuNgungSuDung(id: nl.id, value: true)),
            let j = nguyenLieuList.firstIndex(where: { $0.id == nl.id }) {
             nguyenLieuList[j].ngungSuDung = false
+        }
+    }
+
+    /// Bỏ đánh dấu ngừng sử dụng — chỉ gọi được từ kết quả tìm kiếm (mục đã ngừng dùng mới hiện ở đó).
+    private func boNgungSuDung(_ nl: NguyenLieuDto) async {
+        guard let i = nguyenLieuList.firstIndex(where: { $0.id == nl.id }) else { return }
+        nguyenLieuList[i].ngungSuDung = false
+        if !(await APIClient.shared.setNguyenLieuNgungSuDung(id: nl.id, value: false)),
+           let j = nguyenLieuList.firstIndex(where: { $0.id == nl.id }) {
+            nguyenLieuList[j].ngungSuDung = true
         }
     }
 
