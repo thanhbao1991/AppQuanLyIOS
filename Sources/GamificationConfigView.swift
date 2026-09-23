@@ -85,30 +85,14 @@ private struct GamificationConfigForm: View {
             }
 
             Section {
-                HStack {
-                    Text("Km miễn phí gốc")
-                    Spacer()
-                    TextField("2", value: $config.shipKmGoc, format: .number)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: 80)
-                    Text("km").foregroundColor(.textMuted)
-                }
-                moneyRow("Mỗi bậc tiền", value: $config.shipTienMoiBac)
-                HStack {
-                    Text("Km tăng mỗi bậc")
-                    Spacer()
-                    TextField("1", value: $config.shipKmTangMoiBac, format: .number)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: 80)
-                    Text("km").foregroundColor(.textMuted)
-                }
+                kmRow("Km thưởng hạng Bạc", value: $config.shipKmThuongBac)
+                kmRow("Km thưởng hạng Vàng", value: $config.shipKmThuongVang)
+                kmRow("Km thưởng hạng Kim Cương", value: $config.shipKmThuongKimCuong)
                 moneyRow("Phí mỗi km vượt", value: $config.shipPhiMoiKm)
             } header: {
                 Text("Phí ship 🛵")
             } footer: {
-                Text("Bán kính miễn phí TĂNG DẦN theo bậc giá trị đơn (mỗi \(config.shipTienMoiBac, format: .number)đ thêm \(config.shipKmTangMoiBac, format: .number)km miễn phí, không giới hạn trên). Mặc định: đơn ≤50.000đ miễn phí ≤2km, đơn ≤100.000đ miễn phí ≤3km, đơn ≤150.000đ miễn phí ≤4km... Vượt bán kính miễn phí của đúng đơn đó mới tính thêm theo km vượt, làm tròn lên 1.000đ.")
+                Text("Bán kính miễn phí = SỐ LY trong đơn (1 ly = 1km, không tính topping, không giới hạn trên) CỘNG THẲNG km thưởng theo hạng THÁNG TRƯỚC của khách (Thành Viên +0). Vượt bán kính miễn phí mới tính thêm theo km vượt, làm tròn lên 1.000đ.")
             }
 
             Section {
@@ -149,6 +133,18 @@ private struct GamificationConfigForm: View {
                 .multilineTextAlignment(.trailing)
                 .frame(width: 100)
             Text("đ").foregroundColor(.textMuted)
+        }
+    }
+
+    private func kmRow(_ label: String, value: Binding<Double>) -> some View {
+        HStack {
+            Text(label)
+            Spacer()
+            TextField("0", value: value, format: .number)
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.trailing)
+                .frame(width: 80)
+            Text("km").foregroundColor(.textMuted)
         }
     }
 

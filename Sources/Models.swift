@@ -466,9 +466,9 @@ struct GamificationConfigDto: Codable {
     var lyBiMatNguongGiaThat: Double
     var sinhNhatThuong: Double
     var vongQuayPhanThuong: [VongQuayPhanThuongDto]
-    var shipKmGoc: Double
-    var shipTienMoiBac: Double
-    var shipKmTangMoiBac: Double
+    var shipKmThuongBac: Double
+    var shipKmThuongVang: Double
+    var shipKmThuongKimCuong: Double
     var shipPhiMoiKm: Double
     // Giờ mở/đóng cửa (0-24) — app khách dùng chặn đặt hàng ngoài giờ, GioThapDiemView dùng tính
     // gợi ý khung giờ vắng khách chính xác hơn.
