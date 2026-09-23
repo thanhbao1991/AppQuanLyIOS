@@ -117,6 +117,10 @@ struct HoaDonDetailDto: Decodable {
     let daThu: Double
     let conLai: Double
     let tongNoKhachHang: Double?
+    /// Đơn khác của cùng khách CHƯA ghi nợ (NgayNo == null) — khác tongNoKhachHang (đã ghi nợ).
+    /// Khớp HoaDonDto.TongDonKhacDangGiao (Backend/Desktop) — thiếu field này khiến app bỏ sót
+    /// hoàn toàn tiền đơn khác khi khách có 2+ đơn cùng lúc chưa thanh toán.
+    let tongDonKhacDangGiao: Double?
     let maHoaDonNoKhac: [String]?
     /// Nội dung chuyển khoản QR tính sẵn ("TEN HD1234 DEN HD9999") — Backend build (khớp
     /// BankQrConfig.BuildAddInfo / HoaDonPrinter Desktop), không tự ghép lại ở client nữa.

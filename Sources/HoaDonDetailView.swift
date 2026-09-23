@@ -232,14 +232,26 @@ struct HoaDonDetailView: View {
                     // HoaDonQueryService.GetByIdAsync, subquery loại trừ "AND h.Id != @id"). Nhãn cũ
                     // dễ hiểu lầm là đã gộp.
                     if let no = d.tongNoKhachHang, no != 0 { infoRow("Nợ đơn khác", HoaDonFormatting.money(no)) }
-                    // Khách có nợ đơn khác > 0 → cộng sẵn "Tổng cộng" (Còn lại + Nợ đơn khác) để nhân
-                    // viên khỏi cộng tay khi thu tiền khách tại quầy/ship.
-                    if let no = d.tongNoKhachHang, no > 0 {
+                    // "Đơn khác" = đơn khác của cùng khách CHƯA ghi nợ (khác "Nợ đơn khác" đã ghi nợ) —
+                    // khớp Desktop HoaDonTabControl.xaml.cs (AddPayRow "Đơn khác", màu cam #fd7e14).
+                    if let donKhac = d.tongDonKhacDangGiao, donKhac > 0 {
+                        HStack {
+                            Text("Đơn khác").foregroundColor(.textMuted)
+                            Spacer()
+                            Text(HoaDonFormatting.money(donKhac)).foregroundColor(Color(red: 0.99, green: 0.47, blue: 0.08))
+                        }
+                        .font(.subheadline)
+                    }
+                    // Khách có nợ đơn khác/đơn khác chưa ghi nợ > 0 → cộng sẵn "Tổng cộng" (Còn lại +
+                    // Nợ đơn khác + Đơn khác) để nhân viên khỏi cộng tay khi thu tiền khách tại quầy/ship.
+                    let no = d.tongNoKhachHang ?? 0
+                    let donKhac = d.tongDonKhacDangGiao ?? 0
+                    if no > 0 || donKhac > 0 {
                         Divider()
                         HStack {
                             Text("TỔNG CỘNG").font(.caption.bold()).foregroundColor(.dangerColor)
                             Spacer()
-                            Text(HoaDonFormatting.money(d.conLai + no))
+                            Text(HoaDonFormatting.money(d.conLai + no + donKhac))
                                 .font(.title3.bold())
                                 .foregroundColor(.dangerColor)
                         }
@@ -671,10 +683,13 @@ enum BillTextBuilder {
         return "\(ma) DEN \(last)"
     }
 
-    /// Khớp HoaDonPrinter.GetAmount (Desktop): còn nợ + còn lại nếu có nợ, không thì còn lại/thành tiền.
+    /// Khớp HoaDonPrinter.GetAmount (Desktop): gộp cả nợ cũ (đã ghi nợ) LẪN đơn khác chưa ghi nợ,
+    /// không thì còn lại/thành tiền.
     static func amount(_ d: HoaDonDetailDto) -> Double {
         let bill = d.conLai > 0 ? d.conLai : d.thanhTien
-        if let no = d.tongNoKhachHang, no > 0 { return no + d.conLai }
+        let no = d.tongNoKhachHang ?? 0
+        let donKhac = d.tongDonKhacDangGiao ?? 0
+        if no > 0 || donKhac > 0 { return d.conLai + no + donKhac }
         return bill
     }
 
@@ -770,10 +785,17 @@ enum BillTextBuilder {
             addRow(&sb, "Đã thu:", d.daThu)
             addRow(&sb, "Còn lại:", d.conLai)
         }
-        if let no = d.tongNoKhachHang, no > 0 {
+        let no = d.tongNoKhachHang ?? 0
+        let donKhac = d.tongDonKhacDangGiao ?? 0
+        if no > 0 {
             sb += "---------------------------\n"
             addRow(&sb, "Công nợ:", no)
             addRow(&sb, "TỔNG:", no + d.conLai)
+        }
+        if donKhac > 0 {
+            sb += "---------------------------\n"
+            addRow(&sb, "Đơn khác:", donKhac)
+            addRow(&sb, "TỔNG:", no + d.conLai + donKhac)
         }
         sb += "===========================\n"
 
