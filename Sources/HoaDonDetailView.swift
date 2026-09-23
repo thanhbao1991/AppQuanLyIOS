@@ -231,14 +231,25 @@ struct HoaDonDetailView: View {
                     // của cùng khách — KHÔNG gồm "Còn lại" của chính đơn đang xem (xem
                     // HoaDonQueryService.GetByIdAsync, subquery loại trừ "AND h.Id != @id"). Nhãn cũ
                     // dễ hiểu lầm là đã gộp.
-                    if let no = d.tongNoKhachHang, no != 0 { infoRow("Nợ đơn khác", HoaDonFormatting.money(no)) }
+                    // Màu đỏ khớp Desktop (AddPayRow "Công nợ", valueKey: "AppDanger") — trước đây
+                    // mobile hiện màu mặc định, không nổi bật như bên Desktop.
+                    if let no = d.tongNoKhachHang, no != 0 {
+                        HStack {
+                            Text("Nợ đơn khác").foregroundColor(.textMuted)
+                            Spacer()
+                            Text(HoaDonFormatting.money(no)).foregroundColor(.dangerColor)
+                        }
+                        .font(.subheadline)
+                    }
                     // "Đơn khác" = đơn khác của cùng khách CHƯA ghi nợ (khác "Nợ đơn khác" đã ghi nợ) —
-                    // khớp Desktop HoaDonTabControl.xaml.cs (AddPayRow "Đơn khác", màu cam #fd7e14).
+                    // số liệu khớp Desktop HoaDonTabControl.xaml.cs (AddPayRow "Đơn khác", màu cam
+                    // #fd7e14 riêng bên Desktop) nhưng dùng .warningColor cho khớp màu "Đơn khác chưa
+                    // trả" đã dùng sẵn trong app này (HoaDonCreateFormView/HoaDonEditFormView).
                     if let donKhac = d.tongDonKhacDangGiao, donKhac > 0 {
                         HStack {
                             Text("Đơn khác").foregroundColor(.textMuted)
                             Spacer()
-                            Text(HoaDonFormatting.money(donKhac)).foregroundColor(Color(red: 0.99, green: 0.47, blue: 0.08))
+                            Text(HoaDonFormatting.money(donKhac)).foregroundColor(.warningColor)
                         }
                         .font(.subheadline)
                     }
