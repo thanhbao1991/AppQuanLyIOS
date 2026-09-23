@@ -80,14 +80,6 @@ private struct GamificationConfigForm: View {
                 Text("Chỉ món có giá thật ≤ ngưỡng mới được đưa vào bốc ngẫu nhiên.")
             }
 
-            Section {
-                moneyRow("Thưởng mỗi bên", value: $config.gioiThieuThuong)
-            } header: {
-                Text("Giới thiệu bạn bè 👥")
-            } footer: {
-                Text("Cả người giới thiệu và người được giới thiệu đều nhận số tiền này vào ví.")
-            }
-
             Section("Sinh nhật 🎂") {
                 moneyRow("Quà sinh nhật (1 lần/năm)", value: $config.sinhNhatThuong)
             }
