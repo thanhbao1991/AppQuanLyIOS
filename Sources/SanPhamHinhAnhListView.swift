@@ -133,9 +133,11 @@ private struct SanPhamHinhAnhRow: View {
             }
             .ignoresSafeArea()
         }
-        .fullScreenCover(isPresented: $showFullImage) {
+        .sheet(isPresented: $showFullImage) {
             if let hinhAnh = sanPham.hinhAnh, let url = URL(string: hinhAnh) {
                 FullSizeImageView(url: url) { showFullImage = false }
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
             }
         }
     }
@@ -171,76 +173,56 @@ private struct SanPhamHinhAnhRow: View {
     }
 }
 
-/// Xem ảnh món size gốc, nền đen toàn màn hình — pinch để zoom, kéo khi đã zoom, tap để đóng.
+/// Xem ảnh món đúng kích thước gốc (không co giãn theo màn hình) — sheet medium/large giống
+/// "Thêm hoá đơn", vuốt xuống để đóng như sheet thường (không cần gesture tự chế). Pinch để zoom
+/// thêm khi cần xem chi tiết, double-tap để zoom nhanh.
 private struct FullSizeImageView: View {
     let url: URL
     let onClose: () -> Void
 
     @State private var scale: CGFloat = 1
     @State private var lastScale: CGFloat = 1
-    @State private var offset: CGSize = .zero
-    @State private var lastOffset: CGSize = .zero
 
     var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-            AsyncImage(url: url) { phase in
-                switch phase {
-                case .success(let image):
-                    image.resizable().aspectRatio(contentMode: .fit)
-                        .scaleEffect(scale)
-                        .offset(offset)
-                        .gesture(
-                            MagnificationGesture()
-                                .onChanged { value in
-                                    scale = max(1, min(lastScale * value, 5))
-                                }
-                                .onEnded { _ in
+        NavigationStack {
+            ScrollView([.horizontal, .vertical]) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .scaleEffect(scale)
+                            .gesture(
+                                MagnificationGesture()
+                                    .onChanged { value in
+                                        scale = max(1, min(lastScale * value, 5))
+                                    }
+                                    .onEnded { _ in lastScale = scale }
+                            )
+                            .onTapGesture(count: 2) {
+                                withAnimation {
+                                    scale = scale > 1 ? 1 : 2.5
                                     lastScale = scale
-                                    if scale == 1 { offset = .zero; lastOffset = .zero }
                                 }
-                        )
-                        .simultaneousGesture(
-                            DragGesture()
-                                .onChanged { value in
-                                    guard scale > 1 else { return }
-                                    offset = CGSize(
-                                        width: lastOffset.width + value.translation.width,
-                                        height: lastOffset.height + value.translation.height)
-                                }
-                                .onEnded { _ in lastOffset = offset }
-                        )
-                        .onTapGesture(count: 2) {
-                            withAnimation {
-                                scale = scale > 1 ? 1 : 2.5
-                                lastScale = scale
-                                offset = .zero
-                                lastOffset = .zero
                             }
-                        }
-                case .failure:
-                    Text("Không tải được ảnh").foregroundColor(.white)
-                default:
-                    ProgressView().tint(.white)
-                }
-            }
-            VStack {
-                HStack {
-                    Spacer()
-                    Button {
-                        onClose()
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 30))
-                            .foregroundColor(.white.opacity(0.9))
+                    case .failure:
+                        Text("Không tải được ảnh").foregroundColor(.textMuted)
+                    default:
+                        ProgressView()
                     }
-                    .padding()
                 }
-                Spacer()
+                .frame(maxWidth: .infinity, minHeight: 200)
             }
-        }
-        .onTapGesture {
-            if scale == 1 { onClose() }
+            .background(Color.black)
+            .navigationTitle("Ảnh món")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Đóng") { onClose() }
+                }
+            }
         }
     }
 }
