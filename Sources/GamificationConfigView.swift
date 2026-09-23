@@ -119,17 +119,6 @@ private struct GamificationConfigForm: View {
                 Text("Bán kính miễn phí TĂNG DẦN theo bậc giá trị đơn (mỗi \(config.shipTienMoiBac, format: .number)đ thêm \(config.shipKmTangMoiBac, format: .number)km miễn phí, không giới hạn trên). Mặc định: đơn ≤50.000đ miễn phí ≤2km, đơn ≤100.000đ miễn phí ≤3km, đơn ≤150.000đ miễn phí ≤4km... Vượt bán kính miễn phí của đúng đơn đó mới tính thêm theo km vượt, làm tròn lên 1.000đ.")
             }
 
-            Section("Thẻ sưu tập ly 🧋") {
-                HStack {
-                    Text("Số đơn / lần đổi thưởng")
-                    Spacer()
-                    TextField("10", value: $config.stampMocThuong, format: .number)
-                        .keyboardType(.numberPad)
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: 80)
-                }
-            }
-
             Section {
                 ForEach($config.vongQuayPhanThuong) { $item in
                     VongQuayRowEditor(item: $item, phanTramText: phanTram(item, in: config.vongQuayPhanThuong))

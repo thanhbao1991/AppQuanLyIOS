@@ -462,7 +462,6 @@ struct GamificationConfigDto: Codable {
     var lyBiMatNguongGiaThat: Double
     var gioiThieuThuong: Double
     var sinhNhatThuong: Double
-    var stampMocThuong: Int
     var vongQuayPhanThuong: [VongQuayPhanThuongDto]
     var shipKmGoc: Double
     var shipTienMoiBac: Double
