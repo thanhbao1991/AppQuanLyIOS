@@ -690,7 +690,7 @@ struct HoaDonEditFormView: View {
         unmatchedNames = unmatched
 
         if let khId = detailResult.khachHangId, let kh = await APIClient.shared.getKhachHangById(khId) {
-            selectKhach(kh)
+            selectKhach(kh, overwriteContact: false)
         }
 
         initialSnapshot = currentSnapshot
@@ -730,12 +730,14 @@ struct HoaDonEditFormView: View {
         }
     }
 
-    private func selectKhach(_ kh: KhachHangDto) {
+    private func selectKhach(_ kh: KhachHangDto, overwriteContact: Bool = true) {
         selectedKhach = kh
         showEditKhachHang = false
         tenKhach = kh.ten
-        sdt = kh.phones.first(where: { $0.isDefault })?.soDienThoai ?? kh.phones.first?.soDienThoai ?? sdt
-        diaChi = kh.addresses.first(where: { $0.isDefault })?.diaChi ?? kh.addresses.first?.diaChi ?? diaChi
+        if overwriteContact {
+            sdt = kh.phones.first(where: { $0.isDefault })?.soDienThoai ?? kh.phones.first?.soDienThoai ?? sdt
+            diaChi = kh.addresses.first(where: { $0.isDefault })?.diaChi ?? kh.addresses.first?.diaChi ?? diaChi
+        }
         khachSearchText = ""
         khachSearchResults = []
         khachInfo = nil
