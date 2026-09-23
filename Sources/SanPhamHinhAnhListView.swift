@@ -86,6 +86,7 @@ private struct SanPhamHinhAnhRow: View {
 
     @State private var showPicker = false
     @State private var showCamera = false
+    @State private var showFullImage = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -132,21 +133,31 @@ private struct SanPhamHinhAnhRow: View {
             }
             .ignoresSafeArea()
         }
+        .fullScreenCover(isPresented: $showFullImage) {
+            if let hinhAnh = sanPham.hinhAnh, let url = URL(string: hinhAnh) {
+                FullSizeImageView(url: url) { showFullImage = false }
+            }
+        }
     }
 
     @ViewBuilder
     private var thumbnail: some View {
         if let hinhAnh = sanPham.hinhAnh, let url = URL(string: hinhAnh) {
-            AsyncImage(url: url) { phase in
-                switch phase {
-                case .success(let image):
-                    image.resizable().aspectRatio(contentMode: .fill)
-                default:
-                    Color.textMuted.opacity(0.12)
+            Button {
+                showFullImage = true
+            } label: {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    default:
+                        Color.textMuted.opacity(0.12)
+                    }
                 }
+                .frame(width: 48, height: 48)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
             }
-            .frame(width: 48, height: 48)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .buttonStyle(.borderless)
         } else {
             RoundedRectangle(cornerRadius: 8)
                 .fill(Color.textMuted.opacity(0.12))
@@ -156,6 +167,80 @@ private struct SanPhamHinhAnhRow: View {
                         .font(.headline)
                         .foregroundColor(.brandPrimary)
                 )
+        }
+    }
+}
+
+/// Xem ảnh món size gốc, nền đen toàn màn hình — pinch để zoom, kéo khi đã zoom, tap để đóng.
+private struct FullSizeImageView: View {
+    let url: URL
+    let onClose: () -> Void
+
+    @State private var scale: CGFloat = 1
+    @State private var lastScale: CGFloat = 1
+    @State private var offset: CGSize = .zero
+    @State private var lastOffset: CGSize = .zero
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .success(let image):
+                    image.resizable().aspectRatio(contentMode: .fit)
+                        .scaleEffect(scale)
+                        .offset(offset)
+                        .gesture(
+                            MagnificationGesture()
+                                .onChanged { value in
+                                    scale = max(1, min(lastScale * value, 5))
+                                }
+                                .onEnded { _ in
+                                    lastScale = scale
+                                    if scale == 1 { offset = .zero; lastOffset = .zero }
+                                }
+                        )
+                        .simultaneousGesture(
+                            DragGesture()
+                                .onChanged { value in
+                                    guard scale > 1 else { return }
+                                    offset = CGSize(
+                                        width: lastOffset.width + value.translation.width,
+                                        height: lastOffset.height + value.translation.height)
+                                }
+                                .onEnded { _ in lastOffset = offset }
+                        )
+                        .onTapGesture(count: 2) {
+                            withAnimation {
+                                scale = scale > 1 ? 1 : 2.5
+                                lastScale = scale
+                                offset = .zero
+                                lastOffset = .zero
+                            }
+                        }
+                case .failure:
+                    Text("Không tải được ảnh").foregroundColor(.white)
+                default:
+                    ProgressView().tint(.white)
+                }
+            }
+            VStack {
+                HStack {
+                    Spacer()
+                    Button {
+                        onClose()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 30))
+                            .foregroundColor(.white.opacity(0.9))
+                    }
+                    .padding()
+                }
+                Spacer()
+            }
+        }
+        .onTapGesture {
+            if scale == 1 { onClose() }
         }
     }
 }
