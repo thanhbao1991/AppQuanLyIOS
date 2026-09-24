@@ -80,10 +80,6 @@ private struct GamificationConfigForm: View {
                 Text("Chỉ món có giá thật ≤ ngưỡng mới được đưa vào bốc ngẫu nhiên.")
             }
 
-            Section("Sinh nhật 🎂") {
-                moneyRow("Quà sinh nhật (1 lần/năm)", value: $config.sinhNhatThuong)
-            }
-
             Section {
                 kmRow("Km thưởng hạng Bạc", value: $config.shipKmThuongBac)
                 kmRow("Km thưởng hạng Vàng", value: $config.shipKmThuongVang)
