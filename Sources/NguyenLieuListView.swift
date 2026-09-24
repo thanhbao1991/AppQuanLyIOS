@@ -1,5 +1,38 @@
 import SwiftUI
 
+/// Nhãn hiển thị cho NguyenLieuDto.phanLoai — khớp giá trị int lưu ở Backend (NguyenLieuEntity.PhanLoai).
+enum PhanLoaiNguyenLieu: Int, CaseIterable, Identifiable {
+    case nguyenLieu = 1
+    case vatLieu = 2
+    case chiPhiKhac = 3
+
+    var id: Int { rawValue }
+
+    var label: String {
+        switch self {
+        case .nguyenLieu: return "Nguyên liệu"
+        case .vatLieu: return "Vật liệu"
+        case .chiPhiKhac: return "Chi phí khác"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .nguyenLieu: return .brandPrimary
+        case .vatLieu: return .blue
+        case .chiPhiKhac: return .textMuted
+        }
+    }
+
+    static func label(for rawValue: Int) -> String? {
+        PhanLoaiNguyenLieu(rawValue: rawValue)?.label
+    }
+
+    static func color(for rawValue: Int) -> Color {
+        PhanLoaiNguyenLieu(rawValue: rawValue)?.color ?? .textMuted
+    }
+}
+
 /// Quản trị danh mục nguyên liệu (Menu > Công cụ) — thêm/sửa/xoá, thay cho phải mở
 /// Desktop mỗi khi cần chỉnh sửa nhỏ. GET/POST/PUT/DELETE /api/NguyenLieu, giống hệt VoucherListView
 /// về mặt bố cục (list + sheet sửa).
@@ -95,6 +128,14 @@ private struct NguyenLieuRowView: View {
                     if let donViTinh = item.donViTinh, !donViTinh.isEmpty {
                         Text(donViTinh).font(.caption2).foregroundColor(.textMuted)
                     }
+                    if let phanLoai = item.phanLoai, let label = PhanLoaiNguyenLieu.label(for: phanLoai) {
+                        Text(label)
+                            .font(.caption2).fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .background(PhanLoaiNguyenLieu.color(for: phanLoai))
+                            .clipShape(Capsule())
+                    }
                 }
             }
             .padding(12)
@@ -122,6 +163,7 @@ private struct NguyenLieuEditSheet: View {
     @State private var donViTinh: String
     @State private var giaNhap: Double
     @State private var ngungSuDung: Bool
+    @State private var phanLoai: Int?
     @State private var saving = false
     @State private var errorMessage: String?
 
@@ -132,6 +174,7 @@ private struct NguyenLieuEditSheet: View {
         _donViTinh = State(initialValue: existing?.donViTinh ?? "")
         _giaNhap = State(initialValue: existing?.giaNhap ?? 0)
         _ngungSuDung = State(initialValue: existing?.ngungSuDung ?? false)
+        _phanLoai = State(initialValue: existing?.phanLoai)
     }
 
     var body: some View {
@@ -146,6 +189,15 @@ private struct NguyenLieuEditSheet: View {
                         TextField("0", value: $giaNhap, format: .number)
                             .keyboardType(.numberPad)
                             .multilineTextAlignment(.trailing)
+                    }
+                }
+
+                Section("Phân loại") {
+                    Picker("Loại", selection: $phanLoai) {
+                        Text("Chưa phân loại").tag(Int?.none)
+                        ForEach(PhanLoaiNguyenLieu.allCases) { loai in
+                            Text(loai.label).tag(Int?.some(loai.rawValue))
+                        }
                     }
                 }
 
@@ -200,7 +252,8 @@ private struct NguyenLieuEditSheet: View {
             thuTu: existing?.thuTu ?? 0,
             // Giữ nguyên liên kết tồn kho bán hàng — không cho sửa ở màn này, xem NguyenLieuDto.
             nguyenLieuBanHangId: existing?.nguyenLieuBanHangId,
-            heSoQuyDoiBanHang: existing?.heSoQuyDoiBanHang
+            heSoQuyDoiBanHang: existing?.heSoQuyDoiBanHang,
+            phanLoai: phanLoai
         )
 
         let result: ActionResult

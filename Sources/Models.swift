@@ -311,6 +311,8 @@ struct NguyenLieuDto: Decodable, Identifiable {
     let heSoQuyDoiBanHang: Double?
     /// ⭐ ghim lên đầu màn Giá nguyên liệu — optional để không vỡ khi backend cũ chưa trả field.
     var yeuThich: Bool?
+    /// 1 = Nguyên liệu (đồ ăn/uống), 2 = Vật liệu (vật tư/bao bì/máy móc), 3 = Chi phí khác. Nil = chưa phân loại.
+    var phanLoai: Int?
 }
 
 struct NguyenLieuCreateRequest: Encodable {
@@ -327,6 +329,7 @@ struct NguyenLieuUpdateRequest: Encodable {
     let thuTu: Int
     let nguyenLieuBanHangId: String?
     let heSoQuyDoiBanHang: Double?
+    let phanLoai: Int?
 }
 
 // ---- Công việc nội bộ ----
@@ -464,7 +467,6 @@ struct VongQuayPhanThuongDto: Codable, Identifiable, Hashable {
 struct GamificationConfigDto: Codable {
     var lyBiMatGiaTraTien: Double
     var lyBiMatNguongGiaThat: Double
-    var sinhNhatThuong: Double
     var vongQuayPhanThuong: [VongQuayPhanThuongDto]
     var shipKmThuongBac: Double
     var shipKmThuongVang: Double
