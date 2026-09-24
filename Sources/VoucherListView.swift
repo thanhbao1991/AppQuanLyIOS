@@ -49,10 +49,10 @@ struct VoucherListView: View {
         }
         .task { await load() }
         .sheet(isPresented: $showAdd) {
-            VoucherEditSheet(existing: nil) { Task { await load() } }
+            VoucherEditSheet(existing: nil) { await load() }
         }
         .sheet(item: $editing) { item in
-            VoucherEditSheet(existing: item) { Task { await load() } }
+            VoucherEditSheet(existing: item) { await load() }
         }
     }
 
@@ -231,7 +231,7 @@ private struct VoucherRowView: View {
 
 private struct VoucherEditSheet: View {
     let existing: VoucherDto?
-    let onSaved: () -> Void
+    let onSaved: () async -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var ma: String
@@ -580,7 +580,10 @@ private struct VoucherEditSheet: View {
         }
         saving = false
         if result.success {
-            onSaved()
+            // Đợi list nạp lại XONG rồi mới đóng sheet — nếu đóng trước, bấm "Sửa" lại đúng voucher
+            // đó trong lúc GET còn chạy nền sẽ lấy nhầm `items` cũ (chưa refresh), làm toggle/field
+            // vừa lưu hiện lại như CHƯA lưu.
+            await onSaved()
             dismiss()
         } else {
             errorMessage = result.message ?? "Không lưu được."
