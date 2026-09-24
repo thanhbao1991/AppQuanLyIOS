@@ -307,7 +307,7 @@ private struct VoucherEditSheet: View {
         ("TinhNang", "🧩 Tính năng"),
     ]
 
-    init(existing: VoucherDto?, onSaved: @escaping () -> Void) {
+    init(existing: VoucherDto?, onSaved: @escaping () async -> Void) {
         self.existing = existing
         self.onSaved = onSaved
         _ma = State(initialValue: existing?.ma ?? "")
