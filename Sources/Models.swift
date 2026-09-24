@@ -474,6 +474,9 @@ struct GamificationConfigDto: Codable {
     // gợi ý khung giờ vắng khách chính xác hơn.
     var gioMoCua: Int
     var gioDongCua: Int
+    // Điểm danh nhận Xu (chu kỳ 7 ngày) — ngày 1-6 giống nhau, ngày 7 thưởng đậm hơn.
+    var diemDanhThuongThuong: Double
+    var diemDanhThuongNgay7: Double
 }
 
 // ---- Thống kê (port từ TraSuaApp.Desktop ThongKeTabControl — nguồn chính xác, KHÔNG dùng

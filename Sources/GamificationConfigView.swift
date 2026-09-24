@@ -96,6 +96,15 @@ private struct GamificationConfigForm: View {
             }
 
             Section {
+                moneyRow("Thưởng ngày 1-6", value: $config.diemDanhThuongThuong)
+                moneyRow("Thưởng ngày 7", value: $config.diemDanhThuongNgay7)
+            } header: {
+                Text("Điểm danh nhận Xu 🗓️")
+            } footer: {
+                Text("Điểm danh liên tiếp mỗi ngày để nhận Xu (cộng thẳng, không random). Bỏ lỡ 1 ngày là tính lại từ đầu.")
+            }
+
+            Section {
                 ForEach($config.vongQuayPhanThuong) { $item in
                     VongQuayRowEditor(item: $item, phanTramText: phanTram(item, in: config.vongQuayPhanThuong))
                 }
