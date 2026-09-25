@@ -733,6 +733,8 @@ private struct ImageOrderPickerSheet: View {
     @State private var images: [Data] = []
     @State private var loading = false
     @State private var loadError: String?
+    // Mở thẳng picker ảnh ngay khi sheet hiện ra, khỏi bắt bấm thêm 1 lần "Chọn ảnh" thừa.
+    @State private var pickerPresented = false
 
     var body: some View {
         NavigationStack {
@@ -767,11 +769,8 @@ private struct ImageOrderPickerSheet: View {
                     .frame(height: 100)
                 }
 
-                PhotosPicker(selection: $pickerItems, maxSelectionCount: 6, matching: .images) {
+                Button { pickerPresented = true } label: {
                     Label("Chọn ảnh", systemImage: "photo.on.rectangle")
-                }
-                .onChange(of: pickerItems) { items in
-                    Task { await loadPicked(items) }
                 }
                 .disabled(loading)
 
@@ -807,6 +806,13 @@ private struct ImageOrderPickerSheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Đóng") { dismiss() }.disabled(loading)
                 }
+            }
+            .photosPicker(isPresented: $pickerPresented, selection: $pickerItems, maxSelectionCount: 6, matching: .images)
+            .onChange(of: pickerItems) { items in
+                Task { await loadPicked(items) }
+            }
+            .onAppear {
+                if images.isEmpty { pickerPresented = true }
             }
         }
     }
