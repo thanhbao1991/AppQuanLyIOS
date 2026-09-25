@@ -682,17 +682,19 @@ private struct AddHoaDonSheet: View {
                     .buttonBorderShape(.roundedRectangle(radius: 12))
                     .tint(.brandPrimary)
 
-                    Button { showTextOrder = true } label: {
-                        HStack {
-                            Text("💬")
-                            Text("Bắt đơn từ tin nhắn — dán từ clipboard")
-                            Spacer()
-                            Image(systemName: "chevron.right").font(.caption)
-                        }
-                    }
-                    .buttonStyle(.bordered)
-                    .buttonBorderShape(.roundedRectangle(radius: 12))
-                    .tint(.brandPrimary)
+                    // Tạm ẩn (25/9, theo yêu cầu user) — giữ nguyên state/sheet/TextOrderPickerSheet
+                    // bên dưới để bật lại dễ, chỉ bỏ nút bấm kích hoạt.
+                    // Button { showTextOrder = true } label: {
+                    //     HStack {
+                    //         Text("💬")
+                    //         Text("Bắt đơn từ tin nhắn — dán từ clipboard")
+                    //         Spacer()
+                    //         Image(systemName: "chevron.right").font(.caption)
+                    //     }
+                    // }
+                    // .buttonStyle(.bordered)
+                    // .buttonBorderShape(.roundedRectangle(radius: 12))
+                    // .tint(.brandPrimary)
 
                     Spacer()
                 }

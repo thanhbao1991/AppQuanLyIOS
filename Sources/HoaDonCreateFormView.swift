@@ -20,7 +20,10 @@ struct HoaDonCreateFormView: View {
     var presetWarnings: [String] = []
     /// Preset từ "Bắt đơn từ ảnh" (xem HoaDonListView.ImageOrderPickerSheet) — điền sẵn Ô NHẬP TAY
     /// (khác presetKhachHangId là 1 KhachHang có sẵn), vì AI chỉ đọc text thô từ ảnh chat, không tự
-    /// khớp/tạo KhachHang — HoaDonKhachHangService tự lo khớp SĐT/tạo mới lúc lưu đơn.
+    /// khớp/tạo KhachHang — HoaDonKhachHangService tự lo khớp SĐT/tạo mới lúc lưu đơn. Riêng
+    /// presetTenKhach (25/9): tự đổ vào ô tìm kiếm khách hàng (applyPresets) để hiện sẵn ứng viên
+    /// trùng tên — vẫn cần nhân viên bấm chọn, không tự gán KhachHangId (tránh gán nhầm khách trùng
+    /// tên, xem cảnh báo công nợ ở KhachHangSearchHelper).
     var presetTenKhach: String? = nil
     var presetSdt: String? = nil
     var presetDiaChi: String? = nil
@@ -687,7 +690,15 @@ struct HoaDonCreateFormView: View {
         // Chỉ điền khi CHƯA chọn 1 KhachHang có sẵn (presetKhachHangId) — 2 nguồn preset không xảy
         // ra cùng lúc trong thực tế (khác nút bấm ở AddHoaDonSheet) nhưng giữ điều kiện cho chắc.
         if selectedKhach == nil {
-            if let presetTenKhach, !presetTenKhach.isEmpty { tenKhach = presetTenKhach }
+            if let presetTenKhach, !presetTenKhach.isEmpty {
+                tenKhach = presetTenKhach
+                // 25/9: "Bắt đơn từ ảnh" đọc được tên trên tiêu đề chat (thường là tên Messenger/Zalo
+                // của khách quen) nhưng KHÔNG tự khớp KhachHang — tự động điền vào ô tìm kiếm để hiện
+                // sẵn danh sách ứng viên trùng tên, nhân viên chỉ cần xác nhận đúng người thay vì gõ
+                // lại tay. Set khachSearchText (không gọi thẳng scheduleKhachSearch) để đi đúng
+                // đường debounce/onChange sẵn có, không tạo 2 luồng tìm kiếm song song.
+                khachSearchText = presetTenKhach
+            }
             if let presetSdt, !presetSdt.isEmpty { sdt = presetSdt }
             if let presetDiaChi, !presetDiaChi.isEmpty { diaChi = presetDiaChi }
         }
