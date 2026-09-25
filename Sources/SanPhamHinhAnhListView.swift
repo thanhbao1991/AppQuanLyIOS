@@ -4,11 +4,9 @@ import SwiftUI
 /// Màn "Ảnh menu" — cho nhân viên đổi/thêm ảnh món ăn cho AppDatHangIOS (app khách đặt hàng), vì
 /// menu chỉ tự khớp sẵn 92/233 món (tên trùng với ảnh có sẵn ở AppShippingBackend lúc seed), phần
 /// còn lại + món đổi ảnh về sau phải cập nhật tay qua đây. Vào từ tab Menu > "Ảnh menu". Cũng là nơi
-/// chọn món "Nổi bật" (dải quảng bá đầu tab Thực đơn app khách, tối đa 5 món) — cùng chỗ với ảnh vì
-/// cả 2 đều là "cấu hình món hiện thế nào cho app khách", không tách màn riêng.
+/// chọn món "Nổi bật" (dải quảng bá đầu tab Thực đơn app khách, thứ tự hiện random mỗi lần tải, không
+/// giới hạn số lượng) — cùng chỗ với ảnh vì cả 2 đều là "cấu hình món hiện thế nào cho app khách".
 struct SanPhamHinhAnhListView: View {
-    private static let noiBatToiDa = 5
-
     @State private var sanPhams: [SanPhamDto] = []
     @State private var loading = true
     @State private var query = ""
@@ -32,7 +30,7 @@ struct SanPhamHinhAnhListView: View {
                 fullScreenLoading()
             } else {
                 HStack {
-                    Text("⭐ Nổi bật: \(soLuongNoiBat)/\(Self.noiBatToiDa)")
+                    Text("⭐ Nổi bật: \(soLuongNoiBat) món")
                         .font(.caption).foregroundColor(.textMuted)
                     Spacer()
                 }
@@ -44,7 +42,6 @@ struct SanPhamHinhAnhListView: View {
                             sanPham: sp,
                             uploading: uploadingId == sp.id,
                             togglingNoiBat: togglingNoiBatId == sp.id,
-                            noiBatDangDay: !sp.noiBat && soLuongNoiBat >= Self.noiBatToiDa,
                             onPicked: { data, mime in Task { await upload(id: sp.id, data: data, mime: mime) } },
                             onToggleNoiBat: { Task { await toggleNoiBat(sp) } }
                         )
@@ -118,9 +115,6 @@ private struct SanPhamHinhAnhRow: View {
     let sanPham: SanPhamDto
     let uploading: Bool
     let togglingNoiBat: Bool
-    /// true khi đã đủ 5 món nổi bật VÀ món này chưa nổi bật — disable nút star để khỏi bấm hụt rồi
-    /// mới thấy alert lỗi, số đếm ở header đã cho biết đang đầy.
-    let noiBatDangDay: Bool
     let onPicked: (Data, String) -> Void
     let onToggleNoiBat: () -> Void
 
@@ -144,7 +138,6 @@ private struct SanPhamHinhAnhRow: View {
                         .frame(width: 32, height: 32)
                 }
                 .buttonStyle(.borderless)
-                .disabled(noiBatDangDay)
             }
             if uploading {
                 ProgressView().frame(width: 28, height: 28)
