@@ -267,6 +267,9 @@ struct OrderFromImageResultDto: Decodable {
     let ghiChu: String?
     let items: [OrderFromImageLineDto]
     let warnings: [String]
+    /// Khớp qua alias tên khách ĐÃ HỌC trước (xem KhachHangController.LearnAlias) — khác nil khi tên
+    /// hiển thị chat trùng 1 alias đã lưu, cho phép chọn thẳng KhachHang thay vì chỉ điền text.
+    let khachHangId: String?
 }
 
 struct ChiTieuHangNgayBulkItemRequest: Encodable {

@@ -745,6 +745,15 @@ struct HoaDonCreateFormView: View {
     }
 
     private func selectKhach(_ kh: KhachHangDto) {
+        // 25/9: nếu đang chọn từ danh sách gợi ý tự động của "Bắt đơn từ ảnh" (khachSearchText vẫn
+        // còn nguyên = presetTenKhach, user chưa tự gõ tìm lại) VÀ tên thật khác tên AI đọc được
+        // (khách đổi tên hiển thị Messenger/Zalo) — học alias để lần sau AI đọc đúng tên hiển thị đó
+        // là gợi ý thẳng đúng khách này luôn. Chạy nền, không chặn UI, không quan tâm kết quả.
+        if let presetTenKhach, !presetTenKhach.isEmpty,
+           khachSearchText == presetTenKhach, presetTenKhach != kh.ten {
+            Task { await APIClient.shared.learnKhachHangAlias(rawText: presetTenKhach, khachHangId: kh.id) }
+        }
+
         selectedKhach = kh
         showEditKhachHang = false
         tenKhach = kh.ten

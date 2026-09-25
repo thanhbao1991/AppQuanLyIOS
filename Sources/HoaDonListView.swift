@@ -257,11 +257,12 @@ struct HoaDonListView: View {
                         )
                     }
                 },
-                onPickFromImage: { items, ghiChu, warnings, tenKhach, sdt, diaChi in
+                onPickFromImage: { items, ghiChu, warnings, tenKhach, sdt, diaChi, khachHangId in
                     Task {
                         try? await Task.sleep(nanoseconds: 400_000_000)
                         creatingPending = PendingCreate(
                             phanLoai: "Ship",
+                            presetKhachHangId: khachHangId,
                             presetItems: items,
                             presetGhiChu: ghiChu,
                             presetWarnings: warnings,
@@ -607,8 +608,9 @@ private struct AddHoaDonSheet: View {
     let onPickGoiSom: (String, String, String) -> Void
     /// (items, ghiChu, warnings, khachHangId) — đơn đã map sẵn món từ store, xem AppOrderPickerSheet.
     let onPickAppOrder: ([DraftChiTiet], String, [String], String?) -> Void
-    /// (items, ghiChu, warnings, tenKhach, sdt, diaChi) — xem ImageOrderPickerSheet.
-    let onPickFromImage: ([DraftChiTiet], String, [String], String?, String?, String?) -> Void
+    /// (items, ghiChu, warnings, tenKhach, sdt, diaChi, khachHangId) — xem ImageOrderPickerSheet.
+    /// khachHangId khớp qua alias đã học (KhachHangController.LearnAlias) khi khác nil.
+    let onPickFromImage: ([DraftChiTiet], String, [String], String?, String?, String?, String?) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var showGoiSom = false
@@ -726,17 +728,17 @@ private struct AddHoaDonSheet: View {
             }
         }
         .sheet(isPresented: $showImageOrder) {
-            ImageOrderPickerSheet { items, ghiChu, warnings, tenKhach, sdt, diaChi in
+            ImageOrderPickerSheet { items, ghiChu, warnings, tenKhach, sdt, diaChi, khachHangId in
                 showImageOrder = false
                 dismiss()
-                onPickFromImage(items, ghiChu, warnings, tenKhach, sdt, diaChi)
+                onPickFromImage(items, ghiChu, warnings, tenKhach, sdt, diaChi, khachHangId)
             }
         }
         .sheet(isPresented: $showTextOrder) {
-            TextOrderPickerSheet { items, ghiChu, warnings, tenKhach, sdt, diaChi in
+            TextOrderPickerSheet { items, ghiChu, warnings, tenKhach, sdt, diaChi, khachHangId in
                 showTextOrder = false
                 dismiss()
-                onPickFromImage(items, ghiChu, warnings, tenKhach, sdt, diaChi)
+                onPickFromImage(items, ghiChu, warnings, tenKhach, sdt, diaChi, khachHangId)
             }
         }
         .presentationDetents([.medium, .large])
@@ -750,8 +752,8 @@ private struct AddHoaDonSheet: View {
 /// viên tự thêm tay bên form tạo đơn. tenKhach/sdt/diaChi chỉ là gợi ý điền sẵn ô nhập tay, KHÔNG tự
 /// tạo/khớp KhachHang ở đây.
 private struct ImageOrderPickerSheet: View {
-    /// (items, ghiChu, warnings, tenKhach, sdt, diaChi)
-    let onPick: ([DraftChiTiet], String, [String], String?, String?, String?) -> Void
+    /// (items, ghiChu, warnings, tenKhach, sdt, diaChi, khachHangId)
+    let onPick: ([DraftChiTiet], String, [String], String?, String?, String?, String?) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var pickerItems: [PhotosPickerItem] = []
@@ -904,7 +906,7 @@ private struct ImageOrderPickerSheet: View {
         }
 
         dismiss()
-        onPick(draftItems, result.ghiChu ?? "", result.warnings, result.tenKhach, result.soDienThoai, result.diaChi)
+        onPick(draftItems, result.ghiChu ?? "", result.warnings, result.tenKhach, result.soDienThoai, result.diaChi, result.khachHangId)
     }
 }
 
@@ -913,8 +915,8 @@ private struct ImageOrderPickerSheet: View {
 /// không cần chụp/chọn ảnh. Tự đọc clipboard + xử lý ngay khi sheet hiện ra — cùng 1 thao tác như
 /// ImageOrderPickerSheet (bấm nút → xong).
 private struct TextOrderPickerSheet: View {
-    /// (items, ghiChu, warnings, tenKhach, sdt, diaChi)
-    let onPick: ([DraftChiTiet], String, [String], String?, String?, String?) -> Void
+    /// (items, ghiChu, warnings, tenKhach, sdt, diaChi, khachHangId)
+    let onPick: ([DraftChiTiet], String, [String], String?, String?, String?, String?) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var loading = false
@@ -1007,7 +1009,7 @@ private struct TextOrderPickerSheet: View {
         }
 
         dismiss()
-        onPick(draftItems, result.ghiChu ?? "", result.warnings, result.tenKhach, result.soDienThoai, result.diaChi)
+        onPick(draftItems, result.ghiChu ?? "", result.warnings, result.tenKhach, result.soDienThoai, result.diaChi, result.khachHangId)
     }
 }
 

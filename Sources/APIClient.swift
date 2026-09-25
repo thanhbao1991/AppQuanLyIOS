@@ -809,6 +809,14 @@ actor APIClient {
         return env.data
     }
 
+    /// "Bắt đơn từ ảnh" — nhân viên chọn 1 khách khác tên AI đọc từ ảnh chat (khách đổi tên hiển thị
+    /// Messenger/Zalo). Không quan tâm kết quả — học nền, không chặn UI (xem HoaDonCreateFormView.selectKhach).
+    func learnKhachHangAlias(rawText: String, khachHangId: String) async {
+        let req = makeRequest("/api/KhachHang/alias", method: "POST",
+                               body: jsonBody(["rawText": rawText, "khachHangId": khachHangId]))
+        _ = await send(req)
+    }
+
     /// Khớp CreateKhachBtn_Click (Desktop): trùng SĐT với khách có sẵn thì server trả lỗi kèm tên
     /// khách đó trong message — KHÔNG tự tìm/chọn lại giúp (khác Desktop có cache toàn bộ khách để
     /// tự dò), hiển thị lỗi để nhân viên tự tìm khách đó qua ô tìm kiếm.
