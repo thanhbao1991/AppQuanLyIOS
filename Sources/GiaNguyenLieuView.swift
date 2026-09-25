@@ -5,14 +5,33 @@ import SwiftUI
 /// (đơn giá/số lượng/ngày mua) để so giá, tránh phải lật lại từng ngày trong tab Chi tiêu. Đọc
 /// thẳng ChiTieuHangNgay (bản ghi mua hàng), không lưu gì mới — xem
 /// GET /api/ChiTieuHangNgay/gia-gan-day (ChiTieuHangNgayController/Service).
+///
+/// Dùng chung cho 3 màn "Giá nguyên liệu" / "Giá vật liệu" / "Giá chi phí khác" (Menu > Công cụ) —
+/// tính năng giống hệt nhau, chỉ khác bộ lọc theo NguyenLieuDto.phanLoai. "Giá nguyên liệu" nhận
+/// luôn cả phanLoai == nil để không mất các dòng cũ trước khi có cột PhanLoai/chưa kịp phân loại.
 struct GiaNguyenLieuView: View {
-    @State private var nguyenLieuList: [NguyenLieuDto] = []
+    let phanLoai: PhanLoaiNguyenLieu
+    private let title: String
+
+    init(phanLoai: PhanLoaiNguyenLieu = .nguyenLieu) {
+        self.phanLoai = phanLoai
+        self.title = phanLoai.giaScreenTitle
+    }
+
+    @State private var allNguyenLieu: [NguyenLieuDto] = []
     @State private var searchText = ""
     @State private var selected: NguyenLieuDto?
     @State private var showDetail = false
     /// Nguyên liệu cần mua sắp tới (đến hạn/trễ hạn) — hiện dưới ô tìm khi chưa gõ, gấp nhất trước.
     @State private var canMua: [MuaHangDeXuatDto] = []
     @State private var canMuaLoaded = false
+
+    /// Chỉ lấy đúng nhóm phân loại của màn này (nhóm Nguyên liệu nhận thêm cả phanLoai == nil).
+    private var nguyenLieuList: [NguyenLieuDto] {
+        allNguyenLieu.filter {
+            $0.phanLoai == phanLoai.rawValue || (phanLoai == .nguyenLieu && $0.phanLoai == nil)
+        }
+    }
 
     private var yeuThichList: [NguyenLieuDto] {
         nguyenLieuList.filter { $0.yeuThich == true && !$0.ngungSuDung }
@@ -101,7 +120,7 @@ struct GiaNguyenLieuView: View {
                 }
             }
         }
-        .navigationTitle("Giá nguyên liệu")
+        .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color.brandPrimary, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
@@ -111,7 +130,7 @@ struct GiaNguyenLieuView: View {
             if let selected { GiaNguyenLieuDetailView(nguyenLieu: selected) }
         }
         .task {
-            nguyenLieuList = await APIClient.shared.getNguyenLieu()
+            allNguyenLieu = await APIClient.shared.getNguyenLieu()
             canMua = await APIClient.shared.getCanMua()
             canMuaLoaded = true
         }
@@ -172,31 +191,31 @@ struct GiaNguyenLieuView: View {
 
     /// Đánh dấu ngừng sử dụng — ẩn dòng ngay (goiYList lọc theo ngungSuDung), lỗi thì hoàn lại.
     private func ngungSuDung(_ nl: NguyenLieuDto) async {
-        guard let i = nguyenLieuList.firstIndex(where: { $0.id == nl.id }) else { return }
-        nguyenLieuList[i].ngungSuDung = true
+        guard let i = allNguyenLieu.firstIndex(where: { $0.id == nl.id }) else { return }
+        allNguyenLieu[i].ngungSuDung = true
         if !(await APIClient.shared.setNguyenLieuNgungSuDung(id: nl.id, value: true)),
-           let j = nguyenLieuList.firstIndex(where: { $0.id == nl.id }) {
-            nguyenLieuList[j].ngungSuDung = false
+           let j = allNguyenLieu.firstIndex(where: { $0.id == nl.id }) {
+            allNguyenLieu[j].ngungSuDung = false
         }
     }
 
     /// Bỏ đánh dấu ngừng sử dụng — chỉ gọi được từ kết quả tìm kiếm (mục đã ngừng dùng mới hiện ở đó).
     private func boNgungSuDung(_ nl: NguyenLieuDto) async {
-        guard let i = nguyenLieuList.firstIndex(where: { $0.id == nl.id }) else { return }
-        nguyenLieuList[i].ngungSuDung = false
+        guard let i = allNguyenLieu.firstIndex(where: { $0.id == nl.id }) else { return }
+        allNguyenLieu[i].ngungSuDung = false
         if !(await APIClient.shared.setNguyenLieuNgungSuDung(id: nl.id, value: false)),
-           let j = nguyenLieuList.firstIndex(where: { $0.id == nl.id }) {
-            nguyenLieuList[j].ngungSuDung = true
+           let j = allNguyenLieu.firstIndex(where: { $0.id == nl.id }) {
+            allNguyenLieu[j].ngungSuDung = true
         }
     }
 
     private func toggleYeuThich(_ nl: NguyenLieuDto) async {
-        guard let i = nguyenLieuList.firstIndex(where: { $0.id == nl.id }) else { return }
-        let value = nguyenLieuList[i].yeuThich != true
-        nguyenLieuList[i].yeuThich = value
+        guard let i = allNguyenLieu.firstIndex(where: { $0.id == nl.id }) else { return }
+        let value = allNguyenLieu[i].yeuThich != true
+        allNguyenLieu[i].yeuThich = value
         if !(await APIClient.shared.setNguyenLieuYeuThich(id: nl.id, value: value)),
-           let j = nguyenLieuList.firstIndex(where: { $0.id == nl.id }) {
-            nguyenLieuList[j].yeuThich = !value
+           let j = allNguyenLieu.firstIndex(where: { $0.id == nl.id }) {
+            allNguyenLieu[j].yeuThich = !value
         }
     }
 }

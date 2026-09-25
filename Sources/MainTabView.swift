@@ -165,9 +165,19 @@ private struct MoreMenuView: View {
                         EmojiLabel("Tính lương Nhã", "⛽")
                     }
                     NavigationLink {
-                        GiaNguyenLieuView()
+                        GiaNguyenLieuView(phanLoai: .nguyenLieu)
                     } label: {
                         EmojiLabel("Giá nguyên liệu", "🏷️")
+                    }
+                    NavigationLink {
+                        GiaNguyenLieuView(phanLoai: .vatLieu)
+                    } label: {
+                        EmojiLabel("Giá vật liệu", "📦")
+                    }
+                    NavigationLink {
+                        GiaNguyenLieuView(phanLoai: .chiPhiKhac)
+                    } label: {
+                        EmojiLabel("Giá chi phí khác", "🧾")
                     }
                     NavigationLink {
                         GioThapDiemView()

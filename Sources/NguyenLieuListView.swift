@@ -24,6 +24,15 @@ enum PhanLoaiNguyenLieu: Int, CaseIterable, Identifiable {
         }
     }
 
+    /// Tiêu đề màn "Giá ..." (GiaNguyenLieuView) ứng với nhóm này.
+    var giaScreenTitle: String {
+        switch self {
+        case .nguyenLieu: return "Giá nguyên liệu"
+        case .vatLieu: return "Giá vật liệu"
+        case .chiPhiKhac: return "Giá chi phí khác"
+        }
+    }
+
     static func label(for rawValue: Int) -> String? {
         PhanLoaiNguyenLieu(rawValue: rawValue)?.label
     }
