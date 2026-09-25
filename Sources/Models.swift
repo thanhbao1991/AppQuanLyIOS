@@ -750,6 +750,9 @@ struct SanPhamDto: Decodable, Identifiable {
     let timKiem: String?
     /// Ảnh menu cho AppDatHangIOS (app khách đặt hàng) — nil nếu chưa có ảnh khớp/upload.
     let hinhAnh: String?
+    /// Hiện trong dải "Món quán đề xuất" đầu tab Thực đơn của app khách — tối đa 5 món cùng lúc, đổi
+    /// qua PATCH {id}/noi-bat (SanPhamCrudService.SetNoiBatAsync chặn số lượng ở server).
+    let noiBat: Bool
 }
 
 struct ToppingDto: Decodable, Identifiable, Hashable {

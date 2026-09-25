@@ -3,12 +3,17 @@ import SwiftUI
 
 /// Màn "Ảnh menu" — cho nhân viên đổi/thêm ảnh món ăn cho AppDatHangIOS (app khách đặt hàng), vì
 /// menu chỉ tự khớp sẵn 92/233 món (tên trùng với ảnh có sẵn ở AppShippingBackend lúc seed), phần
-/// còn lại + món đổi ảnh về sau phải cập nhật tay qua đây. Vào từ tab Menu > "Ảnh menu".
+/// còn lại + món đổi ảnh về sau phải cập nhật tay qua đây. Vào từ tab Menu > "Ảnh menu". Cũng là nơi
+/// chọn món "Nổi bật" (dải quảng bá đầu tab Thực đơn app khách, tối đa 5 món) — cùng chỗ với ảnh vì
+/// cả 2 đều là "cấu hình món hiện thế nào cho app khách", không tách màn riêng.
 struct SanPhamHinhAnhListView: View {
+    private static let noiBatToiDa = 5
+
     @State private var sanPhams: [SanPhamDto] = []
     @State private var loading = true
     @State private var query = ""
     @State private var uploadingId: String?
+    @State private var togglingNoiBatId: String?
     @State private var errorMessage: String?
 
     private var filtered: [SanPhamDto] {
@@ -17,6 +22,8 @@ struct SanPhamHinhAnhListView: View {
             .sorted { $0.ten < $1.ten }
     }
 
+    private var soLuongNoiBat: Int { sanPhams.filter(\.noiBat).count }
+
     var body: some View {
         VStack(spacing: 0) {
             SearchBar(text: $query, placeholder: "Tìm món...")
@@ -24,12 +31,22 @@ struct SanPhamHinhAnhListView: View {
             if loading {
                 fullScreenLoading()
             } else {
+                HStack {
+                    Text("⭐ Nổi bật: \(soLuongNoiBat)/\(Self.noiBatToiDa)")
+                        .font(.caption).foregroundColor(.textMuted)
+                    Spacer()
+                }
+                .padding(.horizontal, 16).padding(.top, 6)
+
                 List {
                     ForEach(filtered) { sp in
                         SanPhamHinhAnhRow(
                             sanPham: sp,
                             uploading: uploadingId == sp.id,
-                            onPicked: { data, mime in Task { await upload(id: sp.id, data: data, mime: mime) } }
+                            togglingNoiBat: togglingNoiBatId == sp.id,
+                            noiBatDangDay: !sp.noiBat && soLuongNoiBat >= Self.noiBatToiDa,
+                            onPicked: { data, mime in Task { await upload(id: sp.id, data: data, mime: mime) } },
+                            onToggleNoiBat: { Task { await toggleNoiBat(sp) } }
                         )
                     }
                 }
@@ -43,7 +60,7 @@ struct SanPhamHinhAnhListView: View {
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .task { await load() }
-        .alert("Đổi ảnh thất bại", isPresented: Binding(
+        .alert("Lỗi", isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
         )) {
@@ -71,10 +88,28 @@ struct SanPhamHinhAnhListView: View {
                 let bustedUrl = url + "?v=\(Int(Date().timeIntervalSince1970))"
                 sanPhams[idx] = SanPhamDto(
                     id: old.id, ten: old.ten, ngungBan: old.ngungBan, tenNhomSanPham: old.tenNhomSanPham,
-                    thuTu: old.thuTu, bienThe: old.bienThe, timKiem: old.timKiem, hinhAnh: bustedUrl)
+                    thuTu: old.thuTu, bienThe: old.bienThe, timKiem: old.timKiem, hinhAnh: bustedUrl,
+                    noiBat: old.noiBat)
             }
         } else {
             errorMessage = message ?? "Không cập nhật được ảnh."
+        }
+    }
+
+    private func toggleNoiBat(_ sp: SanPhamDto) async {
+        guard let idx = sanPhams.firstIndex(where: { $0.id == sp.id }) else { return }
+        togglingNoiBatId = sp.id
+        defer { togglingNoiBatId = nil }
+        let newValue = !sp.noiBat
+        let result = await APIClient.shared.setSanPhamNoiBat(id: sp.id, value: newValue)
+        if result.success {
+            let old = sanPhams[idx]
+            sanPhams[idx] = SanPhamDto(
+                id: old.id, ten: old.ten, ngungBan: old.ngungBan, tenNhomSanPham: old.tenNhomSanPham,
+                thuTu: old.thuTu, bienThe: old.bienThe, timKiem: old.timKiem, hinhAnh: old.hinhAnh,
+                noiBat: newValue)
+        } else {
+            errorMessage = result.message ?? "Không cập nhật được."
         }
     }
 }
@@ -82,7 +117,12 @@ struct SanPhamHinhAnhListView: View {
 private struct SanPhamHinhAnhRow: View {
     let sanPham: SanPhamDto
     let uploading: Bool
+    let togglingNoiBat: Bool
+    /// true khi đã đủ 5 món nổi bật VÀ món này chưa nổi bật — disable nút star để khỏi bấm hụt rồi
+    /// mới thấy alert lỗi, số đếm ở header đã cho biết đang đầy.
+    let noiBatDangDay: Bool
     let onPicked: (Data, String) -> Void
+    let onToggleNoiBat: () -> Void
 
     @State private var showPicker = false
     @State private var showCamera = false
@@ -94,10 +134,22 @@ private struct SanPhamHinhAnhRow: View {
             Text(sanPham.ten)
                 .font(.subheadline)
             Spacer()
+            if togglingNoiBat {
+                ProgressView().frame(width: 28, height: 28)
+            } else {
+                Button(action: onToggleNoiBat) {
+                    Image(systemName: sanPham.noiBat ? "star.fill" : "star")
+                        .font(.system(size: 18))
+                        .foregroundColor(sanPham.noiBat ? .yellow : .textMuted.opacity(0.5))
+                        .frame(width: 32, height: 32)
+                }
+                .buttonStyle(.borderless)
+                .disabled(noiBatDangDay)
+            }
             if uploading {
                 ProgressView().frame(width: 28, height: 28)
             } else {
-                // .borderless để 2 nút trong cùng dòng List nhận tap riêng, không bị gộp cả dòng.
+                // .borderless để nhiều nút trong cùng dòng List nhận tap riêng, không bị gộp cả dòng.
                 Button {
                     showPicker = true
                 } label: {

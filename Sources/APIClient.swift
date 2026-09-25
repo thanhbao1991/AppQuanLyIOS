@@ -195,6 +195,13 @@ actor APIClient {
         return await executeAction(req).success
     }
 
+    /// Bật/tắt "Nổi bật" cho món (dải "Món quán đề xuất" đầu tab Thực đơn app khách) — tối đa 5 món
+    /// cùng lúc, server tự chặn (SanPhamCrudService.SetNoiBatAsync) nên trả cả message khi thất bại.
+    func setSanPhamNoiBat(id: String, value: Bool) async -> ActionResult {
+        let req = makeRequest("/api/SanPham/\(id)/noi-bat?value=\(value)", method: "PATCH")
+        return await executeAction(req)
+    }
+
     func createChiTieu(_ body: ChiTieuHangNgayCreateRequest) async -> ActionResult {
         let req = makeRequest("/api/ChiTieuHangNgay", method: "POST", body: jsonBody(body))
         return await executeAction(req)
