@@ -250,7 +250,7 @@ struct HoaDonCreateFormView: View {
                     }
 
                     Button { showNewKhachForm = true } label: {
-                        EmojiLabel("Khách mới", "➕👤")
+                        EmojiLabel("Khách mới", "➕")
                     }
                     .font(.subheadline)
                 }
