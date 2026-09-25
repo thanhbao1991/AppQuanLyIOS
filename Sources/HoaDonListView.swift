@@ -628,14 +628,17 @@ private struct AddHoaDonSheet: View {
         NavigationStack {
             Group {
                 VStack(spacing: 16) {
-                    VStack(spacing: 12) {
+                    // Gom 4 phân loại về 1 hàng ngang (24/9, trước là 4 dòng riêng dài dòng) — mỗi ô
+                    // icon + tên ngắn, vẫn giữ đúng màu/nhãn khớp HoaDonFormatting.
+                    HStack(spacing: 8) {
                         ForEach(categories, id: \.code) { cat in
                             Button { dismiss(); onPick(cat.code) } label: {
-                                HStack {
-                                    Text(cat.icon)
-                                    Text(HoaDonFormatting.phanLoaiLabel(cat.code))
-                                    Spacer()
+                                VStack(spacing: 4) {
+                                    Text(cat.icon).font(.title3)
+                                    Text(HoaDonFormatting.phanLoaiLabel(cat.code)).font(.caption)
                                 }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
                             }
                             .buttonStyle(.bordered)
                             .buttonBorderShape(.roundedRectangle(radius: 12))
