@@ -764,7 +764,7 @@ private struct ImageOrderPickerSheet: View {
                     ProgressView("Đang đọc ảnh bằng AI...")
                     Spacer()
                 } else if images.isEmpty {
-                    Text("Chọn 1-nhiều ảnh chụp màn hình tin nhắn khách đặt món (cuộn xuống tin mới nhất nếu chat dài).")
+                    Text("Chọn 1 ảnh chụp màn hình tin nhắn khách đặt món (cuộn xuống tin mới nhất nếu chat dài).")
                         .font(.subheadline)
                         .foregroundColor(.textMuted)
                         .multilineTextAlignment(.center)
@@ -836,7 +836,10 @@ private struct ImageOrderPickerSheet: View {
                     Button("Đóng") { dismiss() }.disabled(loading)
                 }
             }
-            .photosPicker(isPresented: $pickerPresented, selection: $pickerItems, maxSelectionCount: 6, matching: .images)
+            // Chỉ 1 ảnh — user báo chọn nhiều ảnh thừa thao tác, chat mới nhất chụp 1 ảnh cuộn xuống
+            // là đủ; giới hạn cứng luôn ở picker để chọn xong là xử lý ngay, khỏi phải bấm "Thêm" nếu
+            // trót chọn quá 1 tấm.
+            .photosPicker(isPresented: $pickerPresented, selection: $pickerItems, maxSelectionCount: 1, matching: .images)
             .onChange(of: pickerItems) { items in
                 Task { await loadPicked(items) }
             }
