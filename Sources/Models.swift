@@ -811,3 +811,17 @@ struct HoaDonFullCreateRequest: Encodable {
 // Ngay/NgayGio = giờ hiện tại. TenBan bắt buộc riêng cho "Tại Chỗ" (RequireTableMessage phía server).
 struct IdOnlyDto: Decodable { let id: String }
 struct CreateActionResult { let success: Bool; let message: String?; let id: String? }
+
+// ---- Số dư AI (OpenRouter) — tab Menu ----
+struct AiModelUsageDto: Decodable, Identifiable {
+    let tinhNang: String
+    let model: String
+    var id: String { tinhNang }
+}
+
+struct AiBalanceDto: Decodable {
+    let totalCredits: Double
+    let totalUsage: Double
+    let remaining: Double
+    let modelUsages: [AiModelUsageDto]
+}

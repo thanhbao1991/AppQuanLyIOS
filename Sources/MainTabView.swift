@@ -116,6 +116,7 @@ private struct MoreMenuView: View {
     @State private var isSyncingContacts = false
     @State private var syncResultMessage: String?
     @State private var showAccessDeniedAlert = false
+    @State private var aiBalance: AiBalanceDto?
 
     var body: some View {
         NavigationStack {
@@ -184,6 +185,22 @@ private struct MoreMenuView: View {
                     } label: {
                         EmojiLabel("Giờ vắng khách", "🕑")
                     }
+
+                    if let balance = aiBalance {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                EmojiLabel("Số dư AI (OpenRouter)", "🤖")
+                                Spacer()
+                                Text("$\(balance.remaining, specifier: "%.2f")")
+                                    .foregroundStyle(balance.remaining < 1 ? .red : .secondary)
+                            }
+                            ForEach(balance.modelUsages) { usage in
+                                Text("\(usage.tinhNang): \(usage.model)")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
                 }
 
                 Section {
@@ -245,6 +262,9 @@ private struct MoreMenuView: View {
                 Button("Huỷ", role: .cancel) {}
             } message: {
                 Text("Vào Cài đặt > ĐENN > Danh bạ để bật quyền truy cập trước khi đồng bộ.")
+            }
+            .task {
+                aiBalance = await APIClient.shared.getAiBalance()
             }
         }
     }

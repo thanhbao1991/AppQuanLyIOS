@@ -138,6 +138,14 @@ actor APIClient {
         return env.data ?? []
     }
 
+    /// Số dư ví OpenRouter + model đang dùng cho từng tính năng AI — tab Menu.
+    func getAiBalance() async -> AiBalanceDto? {
+        let req = makeRequest("/api/dashboard/ai-balance")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<AiBalanceDto>.self, from: data), env.isSuccess else { return nil }
+        return env.data
+    }
+
     func getThanhToanByDay(_ dateIso: String) async -> [ChiTietHoaDonThanhToanDto] {
         let req = makeRequest("/api/ChiTietHoaDonThanhToan?ngay=\(dateIso)")
         let (data, _) = await send(req)
