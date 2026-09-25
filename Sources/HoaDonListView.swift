@@ -739,7 +739,11 @@ private struct ImageOrderPickerSheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                if images.isEmpty {
+                if loading {
+                    Spacer()
+                    ProgressView("Đang đọc ảnh bằng AI...")
+                    Spacer()
+                } else if images.isEmpty {
                     Text("Chọn 1-nhiều ảnh chụp màn hình tin nhắn khách đặt món (cuộn xuống tin mới nhất nếu chat dài).")
                         .font(.subheadline)
                         .foregroundColor(.textMuted)
@@ -769,32 +773,37 @@ private struct ImageOrderPickerSheet: View {
                     .frame(height: 100)
                 }
 
-                Button { pickerPresented = true } label: {
-                    Label("Chọn ảnh", systemImage: "photo.on.rectangle")
-                }
-                .disabled(loading)
+                if !loading {
+                    Button { pickerPresented = true } label: {
+                        Label("Chọn ảnh", systemImage: "photo.on.rectangle")
+                    }
 
-                if let loadError {
-                    Text(loadError).foregroundColor(.dangerColor).font(.footnote)
-                        .multilineTextAlignment(.center)
+                    if let loadError {
+                        Text(loadError).foregroundColor(.dangerColor).font(.footnote)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                    }
+
+                    Spacer()
+
+                    // Nút dự phòng khi AI đọc lỗi (loadError khác nil) — bấm chọn xong TỰ ĐỘNG xử lý
+                    // luôn (xem loadPicked), nút này chỉ cần khi muốn thử lại đúng bộ ảnh đã chọn mà
+                    // không chọn lại.
+                    if !images.isEmpty {
+                        Button {
+                            Task { await process() }
+                        } label: {
+                            Text("Xử lý lại (\(images.count) ảnh)")
+                                .fontWeight(.bold)
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.brandPrimary)
+                        .controlSize(.large)
                         .padding(.horizontal)
+                        .padding(.bottom, 8)
+                    }
                 }
-
-                Spacer()
-
-                Button {
-                    Task { await process() }
-                } label: {
-                    Text(loading ? "Đang đọc..." : "Xử lý (\(images.count) ảnh)")
-                        .fontWeight(.bold)
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.brandPrimary)
-                .controlSize(.large)
-                .disabled(images.isEmpty || loading)
-                .padding(.horizontal)
-                .padding(.bottom, 8)
             }
             .padding(.top)
             .navigationTitle("Bắt đơn từ ảnh")
@@ -829,6 +838,12 @@ private struct ImageOrderPickerSheet: View {
             }
         }
         pickerItems = []
+
+        // Chọn xong là xử lý luôn, khỏi bắt bấm thêm nút "Xử lý" — user chỉ cần thao tác đúng 1 lần
+        // "Bắt đơn từ ảnh" → chọn ảnh xong tự chạy AI.
+        if !images.isEmpty {
+            await process()
+        }
     }
 
     private func process() async {
