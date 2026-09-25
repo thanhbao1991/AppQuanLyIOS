@@ -660,7 +660,7 @@ private struct AddHoaDonSheet: View {
 
                     Button { showAppOrder = true } label: {
                         HStack {
-                            Text("✅")
+                            Text("📱")
                             Text("Bắt đơn App — lấy đơn từ store")
                             Spacer()
                             Image(systemName: "chevron.right").font(.caption)
@@ -672,7 +672,7 @@ private struct AddHoaDonSheet: View {
 
                     Button { showImageOrder = true } label: {
                         HStack {
-                            Text("📸")
+                            Text("🖼️")
                             Text("Bắt đơn từ ảnh — chat khách đặt món")
                             Spacer()
                             Image(systemName: "chevron.right").font(.caption)
@@ -684,7 +684,7 @@ private struct AddHoaDonSheet: View {
 
                     Button { showTextOrder = true } label: {
                         HStack {
-                            Text("📋")
+                            Text("💬")
                             Text("Bắt đơn từ tin nhắn — dán từ clipboard")
                             Spacer()
                             Image(systemName: "chevron.right").font(.caption)
