@@ -268,6 +268,18 @@ actor APIClient {
         return (env.data, env.isSuccess ? nil : (env.message ?? "Đọc ảnh thất bại."))
     }
 
+    /// "Bắt đơn từ tin nhắn" — text đã copy sẵn (clipboard) thay vì ảnh, cùng kết quả trả về với
+    /// parseOrderImages().
+    func parseOrderText(_ text: String) async -> (result: OrderFromImageResultDto?, message: String?) {
+        let req = makeRequest("/api/HoaDon/parse-order-text", method: "POST", body: jsonBody(["text": text]))
+        let (data, _) = await send(req)
+        guard let data else { return (nil, "Không có phản hồi từ server.") }
+        guard let env = try? JSONDecoder().decode(ApiEnvelope<OrderFromImageResultDto>.self, from: data) else {
+            return (nil, "Không đọc được phản hồi từ server.")
+        }
+        return (env.data, env.isSuccess ? nil : (env.message ?? "Đọc tin nhắn thất bại."))
+    }
+
     /// Đổi/thêm ảnh món — multipart/form-data field "image", cùng cách dựng body với parseReceipt().
     /// Backend lưu vào wwwroot/menu-images, trả về URL ảnh mới (data: String) để cập nhật UI ngay
     /// không cần tải lại cả danh sách.

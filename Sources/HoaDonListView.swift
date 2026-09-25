@@ -614,6 +614,7 @@ private struct AddHoaDonSheet: View {
     @State private var showGoiSom = false
     @State private var showAppOrder = false
     @State private var showImageOrder = false
+    @State private var showTextOrder = false
 
     // Không có "App" ở đây: đơn App chỉ được tạo qua "Bắt đơn App" (nút riêng bên dưới, lấy từ store).
     private let categories: [(code: String, icon: String)] = [
@@ -678,6 +679,18 @@ private struct AddHoaDonSheet: View {
                     .buttonBorderShape(.roundedRectangle(radius: 12))
                     .tint(.brandPrimary)
 
+                    Button { showTextOrder = true } label: {
+                        HStack {
+                            Text("📋")
+                            Text("Bắt đơn từ tin nhắn — dán từ clipboard")
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.caption)
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.roundedRectangle(radius: 12))
+                    .tint(.brandPrimary)
+
                     Spacer()
                 }
                 .padding()
@@ -710,6 +723,13 @@ private struct AddHoaDonSheet: View {
         .sheet(isPresented: $showImageOrder) {
             ImageOrderPickerSheet { items, ghiChu, warnings, tenKhach, sdt, diaChi in
                 showImageOrder = false
+                dismiss()
+                onPickFromImage(items, ghiChu, warnings, tenKhach, sdt, diaChi)
+            }
+        }
+        .sheet(isPresented: $showTextOrder) {
+            TextOrderPickerSheet { items, ghiChu, warnings, tenKhach, sdt, diaChi in
+                showTextOrder = false
                 dismiss()
                 onPickFromImage(items, ghiChu, warnings, tenKhach, sdt, diaChi)
             }
@@ -872,6 +892,109 @@ private struct ImageOrderPickerSheet: View {
 
         if draftItems.isEmpty {
             loadError = "Không khớp được món nào với thực đơn — thử ảnh rõ hơn hoặc thêm tay."
+            return
+        }
+
+        dismiss()
+        onPick(draftItems, result.ghiChu ?? "", result.warnings, result.tenKhach, result.soDienThoai, result.diaChi)
+    }
+}
+
+/// "Bắt đơn từ tin nhắn" — text nhân viên đã copy sẵn từ Messenger/Zalo nằm trong clipboard hệ
+/// thống (UIPasteboard), gửi thẳng AI đọc (xem OrderFromImageService.ParseFromTextAsync, Backend) mà
+/// không cần chụp/chọn ảnh. Tự đọc clipboard + xử lý ngay khi sheet hiện ra — cùng 1 thao tác như
+/// ImageOrderPickerSheet (bấm nút → xong).
+private struct TextOrderPickerSheet: View {
+    /// (items, ghiChu, warnings, tenKhach, sdt, diaChi)
+    let onPick: ([DraftChiTiet], String, [String], String?, String?, String?) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var loading = false
+    @State private var loadError: String?
+    @State private var hasClipboardText = false
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                if loading {
+                    Spacer()
+                    ProgressView("Đang đọc tin nhắn bằng AI...")
+                    Spacer()
+                } else {
+                    Spacer()
+                    Text(hasClipboardText
+                         ? "Không đọc được đơn nào từ tin nhắn đã copy."
+                         : "Clipboard trống — copy đoạn chat khách đặt món (Messenger/Zalo) rồi bấm \"Thử lại\".")
+                        .font(.subheadline)
+                        .foregroundColor(.textMuted)
+                        .multilineTextAlignment(.center)
+                        .padding()
+
+                    if let loadError {
+                        Text(loadError).foregroundColor(.dangerColor).font(.footnote)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                    }
+
+                    Button {
+                        Task { await process() }
+                    } label: {
+                        Text("Thử lại")
+                            .fontWeight(.bold)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.brandPrimary)
+                    .controlSize(.large)
+                    .padding(.horizontal)
+                    Spacer()
+                }
+            }
+            .padding(.top)
+            .navigationTitle("Bắt đơn từ tin nhắn")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Đóng") { dismiss() }.disabled(loading)
+                }
+            }
+            .task { await process() }
+        }
+    }
+
+    private func process() async {
+        let text = UIPasteboard.general.string?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        hasClipboardText = !text.isEmpty
+        guard !text.isEmpty else { return }
+
+        loading = true
+        loadError = nil
+        defer { loading = false }
+        let (result, message) = await APIClient.shared.parseOrderText(text)
+        guard let result, !result.items.isEmpty else {
+            loadError = message ?? "Không đọc được đơn nào từ tin nhắn."
+            return
+        }
+
+        // Cùng convention "Bắt đơn từ ảnh"/"Bắt đơn App": chỉ món đã khớp SanPhamBienThe thật mới
+        // đưa vào draft, món không khớp giữ lại trong warnings để nhân viên tự thêm tay.
+        let draftItems = result.items.compactMap { line -> DraftChiTiet? in
+            guard let btId = line.sanPhamBienTheId else { return nil }
+            return DraftChiTiet(
+                sanPhamBienTheId: btId,
+                tenSanPham: line.tenSanPham ?? line.rawText,
+                tenBienThe: line.tenBienThe ?? "",
+                soLuong: line.soLuong,
+                donGia: line.donGia,
+                noteText: line.noteText ?? ""
+            )
+        }
+
+        if draftItems.isEmpty {
+            loadError = "Không khớp được món nào với thực đơn — thử thêm tay."
             return
         }
 
