@@ -5,6 +5,7 @@ enum PhanLoaiNguyenLieu: Int, CaseIterable, Identifiable {
     case nguyenLieu = 1
     case vatLieu = 2
     case chiPhiKhac = 3
+    case vatTu = 4
 
     var id: Int { rawValue }
 
@@ -13,6 +14,7 @@ enum PhanLoaiNguyenLieu: Int, CaseIterable, Identifiable {
         case .nguyenLieu: return "Nguyên liệu"
         case .vatLieu: return "Vật liệu"
         case .chiPhiKhac: return "Chi phí khác"
+        case .vatTu: return "Vật tư"
         }
     }
 
@@ -21,6 +23,7 @@ enum PhanLoaiNguyenLieu: Int, CaseIterable, Identifiable {
         case .nguyenLieu: return .brandPrimary
         case .vatLieu: return .blue
         case .chiPhiKhac: return .textMuted
+        case .vatTu: return .orange
         }
     }
 
@@ -30,6 +33,7 @@ enum PhanLoaiNguyenLieu: Int, CaseIterable, Identifiable {
         case .nguyenLieu: return "Giá nguyên liệu"
         case .vatLieu: return "Giá vật liệu"
         case .chiPhiKhac: return "Giá chi phí khác"
+        case .vatTu: return "Giá vật tư"
         }
     }
 
