@@ -11,6 +11,10 @@ struct CongViecListView: View {
     @State private var errorMessage: String?
     /// Tải riêng sau danh sách việc — AI trả chậm, không chặn màn hình.
     @State private var deXuat: [CongViecDeXuatDto] = []
+    /// Việc đang chờ xác nhận đổi trạng thái — bấm vào dòng KHÔNG đổi ngay, phải xác nhận trước
+    /// (theo yêu cầu, tránh chạm nhầm khi lướt danh sách làm mất trạng thái tick đã có).
+    @State private var confirmItem: CongViecNoiBoDto?
+    @State private var confirmNewState = false
 
     private var sortedItems: [CongViecNoiBoDto] {
         items
@@ -59,7 +63,8 @@ struct CongViecListView: View {
                         } else {
                             ForEach(sortedItems) { item in
                                 CongViecRowView(item: item) { toggled in
-                                    Task { await toggle(item, done: toggled) }
+                                    confirmItem = item
+                                    confirmNewState = toggled
                                 }
                             }
                         }
@@ -85,6 +90,20 @@ struct CongViecListView: View {
                 Button("OK") {}
             } message: {
                 Text(errorMessage ?? "")
+            }
+            .confirmationDialog(
+                confirmNewState ? "Đánh dấu đã hoàn thành?" : "Đánh dấu chưa hoàn thành?",
+                isPresented: Binding(get: { confirmItem != nil }, set: { if !$0 { confirmItem = nil } }),
+                titleVisibility: .visible
+            ) {
+                Button(confirmNewState ? "Hoàn thành" : "Chưa hoàn thành") {
+                    if let confirmItem {
+                        Task { await toggle(confirmItem, done: confirmNewState) }
+                    }
+                }
+                Button("Huỷ", role: .cancel) {}
+            } message: {
+                Text(confirmItem?.ten ?? "")
             }
     }
 
