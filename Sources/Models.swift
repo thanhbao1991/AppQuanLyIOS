@@ -811,9 +811,11 @@ struct PushSanPhamToStoreRequest: Encodable {
 
 /// Gợi ý tên đường khi nhập địa chỉ khách — cùng bảng TenDuong Desktop dùng cho TenDuongBox, xem
 /// TenDuongTextField.swift.
-struct TenDuongDto: Decodable, Identifiable {
-    let id: String
-    let ten: String
+/// `Codable` (không chỉ Decodable) để dùng chung cho gợi ý địa chỉ (TenDuongTextField, chỉ đọc)
+/// và màn quản trị TenDuongListView (thêm/sửa/xoá, thay TenDuongWindow bên Desktop).
+struct TenDuongDto: Codable, Identifiable, Hashable {
+    var id: String = "00000000-0000-0000-0000-000000000000"
+    var ten: String
 }
 
 // ---- Tạo hoá đơn đầy đủ (món + khách + giảm giá) ----

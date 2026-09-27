@@ -818,6 +818,23 @@ actor APIClient {
         return env.data ?? []
     }
 
+    // ---- Tên đường (quản trị — TenDuongListView, thay TenDuongWindow bên Desktop) ----
+
+    func createTenDuong(_ body: TenDuongDto) async -> ActionResult {
+        let req = makeRequest("/api/TenDuong", method: "POST", body: jsonBody(body))
+        return await executeAction(req)
+    }
+
+    func updateTenDuong(id: String, _ body: TenDuongDto) async -> ActionResult {
+        let req = makeRequest("/api/TenDuong/\(id)", method: "PUT", body: jsonBody(body))
+        return await executeAction(req)
+    }
+
+    func deleteTenDuong(id: String) async -> ActionResult {
+        let req = makeRequest("/api/TenDuong/\(id)", method: "DELETE")
+        return await executeAction(req)
+    }
+
     /// Giá riêng đã lưu cho MỌI khách — endpoint không hỗ trợ lọc theo khách (khớp cách Desktop
     /// tải hết AppDataCache.GiaBanRiengs rồi lọc cục bộ theo KhachHangId khi cần).
     func getKhachHangGiaBanList() async -> [KhachHangGiaBanDto] {
