@@ -30,9 +30,19 @@ struct CongViecListView: View {
                     fullScreenLoading()
                 } else {
                     List {
+                        // Dùng thẳng CongViecRowView (dòng việc thật) thay vì 1 kiểu row riêng cho
+                        // đề xuất — đồng bộ giao diện + hành vi bấm/confirm với danh sách bên dưới,
+                        // không cần code hiển thị lặp lại.
                         if searchText.isEmpty && !deXuat.isEmpty {
                             Section("Đề xuất nên làm") {
-                                ForEach(deXuat) { deXuatRow($0) }
+                                ForEach(deXuat) { d in
+                                    if let item = items.first(where: { $0.id == d.congViecId }) {
+                                        CongViecRowView(item: item) { toggled in
+                                            confirmItem = item
+                                            confirmNewState = toggled
+                                        }
+                                    }
+                                }
                             }
                         }
                         if sortedItems.isEmpty {
@@ -92,11 +102,11 @@ struct CongViecListView: View {
                 Text(errorMessage ?? "")
             }
             .confirmationDialog(
-                confirmNewState ? "Đánh dấu đã hoàn thành?" : "Đánh dấu chưa hoàn thành?",
+                confirmNewState ? "Đánh dấu đã làm?" : "Đánh dấu chưa làm?",
                 isPresented: Binding(get: { confirmItem != nil }, set: { if !$0 { confirmItem = nil } }),
                 titleVisibility: .visible
             ) {
-                Button(confirmNewState ? "Hoàn thành" : "Chưa hoàn thành") {
+                Button(confirmNewState ? "Đã làm" : "Chưa làm") {
                     if let confirmItem {
                         Task { await toggle(confirmItem, done: confirmNewState) }
                     }
@@ -114,22 +124,6 @@ struct CongViecListView: View {
         hasLoaded = true
         CongViecBadge.shared.pendingCount = items.filter { !$0.daHoanThanh }.count
         deXuat = await APIClient.shared.getCongViecDeXuat()
-    }
-
-    /// Chỉ hiện tên — bấm vào mở đúng confirm đổi trạng thái của công việc tương ứng (tìm trong
-    /// `items` theo congViecId), y hệt bấm dòng công việc thường (2026-09-28, theo yêu cầu bỏ hẳn
-    /// phần giải thích/số ngày trễ cho gọn).
-    private func deXuatRow(_ d: CongViecDeXuatDto) -> some View {
-        Button {
-            guard let item = items.first(where: { $0.id == d.congViecId }) else { return }
-            confirmItem = item
-            confirmNewState = !item.daHoanThanh
-        } label: {
-            Text(d.ten)
-                .font(.subheadline.bold())
-                .foregroundColor(.primary)
-        }
-        .padding(.vertical, 2)
     }
 
     private func toggle(_ item: CongViecNoiBoDto, done: Bool) async {
