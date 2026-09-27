@@ -72,7 +72,7 @@ struct MainTabView: View {
                     // để không tranh chạm với gesture đóng của panel.
                     if !showMenu {
                         Color.clear
-                            .frame(width: 24)
+                            .frame(width: 44)
                             .contentShape(Rectangle())
                             .gesture(openMenuGesture)
                     }
@@ -125,17 +125,20 @@ struct MainTabView: View {
     private var menuPanelWidth: CGFloat { min(340, UIScreen.main.bounds.width * 0.86) }
 
     private var openMenuGesture: some Gesture {
-        DragGesture(minimumDistance: 18)
+        // Ngưỡng thấp (8pt) + dải bắt rộng 44pt (đủ ngón tay, không cần chạm sát mép pixel cuối
+        // như trước — 24pt quá hẹp, dễ trượt ra ngoài vùng bắt) — 2026-09-28 hạ ngưỡng sau phản
+        // hồi "vuốt khó lắm" với bản đầu (18pt distance + dải 24pt + translation phải > 28pt).
+        DragGesture(minimumDistance: 8)
             .onEnded { value in
-                guard value.translation.width < -28, abs(value.translation.height) < 50 else { return }
+                guard value.translation.width < -16, abs(value.translation.height) < 80 else { return }
                 withAnimation(.easeInOut(duration: 0.25)) { showMenu = true }
             }
     }
 
     private var closeMenuGesture: some Gesture {
-        DragGesture(minimumDistance: 18)
+        DragGesture(minimumDistance: 8)
             .onEnded { value in
-                guard value.translation.width > 40 else { return }
+                guard value.translation.width > 24 else { return }
                 closeMenu()
             }
     }
@@ -151,20 +154,26 @@ struct MainTabView: View {
                     selection = tab
                 } label: {
                     VStack(spacing: 3) {
+                        // Khung cố định 22x22 cho icon — ZStack không có frame rõ ràng khiến badge
+                        // (đặt lệch ra ngoài bằng .offset) trồi hẳn lên khỏi hàng tab, đè lên vùng
+                        // nội dung phía trên (2026-09-28, phản hồi "layout vỡ trận"). Có frame cố
+                        // định thì badge dù lệch ra ngoài vẫn tính từ đúng góc icon, không bay lung tung.
                         ZStack(alignment: .topTrailing) {
                             Image(systemName: selection == tab ? tab.iconFilled : tab.icon)
                                 .font(.system(size: 20))
+                                .frame(width: 22, height: 22)
                             if tab == .congViec, congViecBadge.pendingCount > 0 {
                                 Text(congViecBadge.pendingCount > 99 ? "99+" : "\(congViecBadge.pendingCount)")
-                                    .font(.system(size: 10, weight: .bold))
+                                    .font(.system(size: 9, weight: .bold))
                                     .foregroundColor(.white)
-                                    .padding(.horizontal, 4)
+                                    .padding(.horizontal, 3)
                                     .padding(.vertical, 1)
                                     .background(Color.dangerColor)
                                     .clipShape(Capsule())
-                                    .offset(x: 12, y: -8)
+                                    .offset(x: 6, y: -4)
                             }
                         }
+                        .frame(width: 22, height: 22)
                         Text(tab.label)
                             .font(.system(size: 10, weight: .medium))
                     }
