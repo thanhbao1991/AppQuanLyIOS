@@ -13,19 +13,21 @@ struct SanPhamListView: View {
     @State private var showAdd = false
     @State private var editing: SanPhamAdminDto?
     @State private var isSyncingStore = false
+    @State private var isPushingToppingAll = false
     @State private var toastMessage: String?
+    @State private var showPushToppingAllConfirm = false
 
     private var filteredItems: [SanPhamAdminDto] {
         var source = items
         if !showNgungBan { source = source.filter { !$0.ngungBan } }
         let sorted = source.sorted { $0.ten.localizedStandardCompare($1.ten) == .orderedAscending }
         guard !searchText.isEmpty else { return sorted }
-        return sorted.filter { $0.ten.matchesSearch(searchText) }
+        return sorted.filter { anyMatchesSearch(searchText, $0.ten, $0.vietTat, $0.tenNhomSanPham) }
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            SearchBar(text: $searchText, placeholder: "Tìm sản phẩm...")
+            SearchBar(text: $searchText, placeholder: "Tìm sản phẩm, nhóm...")
 
             Toggle("Hiện sản phẩm ngừng bán", isOn: $showNgungBan)
                 .font(.caption)
@@ -56,16 +58,25 @@ struct SanPhamListView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 HStack(spacing: 16) {
-                    Button {
-                        Task { await syncStore() }
+                    Menu {
+                        Button {
+                            Task { await syncStore() }
+                        } label: {
+                            Label("Kiểm tra Store", systemImage: "arrow.triangle.2.circlepath")
+                        }
+                        Button {
+                            showPushToppingAllConfirm = true
+                        } label: {
+                            Label("Đẩy topping hàng loạt", systemImage: "text.badge.plus")
+                        }
                     } label: {
-                        if isSyncingStore {
+                        if isSyncingStore || isPushingToppingAll {
                             ProgressView().tint(.white)
                         } else {
-                            Image(systemName: "arrow.triangle.2.circlepath")
+                            Image(systemName: "storefront")
                         }
                     }
-                    .disabled(isSyncingStore)
+                    .disabled(isSyncingStore || isPushingToppingAll)
                     Button { showAdd = true } label: { Image(systemName: "plus") }
                 }
             }
@@ -77,10 +88,17 @@ struct SanPhamListView: View {
         .sheet(item: $editing) { item in
             SanPhamEditSheet(existing: item, allItems: items, nhoms: nhoms) { Task { await load() } }
         }
-        .alert("Kiểm tra Store", isPresented: Binding(get: { toastMessage != nil }, set: { if !$0 { toastMessage = nil } })) {
+        .alert("Store", isPresented: Binding(get: { toastMessage != nil }, set: { if !$0 { toastMessage = nil } })) {
             Button("OK") { toastMessage = nil }
         } message: {
             Text(toastMessage ?? "")
+        }
+        .confirmationDialog(
+            "Đẩy/đồng bộ toàn bộ topping đang bán vào Size/Topping của TẤT CẢ sản phẩm đã có trên store (chưa có thì tạo mới, có rồi mà lệch giá thì cập nhật)?\n\nChạy nền, chậm rãi (có thể mất vài chục phút) — kết quả sẽ báo qua Discord Admin.",
+            isPresented: $showPushToppingAllConfirm, titleVisibility: .visible
+        ) {
+            Button("Đẩy hàng loạt", role: .destructive) { Task { await pushToppingAll() } }
+            Button("Huỷ", role: .cancel) {}
         }
     }
 
@@ -103,6 +121,13 @@ struct SanPhamListView: View {
         isSyncingStore = false
         toastMessage = result.message ?? (result.success ? "Đã kiểm tra xong." : "Kiểm tra Store thất bại.")
         await load()
+    }
+
+    private func pushToppingAll() async {
+        isPushingToppingAll = true
+        let result = await APIClient.shared.pushToppingAllToStore()
+        isPushingToppingAll = false
+        toastMessage = result.message ?? (result.success ? "Đang đẩy topping hàng loạt." : "Không gửi được yêu cầu.")
     }
 }
 
@@ -169,6 +194,19 @@ private struct SanPhamRowView: View {
     }
 }
 
+/// Danh tính riêng cho SwiftUI ForEach (localId: UUID luôn duy nhất) — TÁCH khỏi serverId vì nhiều
+/// biến thể MỚI thêm cùng lúc đều có serverId rỗng ("00000000-...") giống hệt nhau, nếu dùng
+/// serverId làm id cho ForEach sẽ đụng identity, sửa 1 dòng lại ảnh hưởng nhầm dòng khác.
+private struct BienTheEditRow: Identifiable {
+    let localId = UUID()
+    var serverId: String = "00000000-0000-0000-0000-000000000000"
+    var tenBienThe: String
+    var giaBan: Double
+    var macDinh: Bool
+    var dinhLuong: String?
+    var id: UUID { localId }
+}
+
 private struct SanPhamEditSheet: View {
     let existing: SanPhamAdminDto?
     let allItems: [SanPhamAdminDto]
@@ -182,7 +220,7 @@ private struct SanPhamEditSheet: View {
     @State private var tichDiem: Bool
     @State private var ngungBan: Bool
     @State private var khongLenStore: Bool
-    @State private var bienThe: [SanPhamBienTheAdminDto]
+    @State private var bienThe: [BienTheEditRow]
     @State private var saving = false
     @State private var errorMessage: String?
     @State private var storeActionMessage: String?
@@ -200,8 +238,10 @@ private struct SanPhamEditSheet: View {
         _ngungBan = State(initialValue: existing?.ngungBan ?? false)
         _khongLenStore = State(initialValue: existing?.khongLenStore ?? false)
         _bienThe = State(initialValue: existing?.bienThe.isEmpty == false
-            ? existing!.bienThe.sorted { $0.macDinh && !$1.macDinh }
-            : [SanPhamBienTheAdminDto(tenBienThe: "Size chuẩn", giaBan: 0, macDinh: true)])
+            ? existing!.bienThe
+                .sorted { $0.macDinh && !$1.macDinh }
+                .map { BienTheEditRow(serverId: $0.id, tenBienThe: $0.tenBienThe, giaBan: $0.giaBan, macDinh: $0.macDinh, dinhLuong: $0.dinhLuong) }
+            : [BienTheEditRow(tenBienThe: "Size chuẩn", giaBan: 0, macDinh: true)])
     }
 
     var body: some View {
@@ -229,7 +269,7 @@ private struct SanPhamEditSheet: View {
                         bienTheRow($row)
                     }
                     Button {
-                        bienThe.append(SanPhamBienTheAdminDto(tenBienThe: "Size", giaBan: 0, macDinh: bienThe.isEmpty))
+                        bienThe.append(BienTheEditRow(tenBienThe: "Size", giaBan: 0, macDinh: bienThe.isEmpty))
                     } label: {
                         EmojiLabel("Thêm biến thể", "➕")
                     }
@@ -289,7 +329,7 @@ private struct SanPhamEditSheet: View {
         }
     }
 
-    private func bienTheRow(_ row: Binding<SanPhamBienTheAdminDto>) -> some View {
+    private func bienTheRow(_ row: Binding<BienTheEditRow>) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 TextField("Tên biến thể", text: row.tenBienThe)
@@ -352,6 +392,9 @@ private struct SanPhamEditSheet: View {
         if !finalBienThe.contains(where: { $0.macDinh }) {
             finalBienThe[0].macDinh = true
         }
+        let bienTheDtos = finalBienThe.map {
+            SanPhamBienTheAdminDto(id: $0.serverId, tenBienThe: $0.tenBienThe.trimmingCharacters(in: .whitespaces), giaBan: $0.giaBan, macDinh: $0.macDinh, dinhLuong: $0.dinhLuong)
+        }
 
         let thuTu = existing?.thuTu ?? ((allItems.map(\.thuTu).max() ?? 0) + 1)
 
@@ -366,7 +409,7 @@ private struct SanPhamEditSheet: View {
             nhomSanPhamId: nhomSanPhamId,
             tenNhomSanPham: nil,
             storeStatus: nil,
-            bienThe: finalBienThe
+            bienThe: bienTheDtos
         )
 
         let result: ActionResult
@@ -394,6 +437,9 @@ private struct SanPhamEditSheet: View {
         let result = await action()
         storeActionRunning = false
         storeActionMessage = result.message ?? (result.success ? "Xong." : "Thất bại.")
+        // Nạp lại danh sách để badge Store ở màn ngoài cập nhật theo trạng thái mới (existing?.storeStatus
+        // trong sheet này giữ nguyên vì được chụp lúc mở sheet, không tự đổi theo).
+        if result.success { onSaved() }
     }
 
     private func pushToStore() async {

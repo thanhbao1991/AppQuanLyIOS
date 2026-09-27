@@ -432,6 +432,13 @@ actor APIClient {
         return await executeAction(req)
     }
 
+    /// Đẩy/đồng bộ topping cho TẤT CẢ sản phẩm đã có trên store — chạy nền bên Backend (có thể mất
+    /// vài chục phút), kết quả báo qua Discord Admin chứ không trả về ngay trong request này.
+    func pushToppingAllToStore() async -> ActionResult {
+        let req = makeRequest("/api/AppOrder/push-topping-all", method: "POST", body: jsonBody([String: String]()))
+        return await executeAction(req)
+    }
+
     func getCongViecList() async -> [CongViecNoiBoDto] {
         let req = makeRequest("/api/CongViecNoiBo")
         let (data, _) = await send(req)
