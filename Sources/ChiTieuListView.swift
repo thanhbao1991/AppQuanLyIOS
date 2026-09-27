@@ -442,10 +442,7 @@ struct AddExpenseSheet: View {
                             Button {
                                 selected = nl
                                 searchText = ""
-                                // Gợi ý Thành tiền = Số lượng hiện tại × giá nhập gần nhất — chỉ là
-                                // điểm khởi đầu, sửa lại đúng tổng tiền thật đã trả (có thể gộp
-                                // nhiều lần mua).
-                                if nl.giaNhap > 0 { thanhTien = soLuong * nl.giaNhap }
+                                Task { await prefillFromLastEntry(nl) }
                             } label: {
                                 Text(nl.ten)
                             }
@@ -525,6 +522,15 @@ struct AddExpenseSheet: View {
         } message: {
             Text(warningAlertText ?? "")
         }
+    }
+
+    /// Lấy lần mua gần nhất của nguyên liệu vừa chọn để điền sẵn Số lượng/Đơn giá/Thành tiền/Bill
+    /// tháng — chỉ là điểm khởi đầu, người dùng sửa lại nếu lần này khác lần trước.
+    private func prefillFromLastEntry(_ nl: NguyenLieuDto) async {
+        guard let last = await APIClient.shared.getGiaNguyenLieuGanDay(nguyenLieuId: nl.id, soLan: 1).first else { return }
+        soLuong = last.soLuong
+        thanhTien = last.thanhTien
+        billThang = last.billThang
     }
 
     private func addNewNguyenLieu() async {
