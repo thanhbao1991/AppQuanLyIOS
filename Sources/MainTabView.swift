@@ -228,7 +228,7 @@ private struct MoreMenuView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section {
+                Section("Cấu hình") {
                     NavigationLink {
                         NguyenLieuListView()
                     } label: {
@@ -336,6 +336,14 @@ private struct MoreMenuView: View {
                 }
 
                 Section {
+                    if let name = Prefs.displayName, !name.isEmpty {
+                        EmojiLabel(name, "👤")
+                    }
+                    NavigationLink {
+                        DeviceSessionsView()
+                    } label: {
+                        EmojiLabel("Thiết bị đăng nhập", "📱")
+                    }
                     Button {
                         Task { await syncContacts() }
                     } label: {
@@ -348,19 +356,6 @@ private struct MoreMenuView: View {
                         }
                     }
                     .disabled(isSyncingContacts)
-                } footer: {
-                    Text("Đưa tên khách hàng vào Danh bạ iPhone theo số điện thoại, để hiện tên khi khách gọi đến.")
-                }
-
-                Section {
-                    if let name = Prefs.displayName, !name.isEmpty {
-                        EmojiLabel(name, "👤")
-                    }
-                    NavigationLink {
-                        DeviceSessionsView()
-                    } label: {
-                        EmojiLabel("Thiết bị đăng nhập", "📱")
-                    }
                     Button(role: .destructive) {
                         Prefs.clear()
                         Prefs.manualLogout = true
@@ -369,7 +364,7 @@ private struct MoreMenuView: View {
                         EmojiLabel("Đăng xuất", "🚪")
                     }
                 } footer: {
-                    Text("Phiên bản \(appVersionString)")
+                    Text("Đồng bộ danh bạ: đưa tên khách hàng vào Danh bạ iPhone theo số điện thoại, để hiện tên khi khách gọi đến.\nPhiên bản \(appVersionString)")
                 }
             }
             // Menu giờ là panel trượt từ cạnh phải (không phải tab riêng) — bỏ hẳn thanh tiêu đề
