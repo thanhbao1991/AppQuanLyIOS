@@ -93,6 +93,7 @@ struct CongViecListView: View {
         items = await APIClient.shared.getCongViecList()
         loading = false
         hasLoaded = true
+        CongViecBadge.shared.pendingCount = items.filter { !$0.daHoanThanh }.count
         deXuat = await APIClient.shared.getCongViecDeXuat()
     }
 

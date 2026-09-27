@@ -12,6 +12,21 @@ final class ActiveTab: ObservableObject {
     @Published var tab: AppTab = .hoaDon
 }
 
+/// Số việc nội bộ CHƯA hoàn thành — hiện badge đỏ trên icon tab Công việc (MainTabView.tabBar).
+/// Không có SignalR broadcast riêng cho CongViecNoiBo, nên tự refresh() ở vài điểm: MainTabView
+/// mở app/đổi tab, và CongViecListView.load() (sau khi thêm/tick xong 1 việc) — đủ để badge luôn
+/// khớp thực tế mà không cần polling nền.
+@MainActor
+final class CongViecBadge: ObservableObject {
+    static let shared = CongViecBadge()
+    @Published var pendingCount: Int = 0
+
+    func refresh() async {
+        let items = await APIClient.shared.getCongViecList()
+        pendingCount = items.filter { !$0.daHoanThanh }.count
+    }
+}
+
 struct EntityChangedEvent: Equatable {
     let entityName: String
     let action: String
