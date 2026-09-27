@@ -844,6 +844,25 @@ actor APIClient {
         return env.data ?? []
     }
 
+    // ---- Giá riêng (quản trị — GiaRiengListView, thay GiaRiengWindow bên Desktop) ----
+
+    func getGiaRiengAdmin() async -> [GiaRiengAdminDto] {
+        let req = makeRequest("/api/KhachHangGiaBan?take=5000")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[GiaRiengAdminDto]>.self, from: data), env.isSuccess else { return [] }
+        return env.data ?? []
+    }
+
+    func upsertGiaRieng(_ body: GiaRiengUpsertRequest) async -> ActionResult {
+        let req = makeRequest("/api/KhachHangGiaBan/upsert", method: "POST", body: jsonBody(body))
+        return await executeAction(req)
+    }
+
+    func deleteGiaRieng(id: String) async -> ActionResult {
+        let req = makeRequest("/api/KhachHangGiaBan/\(id)", method: "DELETE")
+        return await executeAction(req)
+    }
+
     /// Toàn bộ khách hàng (không lọc) — dùng cho tính năng đồng bộ Danh bạ, take cao để chắc chắn
     /// lấy hết (GetAllAsync bên backend không có cap cứng, chỉ giới hạn khi truyền take).
     func getAllKhachHang() async -> [KhachHangDto] {

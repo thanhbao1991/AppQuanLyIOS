@@ -730,6 +730,29 @@ struct KhachHangGiaBanDto: Decodable {
     let giaBan: Double
 }
 
+/// Bản đầy đủ cho màn quản trị Giá riêng (GiaRiengListView, thay GiaRiengWindow bên Desktop) —
+/// khác KhachHangGiaBanDto (nhẹ, chỉ 3 field dùng để tự áp giá khi tạo đơn) ở chỗ có sẵn tên hiển
+/// thị (server tự join) + giá hệ thống để so sánh, không cần tự join lại ở client.
+struct GiaRiengAdminDto: Decodable, Identifiable {
+    let id: String
+    let khachHangId: String
+    let sanPhamBienTheId: String
+    let giaBan: Double
+    let tenKhachHang: String?
+    let tenSanPham: String?
+    let tenBienThe: String?
+    let giaBanHeThong: Double
+}
+
+/// Khớp KhachHangGiaBanDto (Backend) khi gửi lên POST /api/KhachHangGiaBan/upsert — server tự
+/// khớp theo (khachHangId, sanPhamBienTheId): có rồi thì cập nhật giá, chưa có thì tạo mới với id
+/// tự sinh (KhachHangGiaBanService.UpsertAsync), không cần gửi id.
+struct GiaRiengUpsertRequest: Encodable {
+    let khachHangId: String
+    let sanPhamBienTheId: String
+    let giaBan: Double
+}
+
 // ---- Sản phẩm / Topping (chọn món trong form thêm hoá đơn) ----
 
 struct SanPhamBienTheDto: Decodable, Identifiable, Hashable {

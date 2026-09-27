@@ -148,6 +148,11 @@ private struct MoreMenuView: View {
                         EmojiLabel("Tên đường", "🛣️")
                     }
                     NavigationLink {
+                        GiaRiengListView()
+                    } label: {
+                        EmojiLabel("Giá riêng", "🏷️")
+                    }
+                    NavigationLink {
                         SanPhamHinhAnhListView()
                     } label: {
                         EmojiLabel("Ảnh menu", "🖼️")
