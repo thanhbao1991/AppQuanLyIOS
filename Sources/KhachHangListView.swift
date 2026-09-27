@@ -217,7 +217,6 @@ private struct KhachHangEditSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var ten: String
-    @State private var duocNhanVoucher: Bool
     @State private var phoneRows: [EditContactRow]
     @State private var addressRows: [EditContactRow]
     @State private var saving = false
@@ -227,7 +226,6 @@ private struct KhachHangEditSheet: View {
         self.existing = existing
         self.onSaved = onSaved
         _ten = State(initialValue: existing?.ten ?? "")
-        _duocNhanVoucher = State(initialValue: existing?.duocNhanVoucher ?? false)
         _phoneRows = State(initialValue: existing?.phones.map { EditContactRow(id: $0.id, value: $0.soDienThoai) } ?? [EditContactRow(id: UUID().uuidString, value: "")])
         _addressRows = State(initialValue: existing?.addresses.map { EditContactRow(id: $0.id, value: $0.diaChi) } ?? [])
     }
@@ -237,7 +235,6 @@ private struct KhachHangEditSheet: View {
             Form {
                 Section("Thông tin") {
                     TextField("Tên khách hàng", text: $ten)
-                    Toggle("Được nhận voucher", isOn: $duocNhanVoucher)
                 }
 
                 Section("Số điện thoại") {
@@ -327,8 +324,11 @@ private struct KhachHangEditSheet: View {
         }
 
         if let existing {
+            // duocNhanVoucher KHÔNG có UI chỉnh ở đây — giữ nguyên giá trị hiện tại, khớp Desktop
+            // (SaveEditAsync cũng chỉ giữ nguyên, không cho sửa). Cờ này do rollout app kiểm soát
+            // (bật hàng loạt khi publish App Store), không phải nhân viên tự bật/tắt từng khách.
             let payload = KhachHangDto(
-                id: existing.id, ten: tenMoi, soDu: existing.soDu, duocNhanVoucher: duocNhanVoucher,
+                id: existing.id, ten: tenMoi, soDu: existing.soDu, duocNhanVoucher: existing.duocNhanVoucher,
                 phones: phones, addresses: addresses, facebookThreadId: existing.facebookThreadId
             )
             let result = await APIClient.shared.updateKhachHang(payload)
@@ -339,7 +339,7 @@ private struct KhachHangEditSheet: View {
                 errorMessage = result.message ?? "Lưu thất bại."
             }
         } else {
-            let body = KhachHangCreateRequest(ten: tenMoi, duocNhanVoucher: duocNhanVoucher, phones: phones, addresses: addresses)
+            let body = KhachHangCreateRequest(ten: tenMoi, duocNhanVoucher: false, phones: phones, addresses: addresses)
             let result = await APIClient.shared.createKhachHang(body)
             saving = false
             if result.success {
