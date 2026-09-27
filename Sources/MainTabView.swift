@@ -138,6 +138,11 @@ private struct MoreMenuView: View {
                         EmojiLabel("Sản phẩm", "🍹")
                     }
                     NavigationLink {
+                        ToppingListView()
+                    } label: {
+                        EmojiLabel("Topping", "🧁")
+                    }
+                    NavigationLink {
                         SanPhamHinhAnhListView()
                     } label: {
                         EmojiLabel("Ảnh menu", "🖼️")

@@ -758,11 +758,14 @@ struct SanPhamDto: Decodable, Identifiable {
     let noiBat: Bool
 }
 
-struct ToppingDto: Decodable, Identifiable, Hashable {
-    let id: String
-    let ten: String
-    let gia: Double
-    let ngungBan: Bool
+/// `Codable` (không chỉ Decodable) + `stt` để dùng chung cho cả chọn topping khi tạo hoá đơn
+/// (chỉ đọc) và màn quản trị ToppingListView (thêm/sửa/xoá, thay ToppingWindow bên Desktop).
+struct ToppingDto: Codable, Identifiable, Hashable {
+    var id: String = "00000000-0000-0000-0000-000000000000"
+    var ten: String
+    var gia: Double
+    var ngungBan: Bool
+    var stt: Int = 0
 }
 
 // ---- Sản phẩm (quản trị — Menu > Sản phẩm, thay SanPhamWindow bên Desktop) ----

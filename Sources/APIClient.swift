@@ -785,6 +785,31 @@ actor APIClient {
         return (env.data ?? []).filter { !$0.ngungBan }
     }
 
+    // ---- Topping (quản trị — ToppingListView, thay ToppingWindow bên Desktop) ----
+
+    /// Khác getToppingList() ở chỗ KHÔNG lọc ngừng bán — màn quản trị cần thấy cả món đã ngừng bán.
+    func getToppingAdmin() async -> [ToppingDto] {
+        let req = makeRequest("/api/Topping")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[ToppingDto]>.self, from: data), env.isSuccess else { return [] }
+        return env.data ?? []
+    }
+
+    func createTopping(_ body: ToppingDto) async -> ActionResult {
+        let req = makeRequest("/api/Topping", method: "POST", body: jsonBody(body))
+        return await executeAction(req)
+    }
+
+    func updateTopping(id: String, _ body: ToppingDto) async -> ActionResult {
+        let req = makeRequest("/api/Topping/\(id)", method: "PUT", body: jsonBody(body))
+        return await executeAction(req)
+    }
+
+    func deleteTopping(id: String) async -> ActionResult {
+        let req = makeRequest("/api/Topping/\(id)", method: "DELETE")
+        return await executeAction(req)
+    }
+
     /// Tải 1 lần rồi lọc cục bộ, khớp cách Desktop cache AppDataCache.TenDuongs cho TenDuongBox.
     func getTenDuongList() async -> [TenDuongDto] {
         let req = makeRequest("/api/TenDuong")
