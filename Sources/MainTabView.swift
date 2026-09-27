@@ -153,6 +153,11 @@ private struct MoreMenuView: View {
                         EmojiLabel("Giá riêng", "🏷️")
                     }
                     NavigationLink {
+                        KhachHangListView()
+                    } label: {
+                        EmojiLabel("Khách hàng", "👥")
+                    }
+                    NavigationLink {
                         SanPhamHinhAnhListView()
                     } label: {
                         EmojiLabel("Ảnh menu", "🖼️")

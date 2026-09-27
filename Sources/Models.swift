@@ -644,6 +644,41 @@ struct KhachHangCreateRequest: Encodable {
     let addresses: [KhachHangAddressDto]
 }
 
+/// Khớp MergeKhachHangDto (Backend) — gộp nhiều khách trùng làm 1, dùng cho màn quản trị Khách
+/// hàng (KhachHangListView, thay GomKhach trong KhachHangWindow bên Desktop). Không thể hoàn tác.
+struct MergeKhachHangRequest: Encodable {
+    let keepId: String
+    let mergeIds: [String]
+    let ten: String
+    let soDienThoais: [String]
+    let diaChis: [String]
+}
+
+/// Lịch sử giao dịch Ví (Xu) của khách — CHỈ ĐỌC, không còn cho chỉnh tay từ 27/9 (mọi thay đổi số
+/// dư đi qua nghiệp vụ tự động: thanh toán/hoàn tiền/gamification). Khớp ViGiaoDichDto (Backend).
+struct ViGiaoDichDto: Decodable, Identifiable {
+    let id: String
+    let soTienThayDoi: Double
+    let soDuTruoc: Double
+    let soDuSau: Double
+    let tenLoai: String
+    let thoiGian: String
+    let ghiChu: String?
+}
+
+/// Khớp KhachHangLichSuItemDto (Backend) — 1 dòng món đã mua trong màn Lịch sử mua hàng theo khách.
+struct KhachHangLichSuItemDto: Decodable, Identifiable {
+    var id: String { "\(hoaDonId)|\(tenSanPham)|\(tenBienThe)|\(ngayGio)" }
+    let hoaDonId: String
+    let ngayGio: String
+    let tenSanPham: String
+    let tenBienThe: String
+    let soLuong: Double
+    let donGia: Double
+    let thanhTien: Double
+    let noteText: String?
+}
+
 struct KhachHangFavoriteItemDto: Decodable, Identifiable {
     var id: String { "\(tenSanPham)|\(tenBienThe)" }
     let tenSanPham: String

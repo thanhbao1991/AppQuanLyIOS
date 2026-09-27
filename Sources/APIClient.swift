@@ -967,6 +967,34 @@ actor APIClient {
         return (env.isSuccess, env.message, env.data)
     }
 
+    // ---- Khách hàng (quản trị — KhachHangListView, thay KhachHangWindow bên Desktop) ----
+
+    func deleteKhachHang(id: String) async -> ActionResult {
+        let req = makeRequest("/api/KhachHang/\(id)", method: "DELETE")
+        return await executeAction(req)
+    }
+
+    /// Gộp nhiều khách trùng làm 1 — KHÔNG thể hoàn tác, xem MergeKhachHangRequest.
+    func mergeKhachHang(_ body: MergeKhachHangRequest) async -> ActionResult {
+        let req = makeRequest("/api/KhachHang/merge", method: "POST", body: jsonBody(body))
+        return await executeAction(req)
+    }
+
+    func getViGiaoDich(khachHangId: String, take: Int = 100) async -> [ViGiaoDichDto] {
+        let req = makeRequest("/api/KhachHang/\(khachHangId)/vi-giao-dich?take=\(take)")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[ViGiaoDichDto]>.self, from: data), env.isSuccess else { return [] }
+        return env.data ?? []
+    }
+
+    /// nam=0/thang=0 nghĩa là "Tất cả" (không lọc theo tháng) — khớp KhachHangLichSuWindow (Desktop).
+    func getKhachHangLichSu(khachHangId: String, nam: Int, thang: Int) async -> [KhachHangLichSuItemDto] {
+        let req = makeRequest("/api/HoaDon/khach-hang/\(khachHangId)/lich-su?nam=\(nam)&thang=\(thang)")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[KhachHangLichSuItemDto]>.self, from: data), env.isSuccess else { return [] }
+        return env.data ?? []
+    }
+
     func ganShipper(hoaDonId: String, nguoiShip: String) async -> ActionResult {
         let now = isoNow()
         let body = GanShipperRequest(id: hoaDonId, nguoiShip: nguoiShip, ngayShip: now, ngayIn: now)
