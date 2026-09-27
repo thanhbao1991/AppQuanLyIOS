@@ -116,18 +116,18 @@ struct CongViecListView: View {
         deXuat = await APIClient.shared.getCongViecDeXuat()
     }
 
+    /// Chỉ hiện tên — bấm vào mở đúng confirm đổi trạng thái của công việc tương ứng (tìm trong
+    /// `items` theo congViecId), y hệt bấm dòng công việc thường (2026-09-28, theo yêu cầu bỏ hẳn
+    /// phần giải thích/số ngày trễ cho gọn).
     private func deXuatRow(_ d: CongViecDeXuatDto) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack {
-                Text(d.ten).font(.subheadline.bold())
-                Spacer()
-                Text(d.soNgayConLai < 0 ? "Trễ \(-d.soNgayConLai) ngày" : d.soNgayConLai == 0 ? "Hôm nay" : "Còn \(d.soNgayConLai) ngày")
-                    .font(.caption.bold())
-                    .foregroundColor(d.soNgayConLai <= 0 ? .red : .brandPrimary)
-            }
-            Text((d.nguonAI ? "✨ AI: " : "") + d.lyDo)
-                .font(.caption)
-                .foregroundColor(.textMuted)
+        Button {
+            guard let item = items.first(where: { $0.id == d.congViecId }) else { return }
+            confirmItem = item
+            confirmNewState = !item.daHoanThanh
+        } label: {
+            Text(d.ten)
+                .font(.subheadline.bold())
+                .foregroundColor(.primary)
         }
         .padding(.vertical, 2)
     }
