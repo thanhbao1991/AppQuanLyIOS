@@ -765,6 +765,47 @@ struct ToppingDto: Decodable, Identifiable, Hashable {
     let ngungBan: Bool
 }
 
+// ---- Sản phẩm (quản trị — Menu > Sản phẩm, thay SanPhamWindow bên Desktop) ----
+
+struct NhomSanPhamDto: Decodable, Identifiable, Hashable {
+    let id: String
+    let ten: String
+}
+
+/// Id = "00000000-0000-0000-0000-000000000000" cho biến thể MỚI chưa lưu — khớp quy ước server
+/// (SanPhamCrudService.UpdateAsync coi Id rỗng là dòng cần insert, xem CLAUDE.md/EF migration liên quan).
+struct SanPhamBienTheAdminDto: Codable, Identifiable, Hashable {
+    var id: String = "00000000-0000-0000-0000-000000000000"
+    var tenBienThe: String
+    var giaBan: Double
+    var macDinh: Bool
+    var dinhLuong: String?
+}
+
+/// DTO đầy đủ cho màn quản trị Sản phẩm (SanPhamListView) — khác SanPhamDto (nhẹ, chỉ đọc, dùng
+/// khi tạo hoá đơn) ở chỗ có đủ field để sửa (VietTat/TichDiem/KhongLenStore/NhomSanPhamId...).
+struct SanPhamAdminDto: Codable, Identifiable {
+    let id: String
+    var ten: String
+    var vietTat: String?
+    var thuTu: Int
+    var tichDiem: Bool
+    var ngungBan: Bool
+    var khongLenStore: Bool
+    var nhomSanPhamId: String?
+    var tenNhomSanPham: String?
+    var storeStatus: String?
+    var bienThe: [SanPhamBienTheAdminDto]
+}
+
+/// Khớp PushSanPhamToStoreRequestDto (Backend) — FinalPrice = giá biến thể rẻ nhất (Size chuẩn).
+struct PushSanPhamToStoreRequest: Encodable {
+    let sanPhamId: String
+    let ten: String
+    let finalPrice: Double
+    let tenNhomSanPham: String?
+}
+
 /// Gợi ý tên đường khi nhập địa chỉ khách — cùng bảng TenDuong Desktop dùng cho TenDuongBox, xem
 /// TenDuongTextField.swift.
 struct TenDuongDto: Decodable, Identifiable {

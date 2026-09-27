@@ -375,6 +375,63 @@ actor APIClient {
         return await executeAction(req)
     }
 
+    // ---- Sản phẩm (quản trị — SanPhamListView, thay SanPhamWindow bên Desktop) ----
+
+    func getSanPhamAdmin() async -> [SanPhamAdminDto] {
+        let req = makeRequest("/api/SanPham")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[SanPhamAdminDto]>.self, from: data), env.isSuccess else { return [] }
+        return env.data ?? []
+    }
+
+    func getNhomSanPham() async -> [NhomSanPhamDto] {
+        let req = makeRequest("/api/NhomSanPham")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[NhomSanPhamDto]>.self, from: data), env.isSuccess else { return [] }
+        return env.data ?? []
+    }
+
+    func createSanPham(_ body: SanPhamAdminDto) async -> ActionResult {
+        let req = makeRequest("/api/SanPham", method: "POST", body: jsonBody(body))
+        return await executeAction(req)
+    }
+
+    func updateSanPham(id: String, _ body: SanPhamAdminDto) async -> ActionResult {
+        let req = makeRequest("/api/SanPham/\(id)", method: "PUT", body: jsonBody(body))
+        return await executeAction(req)
+    }
+
+    func deleteSanPham(id: String) async -> ActionResult {
+        let req = makeRequest("/api/SanPham/\(id)", method: "DELETE")
+        return await executeAction(req)
+    }
+
+    /// So sánh & lưu tình trạng store cho TOÀN BỘ sản phẩm — khớp nút "Kiểm tra Store" bên Desktop.
+    func syncSanPhamStoreStatus() async -> ActionResult {
+        let req = makeRequest("/api/AppOrder/sync-store-status", method: "POST", body: jsonBody([String: String]()))
+        return await executeAction(req)
+    }
+
+    func pushSanPhamToStore(_ body: PushSanPhamToStoreRequest) async -> ActionResult {
+        let req = makeRequest("/api/AppOrder/push-san-pham", method: "POST", body: jsonBody(body))
+        return await executeAction(req)
+    }
+
+    func renameSanPhamOnStore(id: String) async -> ActionResult {
+        let req = makeRequest("/api/AppOrder/rename-san-pham/\(id)", method: "POST", body: jsonBody([String: String]()))
+        return await executeAction(req)
+    }
+
+    func toggleSanPhamStoreVisibility(id: String, ngungBan: Bool) async -> ActionResult {
+        let req = makeRequest("/api/AppOrder/store-visibility/\(id)?ngungBan=\(ngungBan)", method: "POST", body: jsonBody([String: String]()))
+        return await executeAction(req)
+    }
+
+    func pushToppingToStore(id: String) async -> ActionResult {
+        let req = makeRequest("/api/AppOrder/push-topping/\(id)", method: "POST", body: jsonBody([String: String]()))
+        return await executeAction(req)
+    }
+
     func getCongViecList() async -> [CongViecNoiBoDto] {
         let req = makeRequest("/api/CongViecNoiBo")
         let (data, _) = await send(req)
