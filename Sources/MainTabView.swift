@@ -87,19 +87,34 @@ struct MainTabView: View {
             .disabled(showMenu)
 
             if showMenu {
+                // Nền mờ: Color thuần, không phải List — gắn gesture thẳng lên đây AN TOÀN, không
+                // đụng chạm gì đến scroll.
                 Color.black.opacity(0.35)
                     .ignoresSafeArea()
                     .onTapGesture { closeMenu() }
+                    .highPriorityGesture(closeMenuGesture)
                     .transition(.opacity)
 
                 HStack(spacing: 0) {
                     Spacer()
-                    MoreMenuView(isLoggedIn: $isLoggedIn)
-                        .frame(width: menuPanelWidth)
-                        .background(Color(.systemBackground))
+                    // QUAN TRỌNG: gesture đóng KHÔNG được gắn lên toàn bộ panel (từng làm vậy, thấy
+                    // "vuốt vào chưa có hiệu ứng" rồi fix bằng highPriorityGesture trên cả HStack —
+                    // hoá ra highPriorityGesture đó nuốt luôn drag CHIỀU DỌC, làm List bên trong
+                    // (MoreMenuView) mất khả năng cuộn — "sau khi mở menu không vuốt xuống xem được
+                    // các mục bị khuất", 2026-09-28). Sửa: chỉ đặt 1 dải mỏng ở MÉP TRÁI panel (khu
+                    // vực người dùng tự nhiên bắt đầu vuốt để đóng, giống dải mở ở MainTabView phía
+                    // trên) — List phần còn lại cuộn dọc bình thường không bị tranh chấp.
+                    ZStack(alignment: .leading) {
+                        MoreMenuView(isLoggedIn: $isLoggedIn)
+                        Color.clear
+                            .frame(width: 24)
+                            .contentShape(Rectangle())
+                            .highPriorityGesture(closeMenuGesture)
+                    }
+                    .frame(width: menuPanelWidth)
+                    .background(Color(.systemBackground))
                 }
                 .ignoresSafeArea(edges: .bottom)
-                .highPriorityGesture(closeMenuGesture)
                 .transition(.move(edge: .trailing))
             }
         }
@@ -357,13 +372,9 @@ private struct MoreMenuView: View {
                     Text("Phiên bản \(appVersionString)")
                 }
             }
-            // Trước đây ẩn hẳn nav bar khiến tab Menu thiếu vùng top màu như 5 tab kia — đổi sang
-            // nav bar thường (tiêu đề "Menu") tô brandPrimary, khớp mọi màn hình con đã chuẩn hoá.
-            .navigationTitle("Menu")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
+            // Menu giờ là panel trượt từ cạnh phải (không phải tab riêng) — bỏ hẳn thanh tiêu đề
+            // "Menu" phía trên, không cần vùng top màu như các tab nữa (2026-09-28, theo yêu cầu).
+            .navigationBarHidden(true)
             .tint(.brandPrimary)
             .alert("Đồng bộ danh bạ", isPresented: Binding(get: { syncResultMessage != nil }, set: { if !$0 { syncResultMessage = nil } })) {
                 Button("OK") { syncResultMessage = nil }
