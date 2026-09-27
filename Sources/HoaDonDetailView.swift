@@ -595,7 +595,10 @@ struct HoaDonDetailView: View {
         case .ghiNo:
             await run { await APIClient.shared.ghiNo(hoaDonId: hoaDonId) }
         case .xoa:
-            await run { await APIClient.shared.delete(hoaDonId: hoaDonId) }
+            // Xoá xong hoá đơn không còn tồn tại nữa — reload như các action khác sẽ nhận về
+            // nil và rơi vào nhánh "Không tải được hoá đơn" vô nghĩa. Đóng màn thẳng thay vì
+            // load() lại.
+            await run(reload: false) { await APIClient.shared.delete(hoaDonId: hoaDonId) }
         case .doiPhuongThuc:
             guard let paymentId = d.payments?.first?.id else { return }
             await run { await APIClient.shared.doiPhuongThucThanhToan(id: paymentId) }
@@ -613,13 +616,19 @@ struct HoaDonDetailView: View {
         )
     }
 
-    private func run(_ action: () async -> ActionResult) async {
+    /// reload=false cho thao tác xoá đơn — sau khi xoá thì hoá đơn không còn tồn tại để load()
+    /// lại nữa (sẽ trả về nil, rơi vào nhánh "Không tải được hoá đơn"), nên đóng màn thẳng.
+    private func run(reload: Bool = true, _ action: () async -> ActionResult) async {
         busy = true
         let result = await action()
         busy = false
         if result.success {
             onChanged()
-            await load()
+            if reload {
+                await load()
+            } else {
+                dismiss()
+            }
         } else {
             errorText = result.message ?? "Thao tác thất bại."
         }
