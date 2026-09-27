@@ -420,7 +420,7 @@ struct AddExpenseSheet: View {
     /// tìm mới hiện kết quả (khớp cách sửa "Thêm món" bên HoaDonCreateFormView.ProductPickerSheet).
     private var filteredList: [NguyenLieuDto] {
         guard !searchText.isEmpty else { return [] }
-        return nguyenLieuList.filter { $0.ten.matchesSearch(searchText) }
+        return nguyenLieuList.filter { !$0.ngungSuDung && $0.ten.matchesSearch(searchText) }
     }
 
     /// Tự tính ngược từ Thành tiền/Số lượng — xem QuantityPriceRow.
