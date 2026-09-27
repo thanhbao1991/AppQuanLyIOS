@@ -33,7 +33,10 @@ enum MainTab: CaseIterable {
         case .thanhToan: "creditcard"
         case .congNo: "exclamationmark.circle"
         case .chiTieu: "banknote"
-        case .congViec: "checklist"
+        // "checklist" (không có ".fill") từng làm icon BIẾN MẤT khi chọn tab — iconFilled tự nối
+        // ".fill" nhưng symbol đó không tồn tại nên Image render rỗng. checkmark.square/.fill có
+        // từ iOS 13, chắc chắn có cả 2 biến thể.
+        case .congViec: "checkmark.square"
         }
     }
 
@@ -74,7 +77,7 @@ struct MainTabView: View {
                         Color.clear
                             .frame(width: 44)
                             .contentShape(Rectangle())
-                            .gesture(openMenuGesture)
+                            .highPriorityGesture(openMenuGesture)
                     }
                 }
 
@@ -96,7 +99,7 @@ struct MainTabView: View {
                         .background(Color(.systemBackground))
                 }
                 .ignoresSafeArea(edges: .bottom)
-                .gesture(closeMenuGesture)
+                .highPriorityGesture(closeMenuGesture)
                 .transition(.move(edge: .trailing))
             }
         }
@@ -136,9 +139,12 @@ struct MainTabView: View {
     }
 
     private var closeMenuGesture: some Gesture {
+        // .highPriorityGesture (không phải .gesture) — panel Menu chứa List, List có pan gesture
+        // riêng dễ nuốt mất cử chỉ vuốt-đóng nếu không ưu tiên tay ta trước (2026-09-28, phản hồi
+        // "vuốt vào chưa có hiệu ứng đóng").
         DragGesture(minimumDistance: 8)
             .onEnded { value in
-                guard value.translation.width > 24 else { return }
+                guard value.translation.width > 16, abs(value.translation.height) < 80 else { return }
                 closeMenu()
             }
     }
