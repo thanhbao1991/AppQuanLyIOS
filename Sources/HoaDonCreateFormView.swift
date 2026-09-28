@@ -1014,7 +1014,7 @@ struct ProductPickerPanel: View {
         ("Đường", ["Không đường", "Ít ngọt", "Ngọt", "Nhiều ngọt", "Đường riêng", "Đắng"]),
         ("Đá", ["Không đá", "Ít đá", "Vừa đá", "Nhiều đá", "Đá riêng", "Chua"]),
         ("Trà", ["Không trà", "Trà nóng", "Trà đá", "Chỉ TCĐĐ"]),
-        ("Khác", ["Size L", "Sài gòn", "Chỉ TCOL", "Chỉ TCT"]),
+        ("Khác", ["Size L", "Size XL", "Sài gòn", "Chỉ TCOL", "Chỉ TCT"]),
     ]
 
     /// Khớp SanPhamMatchHelper.Search (Desktop): Contains đơn giản trên TimKiem (đã token hoá sẵn ở
@@ -1105,6 +1105,7 @@ struct ProductPickerPanel: View {
         LazyVStack(spacing: 0) {
             ForEach(filteredProducts.prefix(30)) { sp in
                 let sizeL = sp.bienThe.first { $0.tenBienThe == "Size L" }
+                let sizeXL = sp.bienThe.first { $0.tenBienThe == "Size XL" }
                 HStack {
                     Button { selectProduct(sp) } label: {
                         Text(sp.ten)
@@ -1123,6 +1124,18 @@ struct ProductPickerPanel: View {
                                 .foregroundColor(.brandPrimary)
                         }
                         .buttonStyle(.plain)
+                    }
+
+                    if let sizeXL {
+                        Button {
+                            selectProduct(sp, variant: sizeXL)
+                        } label: {
+                            Text("Size XL \(HoaDonFormatting.money(sizeXL.giaBan))")
+                                .font(.caption.bold())
+                                .foregroundColor(.brandPrimary)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.leading, 6)
                     }
                 }
                 .padding(.vertical, 8)
