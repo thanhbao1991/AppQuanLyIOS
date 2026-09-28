@@ -347,18 +347,8 @@ private struct SanPhamEditSheet: View {
                     get: { row.wrappedValue.dinhLuong ?? "" },
                     set: { row.wrappedValue.dinhLuong = $0.isEmpty ? nil : $0 }
                 ))
-                Toggle("Mặc định", isOn: Binding(
-                    get: { row.wrappedValue.macDinh },
-                    set: { newValue in
-                        if newValue {
-                            for i in bienThe.indices { bienThe[i].macDinh = (bienThe[i].id == row.wrappedValue.id) }
-                        } else {
-                            row.wrappedValue.macDinh = false
-                        }
-                    }
-                ))
-                .labelsHidden()
-                .fixedSize()
+                // Toggle "Mặc định" đã BỎ 28/9 — macDinh giờ tự động gán cho biến thể rẻ nhất lúc
+                // save() (xem comment ở đó), staff không tự chọn tay được nữa để tránh gán nhầm.
             }
         }
         .padding(.vertical, 2)
@@ -388,9 +378,12 @@ private struct SanPhamEditSheet: View {
             saving = false
             return
         }
+        // macDinh KHÔNG còn cho staff tự chọn tay (đã ẩn Toggle ở bienTheRow) — luôn tự động gán cho
+        // biến thể RẺ NHẤT, tránh lặp lại anomaly 28/9: nhiều món bị gán nhầm "Size L" làm mặc định
+        // (giá cao hơn "Size Chuẩn"), gây giá/định lượng hiển thị sai chỗ khắp app.
         var finalBienThe = rows
-        if !finalBienThe.contains(where: { $0.macDinh }) {
-            finalBienThe[0].macDinh = true
+        if let cheapestIdx = finalBienThe.indices.min(by: { finalBienThe[$0].giaBan < finalBienThe[$1].giaBan }) {
+            for i in finalBienThe.indices { finalBienThe[i].macDinh = (i == cheapestIdx) }
         }
         let bienTheDtos = finalBienThe.map {
             SanPhamBienTheAdminDto(id: $0.serverId, tenBienThe: $0.tenBienThe.trimmingCharacters(in: .whitespaces), giaBan: $0.giaBan, macDinh: $0.macDinh, dinhLuong: $0.dinhLuong)
