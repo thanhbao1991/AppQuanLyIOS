@@ -189,21 +189,24 @@ struct HoaDonListView: View {
                     }
                     .foregroundColor(.brandPrimary)
 
-                    VStack(alignment: .trailing, spacing: 2) {
-                        if showPhanLoaiTotals, !phanLoaiTotals.isEmpty {
-                            HStack(spacing: 8) {
-                                ForEach(phanLoaiTotals, id: \.phanLoai) { item in
-                                    Label { Text(item.text).foregroundColor(item.color) } icon: { Text(item.icon) }
-                                        .font(.caption2)
+                    Button {
+                        showPhanLoaiTotals = true
+                    } label: {
+                        Text(totalText).font(.headline)
+                    }
+                    .foregroundColor(.primary)
+                    .disabled(phanLoaiTotals.isEmpty)
+                    .popover(isPresented: $showPhanLoaiTotals) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            ForEach(phanLoaiTotals, id: \.phanLoai) { item in
+                                HStack(spacing: 6) {
+                                    Text(item.icon)
+                                    Text("\(item.text)k").foregroundColor(item.color).fontWeight(.semibold)
                                 }
                             }
                         }
-                        Button {
-                            showPhanLoaiTotals.toggle()
-                        } label: {
-                            Text(totalText).font(.headline)
-                        }
-                        .foregroundColor(.primary)
+                        .padding()
+                        .presentationCompactAdaptation(.popover)
                     }
                     .frame(maxWidth: .infinity, alignment: .trailing)
                 }
