@@ -213,6 +213,8 @@ struct HoaDonListView: View {
                             ForEach(phanLoaiTotals, id: \.phanLoai) { item in
                                 HStack(spacing: 6) {
                                     Text(item.icon)
+                                    Text(HoaDonFormatting.phanLoaiLabel(item.phanLoai))
+                                    Spacer(minLength: 16)
                                     Text("\(item.text)k").foregroundColor(item.color).fontWeight(.semibold)
                                 }
                             }
