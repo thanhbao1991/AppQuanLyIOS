@@ -72,12 +72,21 @@ struct MainTabView: View {
 
                     // Dải bắt vuốt mở Menu — chỉ phủ vùng nội dung (KHÔNG trùm xuống tabBar bên
                     // dưới, nếu không sẽ chặn mất nút tab cuối cùng bên phải). Ẩn khi Menu đang mở
-                    // để không tranh chạm với gesture đóng của panel.
+                    // để không tranh chạm với gesture đóng của panel. Chừa trống phần header (nút
+                    // lọc/nút ngày nằm sát mép phải header) — nếu không, dải 44pt đè lên đúng vùng
+                    // đó và highPriorityGesture nuốt mất chạm trước khi tới Button bên dưới, làm
+                    // icon lọc "bấm không phản ứng gì" (2026-09-28).
                     if !showMenu {
-                        Color.clear
-                            .frame(width: 44)
-                            .contentShape(Rectangle())
-                            .highPriorityGesture(openMenuGesture)
+                        VStack(spacing: 0) {
+                            // Khoảng trống KHÔNG gắn gesture, đúng bằng chiều cao header tự vẽ của
+                            // mọi tab (HeaderBarMetrics) — để nút lọc/nút ngày sát mép phải header
+                            // nhận chạm bình thường.
+                            Color.clear.frame(height: HeaderBarMetrics.rowHeight + HeaderBarMetrics.verticalPadding * 2)
+                            Color.clear
+                                .contentShape(Rectangle())
+                                .highPriorityGesture(openMenuGesture)
+                        }
+                        .frame(width: 44)
                     }
                 }
 
