@@ -439,6 +439,20 @@ actor APIClient {
         return await executeAction(req)
     }
 
+    /// Đẩy/đồng bộ biến thể "Size XL" (giá chênh cố định) lên 1 món đã có trên store VÀ đã có biến
+    /// thể Size XL nội bộ.
+    func pushSizeXLToStore(id: String) async -> ActionResult {
+        let req = makeRequest("/api/AppOrder/push-size-xl/\(id)", method: "POST", body: jsonBody([String: String]()))
+        return await executeAction(req)
+    }
+
+    /// Đẩy Size XL cho TẤT CẢ sản phẩm đủ điều kiện (đã lên store + có Size XL nội bộ) — chạy nền,
+    /// báo qua Discord Admin, khớp pushToppingAllToStore.
+    func pushSizeXLAllToStore() async -> ActionResult {
+        let req = makeRequest("/api/AppOrder/push-size-xl-all", method: "POST", body: jsonBody([String: String]()))
+        return await executeAction(req)
+    }
+
     func getCongViecList() async -> [CongViecNoiBoDto] {
         let req = makeRequest("/api/CongViecNoiBo")
         let (data, _) = await send(req)

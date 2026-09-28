@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Quản trị danh mục sản phẩm (Menu > Sản phẩm) — thêm/sửa/xoá + đẩy/đồng bộ store, thay cho phải
 /// mở Desktop (SanPhamWindow) mỗi khi cần chỉnh sửa. GET/POST/PUT/DELETE /api/SanPham +
-/// /api/AppOrder/{sync-store-status,push-san-pham,rename-san-pham,store-visibility,push-topping},
+/// /api/AppOrder/{sync-store-status,push-san-pham,rename-san-pham,store-visibility,push-topping,push-size-xl},
 /// bố cục list + sheet sửa giống NguyenLieuListView/VoucherListView.
 struct SanPhamListView: View {
     @State private var items: [SanPhamAdminDto] = []
@@ -14,8 +14,10 @@ struct SanPhamListView: View {
     @State private var editing: SanPhamAdminDto?
     @State private var isSyncingStore = false
     @State private var isPushingToppingAll = false
+    @State private var isPushingSizeXLAll = false
     @State private var toastMessage: String?
     @State private var showPushToppingAllConfirm = false
+    @State private var showPushSizeXLAllConfirm = false
 
     private var filteredItems: [SanPhamAdminDto] {
         var source = items
@@ -69,14 +71,19 @@ struct SanPhamListView: View {
                         } label: {
                             Label("Đẩy topping hàng loạt", systemImage: "text.badge.plus")
                         }
+                        Button {
+                            showPushSizeXLAllConfirm = true
+                        } label: {
+                            Label("Đẩy Size XL hàng loạt", systemImage: "arrow.up.circle")
+                        }
                     } label: {
-                        if isSyncingStore || isPushingToppingAll {
+                        if isSyncingStore || isPushingToppingAll || isPushingSizeXLAll {
                             ProgressView().tint(.white)
                         } else {
                             Image(systemName: "storefront")
                         }
                     }
-                    .disabled(isSyncingStore || isPushingToppingAll)
+                    .disabled(isSyncingStore || isPushingToppingAll || isPushingSizeXLAll)
                     Button { showAdd = true } label: { Image(systemName: "plus") }
                 }
             }
@@ -98,6 +105,13 @@ struct SanPhamListView: View {
             isPresented: $showPushToppingAllConfirm, titleVisibility: .visible
         ) {
             Button("Đẩy hàng loạt", role: .destructive) { Task { await pushToppingAll() } }
+            Button("Huỷ", role: .cancel) {}
+        }
+        .confirmationDialog(
+            "Đẩy biến thể \"Size XL\" (giá chênh cố định) lên TẤT CẢ sản phẩm đã có trên store VÀ đã có biến thể Size XL nội bộ?\n\nChạy nền, chậm rãi — kết quả sẽ báo qua Discord Admin.",
+            isPresented: $showPushSizeXLAllConfirm, titleVisibility: .visible
+        ) {
+            Button("Đẩy hàng loạt", role: .destructive) { Task { await pushSizeXLAll() } }
             Button("Huỷ", role: .cancel) {}
         }
     }
@@ -128,6 +142,13 @@ struct SanPhamListView: View {
         let result = await APIClient.shared.pushToppingAllToStore()
         isPushingToppingAll = false
         toastMessage = result.message ?? (result.success ? "Đang đẩy topping hàng loạt." : "Không gửi được yêu cầu.")
+    }
+
+    private func pushSizeXLAll() async {
+        isPushingSizeXLAll = true
+        let result = await APIClient.shared.pushSizeXLAllToStore()
+        isPushingSizeXLAll = false
+        toastMessage = result.message ?? (result.success ? "Đang đẩy Size XL hàng loạt." : "Không gửi được yêu cầu.")
     }
 }
 
@@ -285,6 +306,9 @@ private struct SanPhamEditSheet: View {
                         storeActionButton("Ngừng bán trên store", icon: "storefront") { await toggleStoreVisibility(ngungBan: true) }
                         storeActionButton("Bán lại trên store", icon: "storefront.fill") { await toggleStoreVisibility(ngungBan: false) }
                         storeActionButton("Đẩy topping lên store", icon: "plus.circle") { await pushToppingToStore() }
+                        if bienThe.contains(where: { $0.tenBienThe == "Size XL" }) {
+                            storeActionButton("Đẩy Size XL lên store", icon: "arrow.up.circle") { await pushSizeXLToStore() }
+                        }
                         if storeActionRunning { ProgressView() }
                     }
                 }
@@ -462,5 +486,10 @@ private struct SanPhamEditSheet: View {
     private func pushToppingToStore() async {
         guard let existing else { return }
         await runStoreAction { await APIClient.shared.pushToppingToStore(id: existing.id) }
+    }
+
+    private func pushSizeXLToStore() async {
+        guard let existing else { return }
+        await runStoreAction { await APIClient.shared.pushSizeXLToStore(id: existing.id) }
     }
 }
