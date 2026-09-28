@@ -1043,6 +1043,12 @@ struct ProductPickerPanel: View {
         return donGia * Double(soLuong) + toppingTien
     }
 
+    /// Ô nhập đơn giá hiện theo NGHÌN (vd donGia=25000 -> hiện "25") — donGia thật (VNĐ) không đổi,
+    /// chỉ đổi CÁCH HIỂN THỊ/NHẬP cho gọn.
+    private var donGiaNghinBinding: Binding<Double> {
+        Binding(get: { donGia / 1000 }, set: { donGia = $0 * 1000 })
+    }
+
     /// Nhúng trực tiếp trong monCard, KHÔNG NavigationStack/sheet riêng — cùng cuộn với phần còn lại
     /// của form "Tạo đơn" nên chỉ còn đúng 1 sheet duy nhất. Ô tìm luôn hiện (kể cả sau khi đã chọn
     /// món, để đổi món không cần nút riêng), gõ tìm hiện dropdown kết quả bên dưới (KHÔNG liệt kê cả
@@ -1255,7 +1261,9 @@ struct ProductPickerPanel: View {
                             Text("➖").font(.system(size: 22))
                         }
                         .disabled(donGia <= 0)
-                        TextField("0", value: $donGia, format: .number)
+                        // Hiện theo NGHÌN (vd "25" thay vì "25.000") cho gọn, đủ chỗ hiện hết số
+                        // không bị cắt "25.0..." như field rộng cũ — donGia thật vẫn full VNĐ.
+                        TextField("0", value: donGiaNghinBinding, format: .number)
                             .keyboardType(.numberPad)
                             .multilineTextAlignment(.trailing)
                             .textFieldStyle(.roundedBorder)
