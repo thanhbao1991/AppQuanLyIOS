@@ -3,6 +3,18 @@ import PhotosUI
 import SwiftUI
 import UIKit
 
+/// Ep popover khong bung thanh sheet tren iPhone — presentationCompactAdaptation chi co tu iOS 16.4,
+/// deploymentTarget cua app la 16.0 nen phai gate qua #available, khong the goi thang.
+private struct CompactPopoverModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 16.4, *) {
+            content.presentationCompactAdaptation(.popover)
+        } else {
+            content
+        }
+    }
+}
+
 struct HoaDonListView: View {
     @ObservedObject private var deepLink = DeepLinkRouter.shared
     @State private var currentDate = Date()
@@ -206,7 +218,7 @@ struct HoaDonListView: View {
                             }
                         }
                         .padding()
-                        .presentationCompactAdaptation(.popover)
+                        .modifier(CompactPopoverModifier())
                     }
                     .frame(maxWidth: .infinity, alignment: .trailing)
                 }
