@@ -124,7 +124,7 @@ private struct VoucherRowView: View {
                 if let moTa = item.moTa, !moTa.isEmpty {
                     Text(moTa).font(.caption).foregroundColor(.textMuted).lineLimit(2)
                 }
-                Text(nhanDieuKien(item)).font(.caption2).foregroundColor(.brandPrimary)
+                Text(item.giaiThichDieuKien ?? "Điều kiện: \(item.dieuKien)").font(.caption2).foregroundColor(.brandPrimary)
                 if let hangToiThieu = item.hangToiThieu, !hangToiThieu.isEmpty {
                     Text("Chỉ hạng \(hangToiThieu) trở lên").font(.caption2).foregroundColor(.dangerColor)
                 }
@@ -134,8 +134,9 @@ private struct VoucherRowView: View {
                 if item.yeuCauSizeL {
                     Text("Chỉ áp dụng khi đơn có Size L").font(.caption2).foregroundColor(.dangerColor)
                 }
-                if let soLanDung = soLanDungCanh(item) {
-                    Text(soLanDung.nhan).font(.caption2).fontWeight(.semibold).foregroundColor(soLanDung.mau)
+                if let canhBao = item.canhBaoSoLan {
+                    Text(canhBao).font(.caption2).fontWeight(.semibold)
+                        .foregroundColor(canhBao.contains("KHÔNG GIỚI HẠN") ? .dangerColor : .textMuted)
                 }
             }
             .padding(12)
@@ -155,58 +156,11 @@ private struct VoucherRowView: View {
         }
     }
 
-    // Cảnh báo mức độ dùng-lại — voucher KHÔNG GIỚI HẠN số lần (mọi đơn đạt điều kiện đều giảm, không
-    // chặn qua VoucherSuDung ở Backend) tiềm ẩn chi phí tăng dần không kiểm soát nếu điều kiện quá dễ
-    // đạt, khác hẳn voucher "1 lần/tài khoản" (chi phí luôn có trần). Staff cần lưu tâm nhóm này khi
-    // xét lại hiệu quả/chi phí voucher — nil (không hiện gì) cho voucher chỉ dùng ĐÚNG 1 lần trong đời.
-    private func soLanDungCanh(_ item: VoucherDto) -> (nhan: String, mau: Color)? {
-        switch item.dieuKien {
-        case "DonToiThieu", "KhongDieuKien", "KhungGioThapDiem":
-            return ("🔁 KHÔNG GIỚI HẠN — mọi đơn đạt điều kiện đều được giảm", .dangerColor)
-        case "QuayLai":
-            return ("🔁 Dùng lại được, tối đa 1 lần/tháng/khách", .textMuted)
-        case "MonMoiTraiNghiem":
-            return ("🔁 Dùng lại được, tối đa 1 lần/tháng/khách", .textMuted)
-        case "SinhNhat":
-            return ("🔁 Dùng lại được, tối đa 1 lần/năm/khách", .textMuted)
-        case "LenHangBac", "LenHangVang", "LenHangKimCuong":
-            return ("🔁 Dùng lại được, tối đa 1 lần/tháng/khách — tự động theo hạng đạt tháng trước", .textMuted)
-        default:
-            return nil
-        }
-    }
-
-    private func nhanDieuKien(_ item: VoucherDto) -> String {
-        switch item.dieuKien {
-        case "DonDauTien": return "Điều kiện: đơn app đầu tiên của khách"
-        case "SinhNhat": return "Điều kiện: trong tháng sinh nhật, 1 lần/năm"
-        case "DonToiThieu": return "Điều kiện: đơn tối thiểu, không giới hạn số lần"
-        case "KhongDieuKien": return "Điều kiện: không có, dùng cho dịp/lễ — tự bật tắt"
-        case "DonThuN": return "Điều kiện: đúng đơn thứ \(item.soDonApDung ?? 0) của khách"
-        case "QuayLai": return "Điều kiện: đơn quay lại sau ≥14 ngày không mua, không dùng liên tiếp 2 lần"
-        case "KhungGioThapDiem":
-            let thuText = (item.thuTrongTuan ?? "").split(separator: ",").compactMap { Int($0) }.sorted()
-                .compactMap { tenThuNganGon[$0] }.joined(separator: "/")
-            return "Điều kiện: khung \(item.gioBatDau ?? 0)h-\(item.gioKetThuc ?? 0)h\(thuText.isEmpty ? "" : " (\(thuText))")"
-        case "SoLuongToiThieu":
-            return "Điều kiện: đơn từ \(item.soLuongToiThieu ?? 0) ly, chỉ khách CHƯA TỪNG tự mua đủ số lượng này (dùng được 1 lần)"
-        case "UpsizeMonMoi":
-            return "Điều kiện: đơn có Size L, ĐÚNG 1 LẦN/tài khoản"
-        case "ToppingMienPhi":
-            return "Điều kiện: đơn có topping, tối đa 2 LẦN/tài khoản"
-        case "MonMoiTraiNghiem":
-            return "Điều kiện: đơn có món chưa từng đặt, 1 THÁNG 1 LẦN/tài khoản"
-        case "DatLai":
-            return "Điều kiện: đơn tạo từ nút \"Đặt lại\", ĐÚNG 1 LẦN/tài khoản"
-        case "LenHangBac":
-            return "Điều kiện: khách đạt hạng Bạc THÁNG TRƯỚC, dùng 1 lần trong tháng này"
-        case "LenHangVang":
-            return "Điều kiện: khách đạt hạng Vàng THÁNG TRƯỚC, dùng 1 lần trong tháng này"
-        case "LenHangKimCuong":
-            return "Điều kiện: khách đạt hạng Kim Cương THÁNG TRƯỚC, dùng 1 lần trong tháng này"
-        default: return "Điều kiện: \(item.dieuKien)"
-        }
-    }
+    // Mô tả điều kiện + cảnh báo số lần dùng lại KHÔNG còn hardcode switch ở đây (bỏ 2026-09-28) — cả
+    // 2 giờ do Backend tính sẵn và trả về qua VoucherDto.giaiThichDieuKien/canhBaoSoLan (xem
+    // VoucherService.GiaiThichDieuKienChoStaff/CanhBaoSoLanChoStaff), tránh lặp lại đúng bug từng xảy
+    // ra: bản Swift cũ tự ghi tay các mô tả này, lệch khỏi logic thật ở Backend sau khi DonToiThieu/
+    // DonThuN/ToppingMienPhi đổi hành vi mà quên sửa theo ở đây.
 
     // Hiển thị khoảng ngày hiệu lực (nil nếu không giới hạn) — dùng dd/MM cho lặp hằng năm vì năm vô
     // nghĩa, yyyy-MM-dd cho khoảng tuyệt đối.
@@ -273,14 +227,14 @@ private struct VoucherEditSheet: View {
     private let dieuKienOptions = [
         ("DonDauTien", "Đơn app đầu tiên"),
         ("SinhNhat", "Sinh nhật (1 lần/năm)"),
-        ("DonToiThieu", "Đơn tối thiểu (không giới hạn)"),
+        ("DonToiThieu", "Đơn tối thiểu (1 lần/tài khoản)"),
         ("KhongDieuKien", "Không điều kiện (dịp/lễ — tự bật tắt)"),
-        ("DonThuN", "Đơn thứ N (tự nhập)"),
+        ("DonThuN", "Ưu đãi cho khách quen (1 lần/tài khoản)"),
         ("QuayLai", "Khách lâu không mua quay lại (không dùng liên tiếp)"),
         ("KhungGioThapDiem", "Khung giờ thấp điểm"),
         ("SoLuongToiThieu", "Số lượng ly tối thiểu"),
         ("UpsizeMonMoi", "Size L miễn phí (1 lần/tài khoản)"),
-        ("ToppingMienPhi", "Topping miễn phí (2 lần/tài khoản)"),
+        ("ToppingMienPhi", "Topping miễn phí (1 lần/tài khoản)"),
         ("MonMoiTraiNghiem", "Thử món mới (1 tháng 1 lần)"),
         ("DatLai", "Dùng thử Đặt lại (1 lần/tài khoản)"),
         ("LenHangBac", "Lên hạng Bạc"),

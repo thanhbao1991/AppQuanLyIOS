@@ -432,6 +432,12 @@ struct VoucherDto: Codable, Identifiable {
     // true = khoảng ngày lặp lại hằng năm, chỉ ngày/tháng có nghĩa (năm trong ngayBatDau/ngayKetThuc
     // bị bỏ qua bên Backend).
     var lapLaiHangNam: Bool = false
+    // 2 field Backend TÍNH SẴN (VoucherService.GiaiThichDieuKienChoStaff/CanhBaoSoLanChoStaff) — CHỈ
+    // HIỂN THỊ Ở ĐÂY, đừng tự switch theo dieuKien để suy diễn lại (bài học 2026-09-28: bản cũ từng tự
+    // hardcode các mô tả này trong VoucherListView, lệch khỏi logic thật ở Backend mà không ai phát
+    // hiện tới khi staff thấy label sai ngay trên app).
+    var giaiThichDieuKien: String?
+    var canhBaoSoLan: String?
 }
 
 struct VoucherRequest: Encodable {
