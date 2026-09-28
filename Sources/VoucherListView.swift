@@ -233,7 +233,7 @@ private struct VoucherEditSheet: View {
         ("QuayLai", "Khách lâu không mua quay lại (không dùng liên tiếp)"),
         ("KhungGioThapDiem", "Khung giờ thấp điểm"),
         ("SoLuongToiThieu", "Số lượng ly tối thiểu"),
-        ("UpsizeMonMoi", "Size L miễn phí (1 lần/tài khoản)"),
+        ("UpsizeL", "Size L miễn phí (1 lần/tài khoản)"),
         ("UpsizeXL", "Size XL miễn phí (1 lần/tài khoản)"),
         ("ToppingMienPhi", "Topping miễn phí (1 lần/tài khoản)"),
         ("MonMoiTraiNghiem", "Thử món mới (1 tháng 1 lần)"),
@@ -392,7 +392,7 @@ private struct VoucherEditSheet: View {
                         Text("Chỉ áp dụng cho khách CHƯA TỪNG có đơn nào (kể cả không dùng voucher) đạt đủ số lượng này — nếu khách đã tự mua đủ ít nhất 1 lần trước đây, voucher không tạo hành vi mới nên không hiện nữa. Vì vậy mỗi khách chỉ dùng được ĐÚNG 1 LẦN trong đời.")
                     }
                 }
-                if dieuKien != "UpsizeMonMoi" && dieuKien != "ToppingMienPhi" {
+                if dieuKien != "UpsizeL" && dieuKien != "ToppingMienPhi" {
                     Section {
                         Toggle("Chỉ áp dụng khi đơn có Size L", isOn: $yeuCauSizeL)
                     } footer: {
@@ -519,7 +519,7 @@ private struct VoucherEditSheet: View {
             gioKetThuc: dieuKien == "KhungGioThapDiem" ? gioKetThuc : nil,
             thuTrongTuan: dieuKien == "KhungGioThapDiem" && !thuChon.isEmpty ? thuChon.sorted().map(String.init).joined(separator: ",") : nil,
             soLuongToiThieu: dieuKien == "SoLuongToiThieu" ? soLuongToiThieu : nil,
-            yeuCauSizeL: dieuKien != "UpsizeMonMoi" && dieuKien != "UpsizeXL" && dieuKien != "ToppingMienPhi" && yeuCauSizeL,
+            yeuCauSizeL: dieuKien != "UpsizeL" && dieuKien != "UpsizeXL" && dieuKien != "ToppingMienPhi" && yeuCauSizeL,
             mucDich: mucDich.isEmpty ? nil : mucDich,
             hangToiThieu: hangToiThieu.isEmpty ? nil : hangToiThieu,
             dangHoatDong: dangHoatDong,
