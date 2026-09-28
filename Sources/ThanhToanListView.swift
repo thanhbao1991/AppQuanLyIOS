@@ -154,6 +154,7 @@ struct ThanhToanListView: View {
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 8)
+                .frame(minHeight: FooterBarMetrics.minHeight)
             }
         }
         .task { await load() }

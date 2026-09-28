@@ -35,6 +35,15 @@ enum HeaderBarMetrics {
     static let verticalPadding: CGFloat = 10
 }
 
+/// Chiều cao tối thiểu dùng chung cho MỌI thanh footer đáy tab (Hoá đơn/Thanh toán/Chi tiêu/Công
+/// nợ) — mỗi tab tự vẽ footer với nội dung khác nhau (1-2 dòng chữ, icon to/nhỏ, nút bordered...)
+/// nên chiều cao tự nhiên lệch nhau vài điểm ảnh, nhìn "footer tab này thấp hơn tab kia" khi chuyển
+/// qua lại. `minHeight` (không phải `height` cố định) để nội dung cao hơn mức này (nút bordered của
+/// Công nợ) không bị bóp méo/cắt, chỉ nội dung thấp hơn mới được đôn lên bằng nhau.
+enum FooterBarMetrics {
+    static let minHeight: CGFloat = HeaderBarMetrics.rowHeight + HeaderBarMetrics.verticalPadding * 2
+}
+
 /// Gộp chọn ngày + ô tìm kiếm chung 1 dòng — thay cho DayNavBar+SearchBar 2 dòng riêng, bỏ hẳn 2 nút
 /// chevron điều hướng (chỉ còn bấm vào ngày để mở DatePicker).
 struct DaySearchBar: View {

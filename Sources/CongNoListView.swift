@@ -273,6 +273,7 @@ struct CongNoFooterView: View {
         }
         .padding(.horizontal)
         .padding(.vertical, 4)
+        .frame(minHeight: FooterBarMetrics.minHeight)
         .overlay { if payingAll { ProgressView() } }
         .alert(items.count > 1 ? "Xác nhận thanh toán toàn bộ nợ" : "Xác nhận thanh toán", isPresented: $showPayAllConfirm) {
             // Chỉ bắt gõ lại số tiền khi thu GỘP nhiều hoá đơn cùng lúc — rủi ro bấm nhầm hàng loạt.
