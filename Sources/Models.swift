@@ -54,6 +54,7 @@ struct HoaDonListDto: Decodable, Identifiable {
     let ngayShip: String?
     let ngayNo: String?
     let ngayIn: String?
+    let ngayXacNhanOnline: String?
     let ngayThanhToan: String?
     let nguoiShip: String?
     let ghiChu: String?

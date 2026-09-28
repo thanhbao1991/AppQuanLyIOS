@@ -487,14 +487,26 @@ private struct HoaDonRowView: View {
     /// đang ở trạng thái này nên hiện lên toàn màn hình đầy badge xám vô nghĩa).
     /// conLai<=0 phải check TRƯỚC ngayNo: khách ghi nợ rồi trả xong, ngayNo vẫn còn giá trị cũ
     /// (backend không xoá), nên nếu check ngayNo trước sẽ hiện "Ghi nợ" sai dù đã thu đủ.
+
+    /// Đơn đặt qua app khách (Ship/AppDatHang) mà quán CHƯA bấm xác nhận — khớp TrangThai=ChoXacNhan
+    /// bên Backend (GetDonCuaToiAsync). Trước đây field NgayXacNhanOnline không được client giải mã
+    /// nên trạng thái này không bao giờ hiện ở tab Hoá đơn, dù đơn vẫn nằm trong danh sách.
+    private var laChoXacNhan: Bool {
+        (item.phanLoai == "Ship" || item.phanLoai == "AppDatHang")
+            && item.conLai > 0
+            && (item.ngayXacNhanOnline?.isEmpty ?? true)
+    }
+
     private var statusText: String? {
         if item.conLai <= 0.0 { return (item.isBank == true) ? "Chuyển khoản" : "Tiền mặt" }
+        if laChoXacNhan { return "Chờ xác nhận" }
         if !(item.ngayNo?.isEmpty ?? true) { return "Ghi nợ" }
         return nil
     }
 
     private var statusColor: Color {
         if item.conLai <= 0.0 { return (item.isBank == true) ? .brandPrimary : .successColor }
+        if laChoXacNhan { return .warningColor }
         return .dangerColor
     }
 
