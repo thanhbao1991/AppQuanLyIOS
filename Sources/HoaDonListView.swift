@@ -18,6 +18,9 @@ struct HoaDonListView: View {
     /// waitingMinutes chỉ tính 1 lần lúc load rồi đứng yên mãi (không tự cập nhật theo thời gian thực).
     @State private var now = Date()
     @State private var activeFilter: HoaDonQuickFilter?
+    /// Hàng icon phân loại (🛵 203k, 🪑 230k...) mặc định ẩn — chỉ hiện khi bấm vào tổng tiền, đỡ
+    /// chiếm chỗ thanh dưới cùng lúc bình thường không cần xem chi tiết theo từng loại.
+    @State private var showPhanLoaiTotals = false
     private let clockTimer = Timer.publish(every: 20, on: .main, in: .common).autoconnect()
 
     /// Danh sách đã áp search nhưng CHƯA áp activeFilter — dùng để đếm số dòng theo từng filter
@@ -54,8 +57,8 @@ struct HoaDonListView: View {
         // Thiếu AppDatHang ở đây thì doanh thu đơn app khách biến mất khỏi thanh tổng, dù vẫn còn
         // trong cachedSorted — mirror đúng lỗi đã sửa ở ThongKeService (Backend, thêm nhãn "Đặt qua app").
         let order: [(code: String, icon: String)] = [
-            ("Ship", "🛵"), ("AppDatHang", "🛒"), ("Tại Chỗ", "🪑"), ("Mv", "🛍️"),
-            ("Mh", "✋"), ("App", "📱"),
+            ("Ship", "🛵"), ("Tại Chỗ", "🪑"), ("Mv", "🛍️"),
+            ("Mh", "✋"), ("App", "📱"), ("AppDatHang", "🛒"),
         ]
         return order.compactMap { entry in
             let total = cachedSorted.filter { $0.phanLoai == entry.code }.reduce(0) { $0 + $1.thanhTien }
@@ -187,7 +190,7 @@ struct HoaDonListView: View {
                     .foregroundColor(.brandPrimary)
 
                     VStack(alignment: .trailing, spacing: 2) {
-                        if !phanLoaiTotals.isEmpty {
+                        if showPhanLoaiTotals, !phanLoaiTotals.isEmpty {
                             HStack(spacing: 8) {
                                 ForEach(phanLoaiTotals, id: \.phanLoai) { item in
                                     Label { Text(item.text).foregroundColor(item.color) } icon: { Text(item.icon) }
@@ -195,7 +198,12 @@ struct HoaDonListView: View {
                                 }
                             }
                         }
-                        Text(totalText).font(.headline)
+                        Button {
+                            showPhanLoaiTotals.toggle()
+                        } label: {
+                            Text(totalText).font(.headline)
+                        }
+                        .foregroundColor(.primary)
                     }
                     .frame(maxWidth: .infinity, alignment: .trailing)
                 }
