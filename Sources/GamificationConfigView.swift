@@ -72,6 +72,20 @@ private struct GamificationConfigForm: View {
             }
 
             Section {
+                HStack {
+                    Text("Hotline quán")
+                    Spacer()
+                    TextField("0901234567", text: $config.hotlineQuan)
+                        .keyboardType(.phonePad)
+                        .multilineTextAlignment(.trailing)
+                }
+            } header: {
+                Text("Hotline quán 📞")
+            } footer: {
+                Text("App khách hiện số này ở nút \"Liên hệ nhân viên để huỷ đơn\" (khách không tự huỷ đơn được nữa) — bấm vào sẽ tự gọi điện.")
+            }
+
+            Section {
                 moneyRow("Giá khách trả", value: $config.lyBiMatGiaTraTien)
                 moneyRow("Ngưỡng giá thật tối đa", value: $config.lyBiMatNguongGiaThat)
             } header: {

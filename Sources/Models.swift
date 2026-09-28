@@ -482,6 +482,9 @@ struct GamificationConfigDto: Codable {
     // Điểm danh nhận Xu (chu kỳ 7 ngày) — ngày 1-6 giống nhau, ngày 7 thưởng đậm hơn.
     var diemDanhThuongThuong: Double
     var diemDanhThuongNgay7: Double
+    // Hotline quán — app khách (AppDatHangIOS) hiện cho khách gọi khi cần huỷ đơn (2026-09-28, khách
+    // không tự huỷ đơn được nữa, giống Long Châu: chỉ có thể liên hệ nhân viên).
+    var hotlineQuan: String
 }
 
 // ---- Thống kê (port từ TraSuaApp.Desktop ThongKeTabControl — nguồn chính xác, KHÔNG dùng
