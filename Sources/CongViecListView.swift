@@ -23,8 +23,9 @@ struct CongViecListView: View {
     }
 
     var body: some View {
+        NavigationStack {
             VStack(spacing: 0) {
-                SearchBar(text: $searchText, placeholder: "Tìm việc...")
+                SearchBar(text: $searchText, placeholder: "Tìm việc...", tinted: true)
 
                 if !hasLoaded {
                     fullScreenLoading()
@@ -74,14 +75,7 @@ struct CongViecListView: View {
                     .refreshable { await load() }
                 }
             }
-            .navigationTitle("Công việc")
-            .navigationBarTitleDisplayMode(.inline)
-            // Màn hình con có nav bar riêng (không dùng header tự vẽ như các tab chính) — tô luôn
-            // nav bar màu brandPrimary + chữ trắng để khớp tông màu gradient của các tab khác, thay
-            // vì chồng thêm 1 lớp gradient riêng gây đụng độ 2 header.
-            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
+            .navigationBarHidden(true)
             .task { await load() }
             .alert("Thêm việc thất bại", isPresented: Binding(
                 get: { errorMessage != nil },
@@ -105,6 +99,7 @@ struct CongViecListView: View {
             } message: {
                 Text(confirmItem?.ten ?? "")
             }
+        }
     }
 
     private func load() async {
