@@ -596,9 +596,9 @@ private struct HoaDonRowView: View {
                         }
                         Text(statusText).font(.caption2.bold())
                     }
+                    .foregroundColor(.white)
                     .padding(.horizontal, 8).padding(.vertical, 2)
-                    .background(statusColor.opacity(0.15))
-                    .foregroundColor(statusColor)
+                    .background(statusColor)
                     .clipShape(Capsule())
                 }
             }
