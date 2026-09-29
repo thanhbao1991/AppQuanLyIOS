@@ -544,7 +544,7 @@ actor APIClient {
         return env.data ?? []
     }
 
-    // Ngưỡng/số tiền các tính năng giữ chân khách (Ly Bí Mật, giới thiệu, sinh nhật, vòng quay, thẻ
+    // Ngưỡng/số tiền các tính năng giữ chân khách (giới thiệu, sinh nhật, vòng quay, thẻ
     // tem) trong app khách — trước đây hardcode, giờ chỉnh được từ đây.
     func getGamificationConfig() async -> GamificationConfigDto? {
         let req = makeRequest("/api/GamificationConfig")

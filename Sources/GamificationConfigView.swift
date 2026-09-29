@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Chỉnh ngưỡng/số tiền các tính năng giữ chân khách trong app khách (AppDatHangIOS) — Ly Bí Mật,
+/// Chỉnh ngưỡng/số tiền các tính năng giữ chân khách trong app khách (AppDatHangIOS) —
 /// giới thiệu bạn bè, sinh nhật, vòng quay may mắn, thẻ sưu tập ly — và phí ship (không thuộc
 /// gamification nhưng dùng chung API/màn hình config app khách này cho gọn). GET/PUT
 /// api/GamificationConfig.
@@ -83,15 +83,6 @@ private struct GamificationConfigForm: View {
                 Text("Hotline quán 📞")
             } footer: {
                 Text("App khách hiện số này ở nút \"Liên hệ nhân viên để huỷ đơn\" (khách không tự huỷ đơn được nữa) — bấm vào sẽ tự gọi điện.")
-            }
-
-            Section {
-                moneyRow("Giá khách trả", value: $config.lyBiMatGiaTraTien)
-                moneyRow("Ngưỡng giá thật tối đa", value: $config.lyBiMatNguongGiaThat)
-            } header: {
-                Text("Ly Bí Mật 🎁")
-            } footer: {
-                Text("Chỉ món có giá thật ≤ ngưỡng mới được đưa vào bốc ngẫu nhiên.")
             }
 
             Section {
