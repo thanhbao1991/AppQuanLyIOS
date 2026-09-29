@@ -523,15 +523,20 @@ private struct HoaDonRowView: View {
             && (item.ngayXacNhanOnline?.isEmpty ?? true)
     }
 
+    /// Thứ tự ưu tiên: đơn ĐÃ KẾT THÚC (thu tiền mặt/chuyển khoản, hoặc đã ghi nợ) luôn hiện 1 trong
+    /// 3 badge đó — "Chờ xác nhận" chỉ là badge dự phòng khi CHƯA có mốc kết thúc nào, không được
+    /// đè lên Ghi nợ. Trước đây check laChoXacNhan trước ngayNo nên đơn Ship tạo tay ở quầy (không
+    /// qua app, NgayXacNhanOnline luôn NULL) dù đã ghi nợ/đã giao ship từ lâu vẫn hiện "Chờ xác nhận".
     private var statusText: String? {
         if item.conLai <= 0.0 { return (item.isBank == true) ? "Chuyển khoản" : "Tiền mặt" }
-        if laChoXacNhan { return "Chờ xác nhận" }
         if !(item.ngayNo?.isEmpty ?? true) { return "Ghi nợ" }
+        if laChoXacNhan { return "Chờ xác nhận" }
         return nil
     }
 
     private var statusColor: Color {
         if item.conLai <= 0.0 { return (item.isBank == true) ? .brandPrimary : .successColor }
+        if !(item.ngayNo?.isEmpty ?? true) { return .dangerColor }
         if laChoXacNhan { return .warningColor }
         return .dangerColor
     }
