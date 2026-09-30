@@ -326,7 +326,7 @@ struct HoaDonDetailView: View {
                 RoundedRectangle(cornerRadius: 8)
                     .fill(Color.textMuted.opacity(0.12))
                     .frame(width: 36, height: 36)
-                    .overlay(Text("📷").font(.system(size: 18)))
+                    .overlay(Image(systemName: "camera").font(.system(size: 16)).foregroundColor(.textMuted))
                     .contentShape(Rectangle())
                     .onTapGesture { if let sanPhamId { photoCameraId = sanPhamId } }
             }

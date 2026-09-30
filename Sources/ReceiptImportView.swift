@@ -18,7 +18,7 @@ struct ReceiptImportButton: View {
     var body: some View {
         HStack(spacing: 10) {
             PhotosPicker(selection: $pickerItem, matching: .images) {
-                iconOrSpinner("🖼️")
+                iconOrSpinner("photo")
             }
             .disabled(loading)
             .onChange(of: pickerItem) { item in
@@ -29,7 +29,7 @@ struct ReceiptImportButton: View {
             Button {
                 showCamera = true
             } label: {
-                iconOrSpinner("📷")
+                iconOrSpinner("camera")
             }
             .disabled(loading)
         }
@@ -62,8 +62,9 @@ struct ReceiptImportButton: View {
         if loading {
             ProgressView().frame(width: 30, height: 30)
         } else {
-            // Emoji thay SF Symbol (đổi 2026-09-13).
-            Text(icon).font(.system(size: 26))
+            // SF Symbol (đổi lại 1/10 — quy ước: nút chỉ-có-icon (không kèm chữ) dùng SF Symbol để
+            // ăn foregroundColor/tint, khác EmojiLabel/ActionButtonView (icon kèm chữ, giữ emoji).
+            Image(systemName: icon).font(.system(size: 22))
         }
     }
 

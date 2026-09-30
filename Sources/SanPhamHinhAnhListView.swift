@@ -146,16 +146,16 @@ private struct SanPhamHinhAnhRow: View {
                 Button {
                     showPicker = true
                 } label: {
-                    Text("🖼️")
-                        .font(.system(size: 20))
+                    Image(systemName: "photo")
+                        .font(.system(size: 18))
                         .frame(width: 36, height: 36)
                 }
                 .buttonStyle(.borderless)
                 Button {
                     showCamera = true
                 } label: {
-                    Text("📷")
-                        .font(.system(size: 20))
+                    Image(systemName: "camera")
+                        .font(.system(size: 18))
                         .frame(width: 36, height: 36)
                 }
                 .buttonStyle(.borderless)
