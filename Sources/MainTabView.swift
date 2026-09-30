@@ -1,17 +1,17 @@
 import SwiftUI
 import UIKit
 
-/// 6 mục: Thống kê + 4 tab dùng hàng ngày (Hoá đơn/Thanh toán/Công nợ/Chi tiêu) + Công việc. Dùng
-/// thanh tab TỰ VẼ (không phải SwiftUI `TabView`) vì `TabView` trên iPhone kế thừa hành vi
+/// 7 mục: Thống kê + 4 tab dùng hàng ngày (Hoá đơn/Thanh toán/Công nợ/Chi tiêu) + Công việc + Menu.
+/// Dùng thanh tab TỰ VẼ (không phải SwiftUI `TabView`) vì `TabView` trên iPhone kế thừa hành vi
 /// `UITabBarController`: quá 5 mục sẽ tự gộp mục thứ 5 trở đi vào 1 tab "More" do hệ thống sinh ra
-/// (chỉ hiện 4 icon + "More"), không cách nào tắt được từ SwiftUI. Với 6 mục cần hiện ĐỦ cùng lúc,
+/// (chỉ hiện 4 icon + "More"), không cách nào tắt được từ SwiftUI. Với 7 mục cần hiện ĐỦ cùng lúc,
 /// phải tự vẽ thanh tab để né giới hạn cứng đó.
-/// Menu (Công cụ/Tài khoản/Danh mục quản trị) KHÔNG còn là tab — mở bằng vuốt từ cạnh phải màn
-/// hình vào (xem MainTabView.body), giống drawer/side-menu, để dành 6 slot tab cho các mục dùng
-/// hàng ngày.
+/// Menu (Công cụ/Tài khoản/Danh mục quản trị) là tab thứ 7 — trước đây mở bằng vuốt từ cạnh phải
+/// (drawer/side-menu), đã bỏ vuốt (khó phát hiện, hay đụng gesture khác) và chuyển hẳn thành tab
+/// bình thường (2026-09-30).
 /// Không có tab "Tạo hoá đơn" (bỏ qua theo yêu cầu — làm sau cùng CreatePlus).
 enum MainTab: CaseIterable {
-    case thongKe, hoaDon, thanhToan, congNo, chiTieu, congViec
+    case thongKe, hoaDon, thanhToan, congNo, chiTieu, congViec, menu
 
     var label: String {
         switch self {
@@ -21,6 +21,7 @@ enum MainTab: CaseIterable {
         case .congNo: "Công nợ"
         case .chiTieu: "Chi tiêu"
         case .congViec: "Công việc"
+        case .menu: "Menu"
         }
     }
 
@@ -37,6 +38,7 @@ enum MainTab: CaseIterable {
         // ".fill" nhưng symbol đó không tồn tại nên Image render rỗng. checkmark.square/.fill có
         // từ iOS 13, chắc chắn có cả 2 biến thể.
         case .congViec: "checkmark.square"
+        case .menu: "line.3.horizontal.circle"
         }
     }
 
@@ -52,80 +54,24 @@ struct MainTabView: View {
     /// Mặc định Hoá đơn dù Thống kê xếp trước về vị trí hiển thị — mở app luôn vào tab Hoá đơn
     /// theo yêu cầu, thứ tự khai báo trong MainTab không nhất thiết khớp mục mặc định.
     @State private var selection: MainTab = .hoaDon
-    @State private var showMenu = false
 
     var body: some View {
-        ZStack(alignment: .trailing) {
-            VStack(spacing: 0) {
-                ZStack(alignment: .trailing) {
-                    Group {
-                        switch selection {
-                        case .thongKe: ThongKeView()
-                        case .hoaDon: HoaDonListView()
-                        case .thanhToan: ThanhToanListView()
-                        case .congNo: CongNoListView()
-                        case .chiTieu: ChiTieuListView()
-                        case .congViec: CongViecListView()
-                        }
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                    // Dải bắt vuốt mở Menu — chỉ phủ vùng nội dung (KHÔNG trùm xuống tabBar bên
-                    // dưới, nếu không sẽ chặn mất nút tab cuối cùng bên phải). Ẩn khi Menu đang mở
-                    // để không tranh chạm với gesture đóng của panel. Chừa trống phần header (nút
-                    // lọc/nút ngày nằm sát mép phải header) — nếu không, dải 44pt đè lên đúng vùng
-                    // đó và highPriorityGesture nuốt mất chạm trước khi tới Button bên dưới, làm
-                    // icon lọc "bấm không phản ứng gì" (2026-09-28).
-                    if !showMenu {
-                        VStack(spacing: 0) {
-                            // Khoảng trống KHÔNG gắn gesture, đúng bằng chiều cao header tự vẽ của
-                            // mọi tab (HeaderBarMetrics) — để nút lọc/nút ngày sát mép phải header
-                            // nhận chạm bình thường.
-                            Color.clear.frame(height: HeaderBarMetrics.rowHeight + HeaderBarMetrics.verticalPadding * 2)
-                            Color.clear
-                                .contentShape(Rectangle())
-                                .highPriorityGesture(openMenuGesture)
-                        }
-                        .frame(width: 44)
-                    }
+        VStack(spacing: 0) {
+            Group {
+                switch selection {
+                case .thongKe: ThongKeView()
+                case .hoaDon: HoaDonListView()
+                case .thanhToan: ThanhToanListView()
+                case .congNo: CongNoListView()
+                case .chiTieu: ChiTieuListView()
+                case .congViec: CongViecListView()
+                case .menu: MoreMenuView(isLoggedIn: $isLoggedIn)
                 }
-
-                Divider()
-                tabBar
             }
-            .disabled(showMenu)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            if showMenu {
-                // Nền mờ: Color thuần, không phải List — gắn gesture thẳng lên đây AN TOÀN, không
-                // đụng chạm gì đến scroll.
-                Color.black.opacity(0.35)
-                    .ignoresSafeArea()
-                    .onTapGesture { closeMenu() }
-                    .highPriorityGesture(closeMenuGesture)
-                    .transition(.opacity)
-
-                HStack(spacing: 0) {
-                    Spacer()
-                    // QUAN TRỌNG: gesture đóng KHÔNG được gắn lên toàn bộ panel (từng làm vậy, thấy
-                    // "vuốt vào chưa có hiệu ứng" rồi fix bằng highPriorityGesture trên cả HStack —
-                    // hoá ra highPriorityGesture đó nuốt luôn drag CHIỀU DỌC, làm List bên trong
-                    // (MoreMenuView) mất khả năng cuộn — "sau khi mở menu không vuốt xuống xem được
-                    // các mục bị khuất", 2026-09-28). Sửa: chỉ đặt 1 dải mỏng ở MÉP TRÁI panel (khu
-                    // vực người dùng tự nhiên bắt đầu vuốt để đóng, giống dải mở ở MainTabView phía
-                    // trên) — List phần còn lại cuộn dọc bình thường không bị tranh chấp.
-                    ZStack(alignment: .leading) {
-                        MoreMenuView(isLoggedIn: $isLoggedIn)
-                        Color.clear
-                            .frame(width: 24)
-                            .contentShape(Rectangle())
-                            .highPriorityGesture(closeMenuGesture)
-                    }
-                    .frame(width: menuPanelWidth)
-                    .background(Color(.systemBackground))
-                }
-                .ignoresSafeArea(edges: .bottom)
-                .transition(.move(edge: .trailing))
-            }
+            Divider()
+            tabBar
         }
         .onChange(of: selection) { newValue in
             switch newValue {
@@ -147,34 +93,6 @@ struct MainTabView: View {
             if id != nil { selection = .hoaDon }
         }
         .task { await congViecBadge.refresh() }
-    }
-
-    private var menuPanelWidth: CGFloat { min(340, UIScreen.main.bounds.width * 0.86) }
-
-    private var openMenuGesture: some Gesture {
-        // Ngưỡng thấp (8pt) + dải bắt rộng 44pt (đủ ngón tay, không cần chạm sát mép pixel cuối
-        // như trước — 24pt quá hẹp, dễ trượt ra ngoài vùng bắt) — 2026-09-28 hạ ngưỡng sau phản
-        // hồi "vuốt khó lắm" với bản đầu (18pt distance + dải 24pt + translation phải > 28pt).
-        DragGesture(minimumDistance: 8)
-            .onEnded { value in
-                guard value.translation.width < -16, abs(value.translation.height) < 80 else { return }
-                withAnimation(.easeInOut(duration: 0.25)) { showMenu = true }
-            }
-    }
-
-    private var closeMenuGesture: some Gesture {
-        // .highPriorityGesture (không phải .gesture) — panel Menu chứa List, List có pan gesture
-        // riêng dễ nuốt mất cử chỉ vuốt-đóng nếu không ưu tiên tay ta trước (2026-09-28, phản hồi
-        // "vuốt vào chưa có hiệu ứng đóng").
-        DragGesture(minimumDistance: 8)
-            .onEnded { value in
-                guard value.translation.width > 16, abs(value.translation.height) < 80 else { return }
-                closeMenu()
-            }
-    }
-
-    private func closeMenu() {
-        withAnimation(.easeInOut(duration: 0.25)) { showMenu = false }
     }
 
     private var tabBar: some View {
