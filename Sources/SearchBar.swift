@@ -12,8 +12,12 @@ struct SearchBar: View {
 
     var body: some View {
         SearchFieldRow(text: $text, placeholder: placeholder)
+            // Ép cùng chiều cao với DaySearchBar/DayDateBar (HeaderBarMetrics) — trước đây để cao
+            // tự nhiên nên tab Công việc (dùng SearchBar) lệch vài điểm ảnh so với các tab còn lại
+            // (Hoá đơn/Thanh toán/Công nợ/Chi tiêu/Thống kê dùng DaySearchBar/DayDateBar).
+            .frame(height: HeaderBarMetrics.rowHeight)
             .padding(.horizontal)
-            .padding(.vertical, 10)
+            .padding(.vertical, HeaderBarMetrics.verticalPadding)
             .background(
                 Group {
                     if tinted {
