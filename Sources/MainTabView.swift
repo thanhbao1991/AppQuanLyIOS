@@ -302,24 +302,9 @@ private struct MoreMenuView: View {
                         EmojiLabel("Tính lương Nhã", "⛽")
                     }
                     NavigationLink {
-                        GiaNguyenLieuView(phanLoai: .nguyenLieu)
+                        GiaNguyenLieuView()
                     } label: {
-                        EmojiLabel("Giá nguyên liệu", "🏷️")
-                    }
-                    NavigationLink {
-                        GiaNguyenLieuView(phanLoai: .vatLieu)
-                    } label: {
-                        EmojiLabel("Giá vật liệu", "📦")
-                    }
-                    NavigationLink {
-                        GiaNguyenLieuView(phanLoai: .vatTu)
-                    } label: {
-                        EmojiLabel("Giá vật tư", "🧹")
-                    }
-                    NavigationLink {
-                        GiaNguyenLieuView(phanLoai: .chiPhiKhac)
-                    } label: {
-                        EmojiLabel("Giá chi phí khác", "🧾")
+                        EmojiLabel("Giá cả", "🏷️")
                     }
                     NavigationLink {
                         GioThapDiemView()

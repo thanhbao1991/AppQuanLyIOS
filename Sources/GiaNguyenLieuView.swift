@@ -6,17 +6,19 @@ import SwiftUI
 /// thẳng ChiTieuHangNgay (bản ghi mua hàng), không lưu gì mới — xem
 /// GET /api/ChiTieuHangNgay/gia-gan-day (ChiTieuHangNgayController/Service).
 ///
-/// Dùng chung cho 3 màn "Giá nguyên liệu" / "Giá vật liệu" / "Giá chi phí khác" (Menu > Công cụ) —
-/// tính năng giống hệt nhau, chỉ khác bộ lọc theo NguyenLieuDto.phanLoai. "Giá nguyên liệu" nhận
-/// luôn cả phanLoai == nil để không mất các dòng cũ trước khi có cột PhanLoai/chưa kịp phân loại.
+/// Gộp chung 1 màn cho cả "Nguyên liệu" / "Vật liệu" / "Vật tư" / "Chi phí khác" (Menu > Công cụ) —
+/// tính năng giống hệt nhau, chỉ khác bộ lọc theo NguyenLieuDto.phanLoai. Mặc định hiện "Tất cả";
+/// đổi nhóm qua menu lọc trên toolbar. `phanLoai == nil` (chưa phân loại) luôn được tính vào nhóm
+/// "Nguyên liệu" để không mất các dòng cũ trước khi có cột PhanLoai/chưa kịp phân loại.
 struct GiaNguyenLieuView: View {
-    let phanLoai: PhanLoaiNguyenLieu
-    private let title: String
+    /// nil = Tất cả. Truyền sẵn 1 nhóm khi cần mở thẳng vào nhóm đó.
+    @State private var phanLoai: PhanLoaiNguyenLieu?
 
-    init(phanLoai: PhanLoaiNguyenLieu = .nguyenLieu) {
-        self.phanLoai = phanLoai
-        self.title = phanLoai.giaScreenTitle
+    init(phanLoai: PhanLoaiNguyenLieu? = nil) {
+        _phanLoai = State(initialValue: phanLoai)
     }
+
+    private var title: String { phanLoai?.giaScreenTitle ?? "Giá cả" }
 
     @State private var allNguyenLieu: [NguyenLieuDto] = []
     @State private var searchText = ""
@@ -26,9 +28,11 @@ struct GiaNguyenLieuView: View {
     @State private var canMua: [MuaHangDeXuatDto] = []
     @State private var canMuaLoaded = false
 
-    /// Chỉ lấy đúng nhóm phân loại của màn này (nhóm Nguyên liệu nhận thêm cả phanLoai == nil).
+    /// Không chọn nhóm nào (Tất cả) thì lấy hết; chọn nhóm thì lọc đúng nhóm đó (nhóm Nguyên liệu
+    /// nhận thêm cả phanLoai == nil).
     private var nguyenLieuList: [NguyenLieuDto] {
-        allNguyenLieu.filter {
+        guard let phanLoai else { return allNguyenLieu }
+        return allNguyenLieu.filter {
             $0.phanLoai == phanLoai.rawValue || (phanLoai == .nguyenLieu && $0.phanLoai == nil)
         }
     }
@@ -125,6 +129,35 @@ struct GiaNguyenLieuView: View {
         .toolbarBackground(Color.brandPrimary, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Menu {
+                    Button {
+                        phanLoai = nil
+                    } label: {
+                        if phanLoai == nil {
+                            Label("Tất cả", systemImage: "checkmark")
+                        } else {
+                            Text("Tất cả")
+                        }
+                    }
+                    ForEach(PhanLoaiNguyenLieu.allCases) { pl in
+                        Button {
+                            phanLoai = pl
+                        } label: {
+                            if phanLoai == pl {
+                                Label(pl.label, systemImage: "checkmark")
+                            } else {
+                                Text(pl.label)
+                            }
+                        }
+                    }
+                } label: {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
+                        .foregroundColor(.white)
+                }
+            }
+        }
         // Chạm tên → sang màn riêng xem giá (thay vì kéo xuống cuối danh sách).
         .navigationDestination(isPresented: $showDetail) {
             if let selected { GiaNguyenLieuDetailView(nguyenLieu: selected) }
