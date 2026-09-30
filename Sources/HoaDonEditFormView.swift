@@ -360,7 +360,7 @@ struct HoaDonEditFormView: View {
                             rows.wrappedValue[0].isDefault = true
                         }
                     } label: {
-                        Text("🗑️").foregroundColor(.dangerColor)
+                        Image(systemName: "trash").foregroundColor(.dangerColor)
                     }
                 }
             }
@@ -588,7 +588,7 @@ struct HoaDonEditFormView: View {
                 Button {
                     items.remove(at: index)
                 } label: {
-                    Text("🗑️").foregroundColor(.dangerColor).font(.caption)
+                    Image(systemName: "trash").foregroundColor(.dangerColor).font(.caption)
                 }
             }
         }

@@ -349,7 +349,7 @@ struct HoaDonCreateFormView: View {
                             rows.wrappedValue[0].isDefault = true
                         }
                     } label: {
-                        Text("🗑️").foregroundColor(.dangerColor)
+                        Image(systemName: "trash").foregroundColor(.dangerColor)
                     }
                 }
             }
@@ -588,7 +588,7 @@ struct HoaDonCreateFormView: View {
                     items.remove(at: index)
                     recalcGiamGia()
                 } label: {
-                    Text("🗑️").foregroundColor(.dangerColor).font(.caption)
+                    Image(systemName: "trash").foregroundColor(.dangerColor).font(.caption)
                 }
             }
         }
