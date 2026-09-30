@@ -653,12 +653,23 @@ struct KhachHangAddressDto: Codable, Identifiable, Hashable {
     var id: String = UUID().uuidString
     let diaChi: String
     let isDefault: Bool
+    var ngayTao: String? = nil
 }
 
 /// KHÔNG dùng field "dienThoai"/"diaChi" (computed property phía server) — với kết quả từ
 /// /api/KhachHang/search, backend build Phones/Addresses thủ công (KhachHangQueryService.SearchAsync)
 /// và không set IsDefault, khiến 2 getter đó trả rỗng dù phones/addresses có dữ liệu. Luôn lấy trực
 /// tiếp từ phones[0]/addresses[0] (server đã OrderByDescending IsDefault/LastModified sẵn).
+extension KhachHangDto {
+    /// Địa chỉ mặc định cho hoá đơn MỚI: cũ nhất theo ngayTao (nil = tạo trước khi có cột → cũ nhất).
+    /// Hoà thì giữ thứ tự server. Khớp Desktop (RenderKhachChips).
+    var diaChiCuNhat: String? {
+        addresses.enumerated()
+            .min { ($0.element.ngayTao ?? "", $0.offset) < ($1.element.ngayTao ?? "", $1.offset) }?
+            .element.diaChi
+    }
+}
+
 struct KhachHangDto: Codable, Identifiable {
     let id: String
     let ten: String

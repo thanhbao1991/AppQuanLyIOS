@@ -758,7 +758,7 @@ struct HoaDonCreateFormView: View {
         showEditKhachHang = false
         tenKhach = kh.ten
         sdt = kh.phones.first(where: { $0.isDefault })?.soDienThoai ?? kh.phones.first?.soDienThoai ?? ""
-        diaChi = kh.addresses.first(where: { $0.isDefault })?.diaChi ?? kh.addresses.first?.diaChi ?? ""
+        diaChi = kh.diaChiCuNhat ?? ""
         khachSearchText = ""
         khachSearchResults = []
         khachInfo = nil

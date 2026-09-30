@@ -736,7 +736,7 @@ struct HoaDonEditFormView: View {
         tenKhach = kh.ten
         if overwriteContact {
             sdt = kh.phones.first(where: { $0.isDefault })?.soDienThoai ?? kh.phones.first?.soDienThoai ?? sdt
-            diaChi = kh.addresses.first(where: { $0.isDefault })?.diaChi ?? kh.addresses.first?.diaChi ?? diaChi
+            diaChi = kh.diaChiCuNhat ?? diaChi
         }
         khachSearchText = ""
         khachSearchResults = []
