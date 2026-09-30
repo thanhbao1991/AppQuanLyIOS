@@ -18,7 +18,7 @@ enum RuntimeEnv {
 }
 
 enum Prefs {
-    static let apiBase = "https://api.denncoffee.uk"
+    static let apiBase = "https://api.denncoffee.com"
     // ĐÃ THỬ 1 domain gốc "denncoffee.uk" riêng (không "api.") cho link SMS 2026-08-22 nhưng
     // ROLLBACK NGAY TRONG NGÀY — dùng chung cert (SAN) + chung IP với api.denncoffee.uk khiến app
     // treo, không tải được dữ liệu ở MỌI tab (nghi HTTP/2 connection coalescing giữa 2 host cùng
