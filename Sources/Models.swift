@@ -456,6 +456,8 @@ struct VoucherDto: Codable, Identifiable {
     // true = khoảng ngày lặp lại hằng năm, chỉ ngày/tháng có nghĩa (năm trong ngayBatDau/ngayKetThuc
     // bị bỏ qua bên Backend).
     var lapLaiHangNam: Bool = false
+    /// Số thứ tự staff tự nhập để xếp voucher ở tab Ưu đãi app khách (nhỏ trước), nil = chưa đặt.
+    var thuTu: Int?
     // 2 field Backend TÍNH SẴN (VoucherService.GiaiThichDieuKienChoStaff/CanhBaoSoLanChoStaff) — CHỈ
     // HIỂN THỊ Ở ĐÂY, đừng tự switch theo dieuKien để suy diễn lại (bài học 2026-09-28: bản cũ từng tự
     // hardcode các mô tả này trong VoucherListView, lệch khỏi logic thật ở Backend mà không ai phát
@@ -487,6 +489,7 @@ struct VoucherRequest: Encodable {
     let ngayKetThuc: String?
     let soNgayHienTruoc: Int?
     let lapLaiHangNam: Bool
+    let thuTu: Int?
 }
 
 // ---- Cấu hình ngưỡng/số tiền gamification (app khách AppDatHangIOS) ----

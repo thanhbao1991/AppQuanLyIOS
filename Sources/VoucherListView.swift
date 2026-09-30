@@ -73,7 +73,8 @@ struct VoucherListView: View {
             mucDich: item.mucDich,
             hangToiThieu: item.hangToiThieu, dangHoatDong: !item.dangHoatDong,
             ngayBatDau: item.ngayBatDau, ngayKetThuc: item.ngayKetThuc,
-            soNgayHienTruoc: item.soNgayHienTruoc, lapLaiHangNam: item.lapLaiHangNam))
+            soNgayHienTruoc: item.soNgayHienTruoc, lapLaiHangNam: item.lapLaiHangNam,
+            thuTu: item.thuTu))
         await load()
     }
 
@@ -220,6 +221,7 @@ private struct VoucherEditSheet: View {
     /// sửa tay ngày dương mỗi năm.
     @State private var lapLaiHangNam: Bool
     @State private var soNgayHienTruoc: Int
+    @State private var thuTuText: String
     @State private var saving = false
     @State private var errorMessage: String?
 
@@ -290,6 +292,7 @@ private struct VoucherEditSheet: View {
         _ngayKetThuc = State(initialValue: ketThucParsed ?? Date())
         _lapLaiHangNam = State(initialValue: existing?.lapLaiHangNam ?? false)
         _soNgayHienTruoc = State(initialValue: existing?.soNgayHienTruoc ?? 3)
+        _thuTuText = State(initialValue: existing?.thuTu.map(String.init) ?? "")
     }
 
     var body: some View {
@@ -429,6 +432,20 @@ private struct VoucherEditSheet: View {
                     }
                 }
                 Section {
+                    HStack {
+                        Text("Số thứ tự")
+                        Spacer()
+                        TextField("Để trống", text: $thuTuText)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.trailing)
+                            .onChange(of: thuTuText) { thuTuText = String($0.filter(\.isNumber).prefix(4)) }
+                    }
+                } header: {
+                    Text("Thứ tự hiển thị ở tab Ưu đãi")
+                } footer: {
+                    Text("Số nhỏ hiện trước (1 đứng đầu). Để trống = xếp sau các voucher đã đánh số, voucher mới tạo lên trước.")
+                }
+                Section {
                     Toggle("Đang hoạt động (hiện cho khách)", isOn: $dangHoatDong)
                 }
                 if let errorMessage {
@@ -526,7 +543,8 @@ private struct VoucherEditSheet: View {
             ngayBatDau: coNgayHieuLuc ? DateNavFormat.queryDate.string(from: ngayBatDau) : nil,
             ngayKetThuc: coNgayHieuLuc ? DateNavFormat.queryDate.string(from: ngayKetThuc) : nil,
             soNgayHienTruoc: coNgayHieuLuc ? soNgayHienTruoc : nil,
-            lapLaiHangNam: coNgayHieuLuc && lapLaiHangNam)
+            lapLaiHangNam: coNgayHieuLuc && lapLaiHangNam,
+            thuTu: Int(thuTuText))
         let result: ActionResult
         if let existing {
             result = await APIClient.shared.updateVoucher(id: existing.id, req)
