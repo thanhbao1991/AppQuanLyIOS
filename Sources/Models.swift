@@ -662,11 +662,14 @@ struct KhachHangAddressDto: Codable, Identifiable, Hashable {
 /// tiếp từ phones[0]/addresses[0] (server đã OrderByDescending IsDefault/LastModified sẵn).
 extension KhachHangDto {
     /// Địa chỉ mặc định cho hoá đơn MỚI: cũ nhất theo ngayTao (nil = tạo trước khi có cột → cũ nhất).
-    /// Hoà thì giữ thứ tự server. Khớp Desktop (RenderKhachChips).
+    /// Hoà thì so id theo thứ tự SQL Server (nhóm cuối trước) — SequentialGuid mang mốc thời gian tạo.
+    /// Khớp Desktop (RenderKhachChips).
     var diaChiCuNhat: String? {
-        addresses.enumerated()
-            .min { ($0.element.ngayTao ?? "", $0.offset) < ($1.element.ngayTao ?? "", $1.offset) }?
-            .element.diaChi
+        func sqlKey(_ id: String) -> String { id.lowercased().split(separator: "-").reversed().joined() }
+        return addresses.min {
+            let a = ($0.ngayTao ?? "", sqlKey($0.id)), b = ($1.ngayTao ?? "", sqlKey($1.id))
+            return a < b
+        }?.diaChi
     }
 }
 
