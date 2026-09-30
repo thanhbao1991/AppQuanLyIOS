@@ -299,6 +299,30 @@ struct NguyenLieuBanHangDto: Decodable, Identifiable {
     let donViTinh: String?
 }
 
+// ---- Công thức / Định lượng (quản trị — CongThucListView, thay CongThucWindow bên Desktop) ----
+// Mỗi biến thể sản phẩm chỉ có đúng 1 công thức (IsDefault luôn true, khớp Desktop) — công thức
+// gồm nhiều dòng SuDungNguyenLieuDto (nguyên liệu bán hàng + số lượng), dùng để trừ tồn kho khi
+// bán. Backend GetAll không join sẵn tên sản phẩm/nguyên liệu — client tự ghép như Desktop.
+
+struct CongThucDto: Codable, Identifiable {
+    var id: String = "00000000-0000-0000-0000-000000000000"
+    var ten: String = ""
+    var sanPhamBienTheId: String
+    var loai: String?
+    var isDefault: Bool = true
+    var tenSanPham: String?
+    var tenBienThe: String?
+}
+
+struct SuDungNguyenLieuDto: Codable, Identifiable {
+    var id: String = "00000000-0000-0000-0000-000000000000"
+    var congThucId: String
+    var nguyenLieuId: String
+    var soLuong: Double
+    var tenNguyenLieu: String?
+    var donViTinh: String?
+}
+
 /// Nguyên liệu NHẬP (mục để chi, vd "Shoppee A ty") — /api/NguyenLieu, khác hẳn NguyenLieuBanHangDto
 /// (nguyên liệu công thức bán hàng). Khớp TraSuaApp.Desktop/Controls/ChiTieuInputPanel dùng NguyenLieuDto.
 struct NguyenLieuDto: Decodable, Identifiable {

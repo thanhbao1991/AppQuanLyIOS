@@ -338,6 +338,56 @@ actor APIClient {
         return env.data ?? []
     }
 
+    // ---- Công thức / Định lượng (quản trị — CongThucListView, thay CongThucWindow bên Desktop) ----
+
+    func getCongThucList() async -> [CongThucDto] {
+        let req = makeRequest("/api/CongThuc")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[CongThucDto]>.self, from: data), env.isSuccess else { return [] }
+        return env.data ?? []
+    }
+
+    func createCongThuc(_ body: CongThucDto) async -> CreateActionResult {
+        let req = makeRequest("/api/CongThuc", method: "POST", body: jsonBody(body))
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<IdOnlyDto>.self, from: data) else {
+            return CreateActionResult(success: false, message: "Không có phản hồi từ server.", id: nil)
+        }
+        return CreateActionResult(success: env.isSuccess, message: env.message, id: env.data?.id)
+    }
+
+    func updateCongThuc(id: String, _ body: CongThucDto) async -> ActionResult {
+        let req = makeRequest("/api/CongThuc/\(id)", method: "PUT", body: jsonBody(body))
+        return await executeAction(req)
+    }
+
+    func deleteCongThuc(id: String) async -> ActionResult {
+        let req = makeRequest("/api/CongThuc/\(id)", method: "DELETE")
+        return await executeAction(req)
+    }
+
+    func getSuDungNguyenLieuList() async -> [SuDungNguyenLieuDto] {
+        let req = makeRequest("/api/SuDungNguyenLieu")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[SuDungNguyenLieuDto]>.self, from: data), env.isSuccess else { return [] }
+        return env.data ?? []
+    }
+
+    func createSuDungNguyenLieu(_ body: SuDungNguyenLieuDto) async -> ActionResult {
+        let req = makeRequest("/api/SuDungNguyenLieu", method: "POST", body: jsonBody(body))
+        return await executeAction(req)
+    }
+
+    func updateSuDungNguyenLieu(id: String, _ body: SuDungNguyenLieuDto) async -> ActionResult {
+        let req = makeRequest("/api/SuDungNguyenLieu/\(id)", method: "PUT", body: jsonBody(body))
+        return await executeAction(req)
+    }
+
+    func deleteSuDungNguyenLieu(id: String) async -> ActionResult {
+        let req = makeRequest("/api/SuDungNguyenLieu/\(id)", method: "DELETE")
+        return await executeAction(req)
+    }
+
     /// Nguyên liệu NHẬP dùng cho form Thêm chi tiêu — khớp desktop ChiTieuInputPanel (GET /api/NguyenLieu).
     func getNguyenLieu() async -> [NguyenLieuDto] {
         let req = makeRequest("/api/NguyenLieu")

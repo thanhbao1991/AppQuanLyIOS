@@ -173,6 +173,11 @@ private struct MoreMenuView: View {
                         EmojiLabel("Topping", "🧁")
                     }
                     NavigationLink {
+                        CongThucListView()
+                    } label: {
+                        EmojiLabel("Công thức", "📋")
+                    }
+                    NavigationLink {
                         TenDuongListView()
                     } label: {
                         EmojiLabel("Tên đường", "🛣️")
@@ -280,8 +285,8 @@ private struct MoreMenuView: View {
                     Text("Đồng bộ danh bạ: đưa tên khách hàng vào Danh bạ iPhone theo số điện thoại, để hiện tên khi khách gọi đến.\nPhiên bản \(appVersionString)")
                 }
             }
-            // Menu giờ là panel trượt từ cạnh phải (không phải tab riêng) — bỏ hẳn thanh tiêu đề
-            // "Menu" phía trên, không cần vùng top màu như các tab nữa (2026-09-28, theo yêu cầu).
+            // Bỏ hẳn thanh tiêu đề "Menu" phía trên (không cần vùng top màu như các tab khác) —
+            // tabBar bên dưới đã tự có nhãn "Menu" rồi (2026-09-28, theo yêu cầu).
             .navigationBarHidden(true)
             .tint(.brandPrimary)
             .alert("Đồng bộ danh bạ", isPresented: Binding(get: { syncResultMessage != nil }, set: { if !$0 { syncResultMessage = nil } })) {
