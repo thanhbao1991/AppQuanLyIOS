@@ -1268,14 +1268,14 @@ struct ProductPickerPanel: View {
                         Button {
                             if soLuong > 1 { soLuong -= 1 }
                         } label: {
-                            Text("➖").font(.system(size: 22))
+                            Image(systemName: "minus.circle.fill").font(.system(size: 20))
                         }
                         .disabled(soLuong <= 1)
                         Text("\(soLuong)").font(.subheadline.bold()).frame(minWidth: 16)
                         Button {
                             if soLuong < 50 { soLuong += 1 }
                         } label: {
-                            Text("➕").font(.system(size: 22))
+                            Image(systemName: "plus.circle.fill").font(.system(size: 20))
                         }
                         .disabled(soLuong >= 50)
                     }
@@ -1287,7 +1287,7 @@ struct ProductPickerPanel: View {
                         Button {
                             donGia = max(0, donGia - 5000)
                         } label: {
-                            Text("➖").font(.system(size: 22))
+                            Image(systemName: "minus.circle.fill").font(.system(size: 20))
                         }
                         .disabled(donGia <= 0)
                         // Hiện theo NGHÌN (vd "25" thay vì "25.000") cho gọn, đủ chỗ hiện hết số
@@ -1299,7 +1299,7 @@ struct ProductPickerPanel: View {
                         Button {
                             donGia += 5000
                         } label: {
-                            Text("➕").font(.system(size: 22))
+                            Image(systemName: "plus.circle.fill").font(.system(size: 20))
                         }
                     }
                     .buttonStyle(.plain)

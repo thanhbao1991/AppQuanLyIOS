@@ -192,7 +192,7 @@ struct HoaDonListView: View {
                 Divider()
                 HStack(spacing: 12) {
                     Button { showAddSheet = true } label: {
-                        Text("➕").font(.system(size: 30))
+                        Image(systemName: "plus").font(.system(size: 26, weight: .semibold))
                     }
                     .foregroundColor(.brandPrimary)
 

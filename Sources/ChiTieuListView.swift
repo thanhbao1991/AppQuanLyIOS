@@ -64,7 +64,7 @@ struct ChiTieuListView: View {
                 Divider()
                 HStack(spacing: 12) {
                     Button { showAdd = true } label: {
-                        Text("➕").font(.system(size: 30))
+                        Image(systemName: "plus").font(.system(size: 26, weight: .semibold))
                     }
                     .foregroundColor(.brandPrimary)
 
@@ -365,14 +365,14 @@ private struct QuantityPriceRow: View {
                     Button {
                         if soLuong > 1 { soLuong -= 1 }
                     } label: {
-                        Text("➖").font(.system(size: 22))
+                        Image(systemName: "minus.circle.fill").font(.system(size: 20))
                     }
                     .disabled(soLuong <= 1)
                     Text(soLuong.formatted()).font(.subheadline.bold()).frame(minWidth: 16)
                     Button {
                         soLuong += 1
                     } label: {
-                        Text("➕").font(.system(size: 22))
+                        Image(systemName: "plus.circle.fill").font(.system(size: 20))
                     }
                 }
                 .buttonStyle(.plain)
