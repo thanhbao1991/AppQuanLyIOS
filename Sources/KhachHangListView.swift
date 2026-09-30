@@ -209,6 +209,49 @@ private struct KhachHangRowView: View {
 private struct EditContactRow: Identifiable {
     let id: String
     var value: String
+    var isDefault: Bool = false
+}
+
+/// Ép dòng đầu làm mặc định nếu chưa dòng nào được chọn (server chưa đánh dấu, hoặc vừa xoá dòng
+/// đang là mặc định) — thay quy tắc ngầm cũ "dòng đầu luôn là mặc định".
+private func ensureSingleDefaultRow(_ rows: inout [EditContactRow]) {
+    guard !rows.isEmpty, !rows.contains(where: { $0.isDefault }) else { return }
+    rows[0].isDefault = true
+}
+
+/// Nút ⭐ đầu mỗi dòng SĐT/địa chỉ để chọn tay dòng nào là mặc định.
+private struct ContactRowEditor: View {
+    @Binding var rows: [EditContactRow]
+    let placeholder: String
+    let keyboard: UIKeyboardType
+    let allowEmpty: Bool
+
+    var body: some View {
+        ForEach($rows) { $row in
+            HStack {
+                Button {
+                    for j in rows.indices { rows[j].isDefault = (rows[j].id == row.id) }
+                } label: {
+                    Image(systemName: row.isDefault ? "star.fill" : "star")
+                        .foregroundColor(row.isDefault ? .brandPrimary : .textMuted)
+                }
+                .buttonStyle(.plain)
+
+                TextField(placeholder, text: $row.value)
+                    .keyboardType(keyboard)
+
+                if allowEmpty || rows.count > 1 {
+                    Button {
+                        let wasDefault = row.isDefault
+                        rows.removeAll { $0.id == row.id }
+                        if wasDefault, !rows.isEmpty { rows[0].isDefault = true }
+                    } label: {
+                        Image(systemName: "trash").foregroundColor(.dangerColor)
+                    }
+                }
+            }
+        }
+    }
 }
 
 private struct KhachHangEditSheet: View {
@@ -226,8 +269,12 @@ private struct KhachHangEditSheet: View {
         self.existing = existing
         self.onSaved = onSaved
         _ten = State(initialValue: existing?.ten ?? "")
-        _phoneRows = State(initialValue: existing?.phones.map { EditContactRow(id: $0.id, value: $0.soDienThoai) } ?? [EditContactRow(id: UUID().uuidString, value: "")])
-        _addressRows = State(initialValue: existing?.addresses.map { EditContactRow(id: $0.id, value: $0.diaChi) } ?? [])
+        var phones = existing?.phones.map { EditContactRow(id: $0.id, value: $0.soDienThoai, isDefault: $0.isDefault) } ?? [EditContactRow(id: UUID().uuidString, value: "", isDefault: true)]
+        var addresses = existing?.addresses.map { EditContactRow(id: $0.id, value: $0.diaChi, isDefault: $0.isDefault) } ?? []
+        ensureSingleDefaultRow(&phones)
+        ensureSingleDefaultRow(&addresses)
+        _phoneRows = State(initialValue: phones)
+        _addressRows = State(initialValue: addresses)
     }
 
     var body: some View {
@@ -238,35 +285,18 @@ private struct KhachHangEditSheet: View {
                 }
 
                 Section("Số điện thoại") {
-                    ForEach($phoneRows) { $row in
-                        HStack {
-                            TextField("Số điện thoại", text: $row.value)
-                                .keyboardType(.phonePad)
-                            if phoneRows.count > 1 {
-                                Button { phoneRows.removeAll { $0.id == row.id } } label: {
-                                    Image(systemName: "trash").foregroundColor(.dangerColor)
-                                }
-                            }
-                        }
-                    }
+                    ContactRowEditor(rows: $phoneRows, placeholder: "Số điện thoại", keyboard: .phonePad, allowEmpty: false)
                     Button {
-                        phoneRows.append(EditContactRow(id: UUID().uuidString, value: ""))
+                        phoneRows.append(EditContactRow(id: UUID().uuidString, value: "", isDefault: phoneRows.isEmpty))
                     } label: {
                         EmojiLabel("Thêm SĐT", "➕")
                     }
                 }
 
                 Section("Địa chỉ") {
-                    ForEach($addressRows) { $row in
-                        HStack {
-                            TextField("Địa chỉ", text: $row.value)
-                            Button { addressRows.removeAll { $0.id == row.id } } label: {
-                                Image(systemName: "trash").foregroundColor(.dangerColor)
-                            }
-                        }
-                    }
+                    ContactRowEditor(rows: $addressRows, placeholder: "Địa chỉ", keyboard: .default, allowEmpty: true)
                     Button {
-                        addressRows.append(EditContactRow(id: UUID().uuidString, value: ""))
+                        addressRows.append(EditContactRow(id: UUID().uuidString, value: "", isDefault: addressRows.isEmpty))
                     } label: {
                         EmojiLabel("Thêm địa chỉ", "➕")
                     }
@@ -312,16 +342,12 @@ private struct KhachHangEditSheet: View {
         errorMessage = nil
 
         let tenMoi = ten.trimmingCharacters(in: .whitespaces)
-        let phones = phoneRows.enumerated().compactMap { i, row -> KhachHangPhoneDto? in
-            let v = row.value.trimmingCharacters(in: .whitespaces)
-            guard !v.isEmpty else { return nil }
-            return KhachHangPhoneDto(id: row.id, soDienThoai: v, isDefault: i == 0)
-        }
-        let addresses = addressRows.enumerated().compactMap { i, row -> KhachHangAddressDto? in
-            let v = row.value.trimmingCharacters(in: .whitespaces)
-            guard !v.isEmpty else { return nil }
-            return KhachHangAddressDto(id: row.id, diaChi: v, isDefault: i == 0)
-        }
+        var keptPhones = phoneRows.filter { !$0.value.trimmingCharacters(in: .whitespaces).isEmpty }
+        var keptAddresses = addressRows.filter { !$0.value.trimmingCharacters(in: .whitespaces).isEmpty }
+        ensureSingleDefaultRow(&keptPhones)
+        ensureSingleDefaultRow(&keptAddresses)
+        let phones = keptPhones.map { KhachHangPhoneDto(id: $0.id, soDienThoai: $0.value.trimmingCharacters(in: .whitespaces), isDefault: $0.isDefault) }
+        let addresses = keptAddresses.map { KhachHangAddressDto(id: $0.id, diaChi: $0.value.trimmingCharacters(in: .whitespaces), isDefault: $0.isDefault) }
 
         if let existing {
             // duocNhanVoucher KHÔNG có UI chỉnh ở đây — giữ nguyên giá trị hiện tại, khớp Desktop

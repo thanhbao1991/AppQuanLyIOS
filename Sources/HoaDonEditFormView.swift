@@ -103,6 +103,7 @@ struct HoaDonEditFormView: View {
     private struct EditContactRow: Identifiable {
         var id: String
         var value: String
+        var isDefault: Bool = false
     }
 
     private let banSlots = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "13", "Sân 1", "Sân 2"]
@@ -298,7 +299,7 @@ struct HoaDonEditFormView: View {
             fieldLabel("Số điện thoại", icon: "phone")
             contactRowsEditor($editPhoneRows, placeholder: "Số điện thoại", keyboard: .phonePad)
             Button {
-                editPhoneRows.append(EditContactRow(id: UUID().uuidString, value: ""))
+                editPhoneRows.append(EditContactRow(id: UUID().uuidString, value: "", isDefault: editPhoneRows.isEmpty))
             } label: {
                 EmojiLabel("Thêm SĐT", "➕")
             }.font(.caption)
@@ -306,7 +307,7 @@ struct HoaDonEditFormView: View {
             fieldLabel("Địa chỉ", icon: "location")
             contactRowsEditor($editAddressRows, placeholder: "Địa chỉ", keyboard: .default, useTenDuongSuggest: true)
             Button {
-                editAddressRows.append(EditContactRow(id: UUID().uuidString, value: ""))
+                editAddressRows.append(EditContactRow(id: UUID().uuidString, value: "", isDefault: editAddressRows.isEmpty))
             } label: {
                 EmojiLabel("Thêm địa chỉ", "➕")
             }.font(.caption)
@@ -330,10 +331,21 @@ struct HoaDonEditFormView: View {
         }
     }
 
+    /// Nút ⭐ đầu mỗi dòng chọn tay dòng nào là mặc định (khớp Desktop EditKhachPanel) — thay quy
+    /// tắc ngầm cũ "dòng đầu luôn là mặc định" mà không có chỗ nào cho user thay đổi.
     private func contactRowsEditor(_ rows: Binding<[EditContactRow]>, placeholder: String, keyboard: UIKeyboardType, useTenDuongSuggest: Bool = false) -> some View {
         VStack(spacing: 6) {
             ForEach(rows.wrappedValue.indices, id: \.self) { i in
                 HStack(alignment: .top) {
+                    Button {
+                        for j in rows.wrappedValue.indices { rows.wrappedValue[j].isDefault = (j == i) }
+                    } label: {
+                        Image(systemName: rows.wrappedValue[i].isDefault ? "star.fill" : "star")
+                            .foregroundColor(rows.wrappedValue[i].isDefault ? .brandPrimary : .textMuted)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 8)
+
                     if useTenDuongSuggest {
                         TenDuongTextField(text: rows[i].value, placeholder: placeholder, keyboard: keyboard)
                     } else {
@@ -341,7 +353,13 @@ struct HoaDonEditFormView: View {
                             .textFieldStyle(.roundedBorder)
                             .keyboardType(keyboard)
                     }
-                    Button { rows.wrappedValue.remove(at: i) } label: {
+                    Button {
+                        let wasDefault = rows.wrappedValue[i].isDefault
+                        rows.wrappedValue.remove(at: i)
+                        if wasDefault, !rows.wrappedValue.isEmpty {
+                            rows.wrappedValue[0].isDefault = true
+                        }
+                    } label: {
                         Text("🗑️").foregroundColor(.dangerColor)
                     }
                 }
@@ -757,10 +775,29 @@ struct HoaDonEditFormView: View {
         guard let kh = selectedKhach else { return }
         editTen = kh.ten
         editVoucher = kh.duocNhanVoucher
-        editPhoneRows = kh.phones.map { EditContactRow(id: $0.id, value: $0.soDienThoai) }
-        editAddressRows = kh.addresses.map { EditContactRow(id: $0.id, value: $0.diaChi) }
+        editPhoneRows = kh.phones.map { EditContactRow(id: $0.id, value: $0.soDienThoai, isDefault: $0.isDefault) }
+        editAddressRows = kh.addresses.map { EditContactRow(id: $0.id, value: $0.diaChi, isDefault: $0.isDefault) }
+        ensureSingleDefault(&editPhoneRows)
+        ensureSingleDefault(&editAddressRows)
         editError = nil
         showEditKhachHang = true
+    }
+
+    /// Đảm bảo luôn có đúng 1 dòng mặc định (dòng đầu nếu server chưa đánh dấu, hoặc sau khi xoá
+    /// dòng đang là mặc định) — thay quy tắc cũ "dòng đầu luôn là mặc định" bằng chọn tay qua nút sao.
+    private func ensureSingleDefault(_ rows: inout [EditContactRow]) {
+        guard !rows.isEmpty, !rows.contains(where: { $0.isDefault }) else { return }
+        rows[0].isDefault = true
+    }
+
+    /// Lọc dòng trống rồi build DTO, ép dòng đầu còn lại làm mặc định nếu chưa dòng nào được chọn
+    /// (phòng hờ — UI luôn giữ đúng 1 dòng mặc định, đây chỉ là an toàn khi lưu).
+    private func buildContactDtos<T>(_ rows: [EditContactRow], _ makeDto: (EditContactRow) -> T) -> [T] {
+        var kept = rows.filter { !$0.value.trimmingCharacters(in: .whitespaces).isEmpty }
+        if !kept.isEmpty, !kept.contains(where: { $0.isDefault }) {
+            kept[0].isDefault = true
+        }
+        return kept.map(makeDto)
     }
 
     private func saveEditKhach() async {
@@ -771,16 +808,8 @@ struct HoaDonEditFormView: View {
         editSaving = true
         editError = nil
 
-        let phones = editPhoneRows.enumerated().compactMap { i, row -> KhachHangPhoneDto? in
-            let v = row.value.trimmingCharacters(in: .whitespaces)
-            guard !v.isEmpty else { return nil }
-            return KhachHangPhoneDto(id: row.id, soDienThoai: v, isDefault: i == 0)
-        }
-        let addresses = editAddressRows.enumerated().compactMap { i, row -> KhachHangAddressDto? in
-            let v = row.value.trimmingCharacters(in: .whitespaces)
-            guard !v.isEmpty else { return nil }
-            return KhachHangAddressDto(id: row.id, diaChi: v, isDefault: i == 0)
-        }
+        let phones = buildContactDtos(editPhoneRows) { KhachHangPhoneDto(id: $0.id, soDienThoai: $0.value.trimmingCharacters(in: .whitespaces), isDefault: $0.isDefault) }
+        let addresses = buildContactDtos(editAddressRows) { KhachHangAddressDto(id: $0.id, diaChi: $0.value.trimmingCharacters(in: .whitespaces), isDefault: $0.isDefault) }
 
         let previousPhoneId = kh.phones.first(where: { $0.soDienThoai == sdt })?.id
         let previousAddrId  = kh.addresses.first(where: { $0.diaChi == diaChi })?.id
