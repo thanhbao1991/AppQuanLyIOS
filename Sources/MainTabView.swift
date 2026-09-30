@@ -13,14 +13,15 @@ import UIKit
 enum MainTab: CaseIterable {
     case thongKe, hoaDon, thanhToan, congNo, chiTieu, congViec, menu
 
+    /// Rút ngắn còn 1 từ mỗi tab (2026-09-30) — 7 tab chen thanh tab tự vẽ, tên dài 2 từ bị chật/xuống dòng.
     var label: String {
         switch self {
-        case .thongKe: "Thống kê"
-        case .hoaDon: "Hoá đơn"
-        case .thanhToan: "Thanh toán"
-        case .congNo: "Công nợ"
-        case .chiTieu: "Chi tiêu"
-        case .congViec: "Công việc"
+        case .thongKe: "Kê"
+        case .hoaDon: "Đơn"
+        case .thanhToan: "Tiền"
+        case .congNo: "Nợ"
+        case .chiTieu: "Chi"
+        case .congViec: "Việc"
         case .menu: "Menu"
         }
     }
