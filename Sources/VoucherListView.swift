@@ -2,6 +2,19 @@ import SwiftUI
 
 /// Quản trị voucher app khách (AppDatHangIOS) — GET/POST/PUT/DELETE /api/Voucher. Áp dụng thật (kiểm
 /// tra điều kiện, trừ giá trị đơn) nằm bên Backend (DatHangService), màn này chỉ tạo/sửa/bật-tắt.
+/// Khớp VoucherMucDich bên Backend. Thứ tự = thứ tự nhóm hiển thị.
+enum VoucherPhanLoai {
+    static let tatCa: [(String, String)] = [
+        ("ChaoMung", "Chào mừng"),
+        ("TinhNang", "Tính năng"),
+        ("GiamTheoDon", "Giảm theo đơn"),
+        ("KhungGio", "Khung giờ"),
+        ("MonMoi", "Món mới"),
+        ("SinhNhat", "Sinh nhật"),
+        ("LeTet", "Lễ tết"),
+    ]
+}
+
 struct VoucherListView: View {
     @State private var items: [VoucherDto] = []
     @State private var hasLoaded = false
@@ -20,16 +33,24 @@ struct VoucherListView: View {
                             .frame(maxWidth: .infinity)
                             .listRowSeparator(.hidden)
                     } else {
-                        ForEach(items) { item in
-                            VoucherRowView(item: item) {
-                                Task { await toggle(item) }
-                            } onEdit: {
-                                editing = item
-                            } onDelete: {
-                                Task { await delete(item) }
+                        ForEach(nhomVoucher, id: \.key) { nhom in
+                            Section {
+                                ForEach(nhom.items) { item in
+                                    VoucherRowView(item: item) {
+                                        Task { await toggle(item) }
+                                    } onEdit: {
+                                        editing = item
+                                    } onDelete: {
+                                        Task { await delete(item) }
+                                    }
+                                    .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+                                    .listRowSeparator(.hidden)
+                                }
+                            } header: {
+                                Text("\(nhom.nhan) (\(nhom.items.count))")
+                                    .font(.subheadline).fontWeight(.bold)
+                                    .foregroundColor(.brandPrimary)
                             }
-                            .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
-                            .listRowSeparator(.hidden)
                         }
                     }
                 }
@@ -54,6 +75,20 @@ struct VoucherListView: View {
         .sheet(item: $editing) { item in
             VoucherEditSheet(existing: item) { await load() }
         }
+    }
+
+    /// Nhóm theo phân loại (VoucherPhanLoai.tatCa thứ tự cố định), voucher chưa gắn nhãn xuống cuối.
+    /// Trong mỗi nhóm giữ nguyên thứ tự server trả (số thứ tự → ngày tạo).
+    private var nhomVoucher: [(key: String, nhan: String, items: [VoucherDto])] {
+        var kq: [(key: String, nhan: String, items: [VoucherDto])] = []
+        for (value, nhan) in VoucherPhanLoai.tatCa {
+            let ds = items.filter { ($0.mucDich ?? "") == value }
+            if !ds.isEmpty { kq.append((value, nhan, ds)) }
+        }
+        let biet = Set(VoucherPhanLoai.tatCa.map(\.0))
+        let khac = items.filter { !biet.contains($0.mucDich ?? "") }
+        if !khac.isEmpty { kq.append(("", "Chưa phân loại", khac)) }
+        return kq
     }
 
     private func load() async {
@@ -97,12 +132,8 @@ private struct VoucherRowView: View {
                     Text(item.ten)
                         .font(.subheadline).fontWeight(.semibold)
                         .foregroundColor(.primary)
-                    if item.mucDich == "TangDoanhThu" {
-                        Text("📈").font(.caption)
-                    } else if item.mucDich == "GiuChan" {
-                        Text("🛡️").font(.caption)
-                    } else if item.mucDich == "TinhNang" {
-                        Text("🧩").font(.caption)
+                    if let stt = item.thuTu {
+                        Text("#\(stt)").font(.caption2).fontWeight(.semibold).foregroundColor(.textMuted)
                     }
                     Spacer()
                     Text(item.dangHoatDong ? "Đang hoạt động" : "Đã tắt")
@@ -256,13 +287,7 @@ private struct VoucherEditSheet: View {
         ("Vàng", "Vàng trở lên"),
         ("Kim Cương", "Chỉ Kim Cương"),
     ]
-    // "" = chưa gắn nhãn. Khớp VoucherMucDich bên Backend.
-    private let mucDichOptions = [
-        ("", "Chưa gắn nhãn"),
-        ("TangDoanhThu", "📈 Tăng doanh thu"),
-        ("GiuChan", "🛡️ Giữ chân"),
-        ("TinhNang", "🧩 Tính năng"),
-    ]
+    private let mucDichOptions = [("", "Chưa phân loại")] + VoucherPhanLoai.tatCa
 
     init(existing: VoucherDto?, onSaved: @escaping () async -> Void) {
         self.existing = existing
@@ -409,8 +434,8 @@ private struct VoucherEditSheet: View {
                         }
                     }
                 }
-                Section("Mục đích (chỉ để phân loại, không ảnh hưởng cách áp dụng)") {
-                    Picker("Mục đích", selection: $mucDich) {
+                Section("Phân loại (chỉ để nhóm trong danh sách, không ảnh hưởng cách áp dụng)") {
+                    Picker("Phân loại", selection: $mucDich) {
                         ForEach(mucDichOptions, id: \.0) { value, label in
                             Text(label).tag(value)
                         }
