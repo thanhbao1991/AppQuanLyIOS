@@ -106,7 +106,12 @@ struct HoaDonCreateFormView: View {
     private var giaRiengMap: [String: Double] {
         guard let kh = selectedKhach else { return [:] }
         var map: [String: Double] = [:]
-        for g in giaRiengList where g.khachHangId == kh.id { map[g.sanPhamBienTheId] = g.giaBan }
+        // 1 khách + 1 món chỉ có 1 giá riêng (lưu ở Size Chuẩn) → áp cho MỌI size của món đó.
+        var sanPhamCuaBienThe: [String: [String]] = [:]
+        for sp in sanPhamList { for bt in sp.bienThe { sanPhamCuaBienThe[bt.id] = sp.bienThe.map(\.id) } }
+        for g in giaRiengList where g.khachHangId == kh.id {
+            for id in sanPhamCuaBienThe[g.sanPhamBienTheId] ?? [g.sanPhamBienTheId] { map[id] = g.giaBan }
+        }
         return map
     }
 
@@ -1204,7 +1209,9 @@ struct ProductPickerPanel: View {
     }
 
     private func configSection(_ sp: SanPhamDto, _ bt: SanPhamBienTheDto) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
+        // Size L/XL không cho sửa giá tay — chỉ Size Chuẩn mới sửa được.
+        let khoaSuaGia = ["Size L", "Size XL"].contains(bt.tenBienThe)
+        return VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text(sp.ten).font(.headline)
                 Spacer()
@@ -1289,18 +1296,20 @@ struct ProductPickerPanel: View {
                         } label: {
                             Image(systemName: "minus.circle.fill").font(.system(size: 20))
                         }
-                        .disabled(donGia <= 0)
+                        .disabled(donGia <= 0 || khoaSuaGia)
                         // Hiện theo NGHÌN (vd "25" thay vì "25.000") cho gọn, đủ chỗ hiện hết số
                         // không bị cắt "25.0..." như field rộng cũ — donGia thật vẫn full VNĐ.
                         TextField("0", value: donGiaNghinBinding, format: .number)
                             .keyboardType(.numberPad)
                             .multilineTextAlignment(.trailing)
                             .textFieldStyle(.roundedBorder)
+                            .disabled(khoaSuaGia)
                         Button {
                             donGia += 5000
                         } label: {
                             Image(systemName: "plus.circle.fill").font(.system(size: 20))
                         }
+                        .disabled(khoaSuaGia)
                     }
                     .buttonStyle(.plain)
                     .foregroundColor(.brandPrimary)
