@@ -1155,7 +1155,7 @@ struct ProductPickerPanel: View {
                         Button {
                             selectProduct(sp, variant: sizeL)
                         } label: {
-                            Text("Size L \(HoaDonFormatting.moneyShort(sizeL.giaBan).uppercased())")
+                            Text("L \(HoaDonFormatting.moneyShort(sizeL.giaBan).uppercased())")
                                 .font(.caption.bold())
                                 .foregroundColor(.brandPrimary)
                         }
@@ -1166,7 +1166,7 @@ struct ProductPickerPanel: View {
                         Button {
                             selectProduct(sp, variant: sizeXL)
                         } label: {
-                            Text("Size XL \(HoaDonFormatting.moneyShort(sizeXL.giaBan).uppercased())")
+                            Text("XL \(HoaDonFormatting.moneyShort(sizeXL.giaBan).uppercased())")
                                 .font(.caption.bold())
                                 .foregroundColor(.brandPrimary)
                         }
