@@ -256,7 +256,7 @@ private struct ReceiptReviewSheet: View {
             Button {
                 line.wrappedValue.included.toggle()
             } label: {
-                Text(line.wrappedValue.included ? "✅" : "⚪")
+                Image(systemName: line.wrappedValue.included ? "checkmark.circle.fill" : "circle")
                     .foregroundColor(line.wrappedValue.included ? .brandPrimary : .textMuted)
             }
         }

@@ -174,7 +174,7 @@ struct HoaDonDetailView: View {
 
                 DetailCard {
                     HStack(alignment: .top, spacing: 10) {
-                        Text("👤")
+                        Image(systemName: "person.circle.fill")
                             .font(.title2)
                             .foregroundColor(.brandPrimary)
                         VStack(alignment: .leading, spacing: 4) {
