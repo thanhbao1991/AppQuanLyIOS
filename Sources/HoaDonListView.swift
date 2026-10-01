@@ -197,7 +197,7 @@ struct HoaDonListView: View {
                     .foregroundColor(.brandPrimary)
 
                     Button { showDesktopSheet = true } label: {
-                        Text("🖥️").font(.system(size: 26))
+                        Image(systemName: "desktopcomputer").font(.system(size: 26, weight: .semibold))
                     }
                     .foregroundColor(.brandPrimary)
 

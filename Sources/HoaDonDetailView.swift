@@ -192,7 +192,7 @@ struct HoaDonDetailView: View {
                         }
                     }
                     if let gc = d.ghiChu, !gc.isEmpty { iconRow("📝", gc) }
-                    if let tk = d.tenTaiKhoan, !tk.isEmpty { iconRow("➕👤", "Tạo bởi: \(tk)") }
+                    if let tk = d.tenTaiKhoan, !tk.isEmpty { iconRow("👤", "Tạo bởi: \(tk)") }
                 }
 
                 if let chiTiet = d.chiTietHoaDons, !chiTiet.isEmpty {

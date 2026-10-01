@@ -158,7 +158,7 @@ private struct CongViecRowView: View {
             onToggle(!item.daHoanThanh)
         } label: {
             HStack(spacing: 10) {
-                Text(item.daHoanThanh ? "✅" : "⚪")
+                Image(systemName: item.daHoanThanh ? "checkmark.circle.fill" : "circle")
                     .foregroundColor(item.daHoanThanh ? .successColor : .textMuted)
                     .font(.title3)
                 Text(item.ten)
