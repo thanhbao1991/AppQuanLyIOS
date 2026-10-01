@@ -116,12 +116,8 @@ struct HoaDonEditFormView: View {
     private var giaRiengMap: [String: Double] {
         guard let kh = selectedKhach else { return [:] }
         var map: [String: Double] = [:]
-        // 1 khách + 1 món chỉ có 1 giá riêng (lưu ở Size Chuẩn) → áp cho MỌI size của món đó.
-        var sanPhamCuaBienThe: [String: [String]] = [:]
-        for sp in sanPhamList { for bt in sp.bienThe { sanPhamCuaBienThe[bt.id] = sp.bienThe.map(\.id) } }
-        for g in giaRiengList where g.khachHangId == kh.id {
-            for id in sanPhamCuaBienThe[g.sanPhamBienTheId] ?? [g.sanPhamBienTheId] { map[id] = g.giaBan }
-        }
+        // Giá riêng chỉ lưu ở Size Chuẩn; Size L/XL luôn theo giá menu (không có dòng giá riêng).
+        for g in giaRiengList where g.khachHangId == kh.id { map[g.sanPhamBienTheId] = g.giaBan }
         return map
     }
 
