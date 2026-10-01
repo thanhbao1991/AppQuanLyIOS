@@ -514,31 +514,32 @@ private struct HoaDonRowView: View {
     /// conLai<=0 phải check TRƯỚC ngayNo: khách ghi nợ rồi trả xong, ngayNo vẫn còn giá trị cũ
     /// (backend không xoá), nên nếu check ngayNo trước sẽ hiện "Ghi nợ" sai dù đã thu đủ.
 
-    /// Đơn đặt qua app khách (Ship/AppDatHang) mà quán CHƯA bấm xác nhận — khớp TrangThai=ChoXacNhan
-    /// bên Backend (GetDonCuaToiAsync). Trước đây field NgayXacNhanOnline không được client giải mã
-    /// nên trạng thái này không bao giờ hiện ở tab Hoá đơn, dù đơn vẫn nằm trong danh sách.
+    /// Đơn đặt qua app khách (CHỈ AppDatHang — Ship tạo tay ở quầy không có khái niệm "xác nhận
+    /// online") mà quán CHƯA bấm xác nhận — khớp TrangThai=ChoXacNhan bên Backend
+    /// (GetDonCuaToiAsync). Trước đây field NgayXacNhanOnline không được client giải mã nên trạng
+    /// thái này không bao giờ hiện ở tab Hoá đơn, dù đơn vẫn nằm trong danh sách.
     private var laChoXacNhan: Bool {
-        (item.phanLoai == "Ship" || item.phanLoai == "AppDatHang")
+        item.phanLoai == "AppDatHang"
             && item.conLai > 0
             && (item.ngayXacNhanOnline?.isEmpty ?? true)
     }
 
     /// Thứ tự ưu tiên: đơn ĐÃ KẾT THÚC (thu tiền mặt/chuyển khoản, hoặc đã ghi nợ) luôn hiện 1 trong
-    /// 3 badge đó — "Chờ xác nhận" chỉ là badge dự phòng khi CHƯA có mốc kết thúc nào, không được
-    /// đè lên Ghi nợ. Trước đây check laChoXacNhan trước ngayNo nên đơn Ship tạo tay ở quầy (không
-    /// qua app, NgayXacNhanOnline luôn NULL) dù đã ghi nợ/đã giao ship từ lâu vẫn hiện "Chờ xác nhận".
+    /// 3 badge đó — "Chờ xác nhận"/"Chưa thoát" chỉ là badge dự phòng khi CHƯA có mốc kết thúc nào,
+    /// không được đè lên Ghi nợ. Mọi phân loại đều hiện "Chưa thoát" khi chưa thu/chưa ghi nợ; riêng
+    /// AppDatHang có thêm nhánh "Chờ xác nhận" (chưa bấm xác nhận online) trước khi thành "Chưa
+    /// thoát". Trước đây check laChoXacNhan trước ngayNo nên đơn Ship tạo tay ở quầy (không qua app,
+    /// NgayXacNhanOnline luôn NULL) dù đã ghi nợ/đã giao ship từ lâu vẫn hiện "Chờ xác nhận".
     private var statusText: String? {
         if item.conLai <= 0.0 { return (item.isBank == true) ? "Chuyển khoản" : "Tiền mặt" }
         if !(item.ngayNo?.isEmpty ?? true) { return "Ghi nợ" }
-        if laChoXacNhan { return "Chờ xác nhận" }
-        return nil
+        return laChoXacNhan ? "Chờ xác nhận" : "Chưa thoát"
     }
 
     private var statusColor: Color {
         if item.conLai <= 0.0 { return (item.isBank == true) ? .brandPrimary : .successColor }
         if !(item.ngayNo?.isEmpty ?? true) { return .dangerColor }
-        if laChoXacNhan { return .warningColor }
-        return .dangerColor
+        return laChoXacNhan ? .warningColor : .dangerColor
     }
 
     /// Đóng băng thời gian chờ tại thời điểm sự kiện xảy ra SỚM NHẤT trong 3 mốc ghi nợ/thanh
