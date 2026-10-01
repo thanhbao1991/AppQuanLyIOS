@@ -86,6 +86,7 @@ private struct GamificationConfigForm: View {
             }
 
             Section {
+                kmRow("Km thưởng hạng Thành Viên", value: $config.shipKmThuongThanhVien)
                 kmRow("Km thưởng hạng Bạc", value: $config.shipKmThuongBac)
                 kmRow("Km thưởng hạng Vàng", value: $config.shipKmThuongVang)
                 kmRow("Km thưởng hạng Kim Cương", value: $config.shipKmThuongKimCuong)
@@ -93,7 +94,7 @@ private struct GamificationConfigForm: View {
             } header: {
                 Text("Phí ship 🛵")
             } footer: {
-                Text("Bán kính miễn phí = SỐ LY trong đơn (1 ly = 1km, không tính topping, không giới hạn trên) CỘNG THẲNG km thưởng theo hạng THÁNG TRƯỚC của khách (Thành Viên +0). Vượt bán kính miễn phí mới tính thêm theo km vượt, làm tròn lên 1.000đ.")
+                Text("Bán kính miễn phí = (SỐ LY trong đơn / 2, chia nguyên — cứ 2 ly mới được free thêm 1km, không tính topping, không giới hạn trên) CỘNG THẲNG km thưởng theo hạng THÁNG TRƯỚC của khách. Vượt bán kính miễn phí mới tính thêm theo km vượt, làm tròn lên 1.000đ.")
             }
 
             Section {

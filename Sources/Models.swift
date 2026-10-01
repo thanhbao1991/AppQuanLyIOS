@@ -503,6 +503,7 @@ struct VongQuayPhanThuongDto: Codable, Identifiable, Hashable {
 
 struct GamificationConfigDto: Codable {
     var vongQuayPhanThuong: [VongQuayPhanThuongDto]
+    var shipKmThuongThanhVien: Double
     var shipKmThuongBac: Double
     var shipKmThuongVang: Double
     var shipKmThuongKimCuong: Double
