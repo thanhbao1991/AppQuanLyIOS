@@ -786,7 +786,7 @@ struct HoaDonCreateFormView: View {
         Task {
             khachInfo = await APIClient.shared.getKhachHangInfo(khachHangId: kh.id)
             if selectedKhach?.id == kh.id, voucherGiamGia != nil {
-                VoiceAnnouncer.say("Khách có voucher")
+                VoiceAnnouncer.say("Khách có voucher", sound: "khach_co_voucher")
             }
         }
     }
@@ -1432,11 +1432,18 @@ struct ProductPickerPanel: View {
     }
 }
 
-/// Đọc loa thông báo ngắn bằng giọng tiếng Việt của iOS.
+/// Phát file giọng Google TTS đã tải sẵn (Sources/Sounds), không cần mạng; thiếu file thì đọc bằng giọng iOS.
 enum VoiceAnnouncer {
     private static let synthesizer = AVSpeechSynthesizer()
+    private static var player: AVAudioPlayer?
 
-    static func say(_ text: String) {
+    static func say(_ text: String, sound: String? = nil) {
+        if let sound, let url = Bundle.main.url(forResource: sound, withExtension: "mp3") {
+            try? AVAudioSession.sharedInstance().setCategory(.playback, options: [.mixWithOthers])
+            try? AVAudioSession.sharedInstance().setActive(true)
+            player = try? AVAudioPlayer(contentsOf: url)
+            if player?.play() == true { return }
+        }
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = AVSpeechSynthesisVoice(language: "vi-VN")
         synthesizer.speak(utterance)
