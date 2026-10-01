@@ -1243,7 +1243,7 @@ struct ProductPickerPanel: View {
                                 // quán với giá gốc trên hoá đơn.
                                 donGia = giaRiengMap[variant.id] ?? variant.giaBan
                             } label: {
-                                Text("\(variant.tenBienThe) \(HoaDonFormatting.moneyShort(variant.giaBan))")
+                                Text("\(variant.tenBienThe.replacingOccurrences(of: "Size ", with: "")) \(HoaDonFormatting.moneyShort(variant.giaBan))")
                                     .font(.caption.bold())
                                     .padding(.horizontal, 10).padding(.vertical, 6)
                                     .background(active ? Color.brandPrimary : Color.textMuted.opacity(0.12))
