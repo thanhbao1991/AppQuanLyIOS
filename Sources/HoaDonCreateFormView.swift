@@ -1,4 +1,5 @@
 import SwiftUI
+import AVFoundation
 
 /// Form thêm hoá đơn mới — port HoaDonEditWindow (Desktop) trừ phần đổi phân loại/bàn giữa chừng
 /// (phân loại đã chốt từ lúc bấm "+" trên danh sách, xem HoaDonListView.AddHoaDonSheet). Có đủ:
@@ -782,7 +783,12 @@ struct HoaDonCreateFormView: View {
         khachSearchResults = []
         khachInfo = nil
         applyGiaRiengToExistingItems()
-        Task { khachInfo = await APIClient.shared.getKhachHangInfo(khachHangId: kh.id) }
+        Task {
+            khachInfo = await APIClient.shared.getKhachHangInfo(khachHangId: kh.id)
+            if selectedKhach?.id == kh.id, voucherGiamGia != nil {
+                VoiceAnnouncer.say("Khách có voucher")
+            }
+        }
     }
 
     private func clearKhach() {
@@ -1423,5 +1429,16 @@ struct ProductPickerPanel: View {
         noteText = editingItem.noteText
         toppingQty = Dictionary(uniqueKeysWithValues: editingItem.toppings.map { ($0.toppingId, $0.soLuong) })
         detailTab = toppingQty.values.contains(where: { $0 > 0 }) ? 1 : 0
+    }
+}
+
+/// Đọc loa thông báo ngắn bằng giọng tiếng Việt của iOS.
+enum VoiceAnnouncer {
+    private static let synthesizer = AVSpeechSynthesizer()
+
+    static func say(_ text: String) {
+        let utterance = AVSpeechUtterance(string: text)
+        utterance.voice = AVSpeechSynthesisVoice(language: "vi-VN")
+        synthesizer.speak(utterance)
     }
 }
