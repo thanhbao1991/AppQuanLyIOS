@@ -33,14 +33,14 @@ targets:
         NSCameraUsageDescription: Chụp ảnh hoá đơn mua hàng để đọc tự động vào Chi tiêu, và chụp ảnh món cho menu.
         NSPhotoLibraryUsageDescription: Chọn ảnh từ album Yêu thích để cập nhật ảnh món trong menu.
         CFBundleURLTypes:
-          - CFBundleURLName: uk.denncoffee.appmobileios
+          - CFBundleURLName: com.denncoffee.appquanly
             CFBundleURLSchemes:
               - trasuaapp
         UIBackgroundModes:
           - remote-notification
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: uk.denncoffee.appmobileios
+        PRODUCT_BUNDLE_IDENTIFIER: com.denncoffee.appquanly
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_VERSION: "5.0"
@@ -57,5 +57,5 @@ targets:
       - target: AppMobileIOS
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: uk.denncoffee.appmobileios.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.denncoffee.appquanly.tests
         SWIFT_VERSION: "5.0"
