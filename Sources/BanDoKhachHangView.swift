@@ -31,10 +31,12 @@ private struct CompetitorLocation: Decodable {
 
 /// Bản đồ mật độ khách hàng (App order) quanh quán — dùng Apple MapKit THẬT qua UIKit `MKMapView`
 /// (không phải SwiftUI `Map(annotationItems:)`) vì bản SwiftUI cũ dựng ~700 custom view riêng lẻ
-/// cho 615 khách + 72 điểm viền vòng tròn, không tận dụng được MKAnnotationView gốc/không gom cụm
-/// → lag rõ rệt so với Google Maps khi test thật trên máy (phản hồi 2026-10-03). Bản UIKit này:
-/// clustering tự động cho điểm khách (clusteringIdentifier, giống cách Apple/Google Maps gom cụm
-/// hàng trăm điểm), vòng tròn 2km vẽ bằng MKCircle overlay thật (không còn giả lập bằng chấm rời).
+/// cho 615 khách + 72 điểm viền vòng tròn, không tận dụng được MKAnnotationView gốc → lag rõ rệt
+/// so với Google Maps khi test thật trên máy (phản hồi 2026-10-03). Vòng tròn 2km vẽ bằng MKCircle
+/// overlay thật (không còn giả lập bằng chấm rời).
+/// KHÔNG gom cụm (đã thử clustering tự động rồi BỎ 2026-10-04) — số trên cụm đổi theo cách MapKit
+/// gom lại mỗi lần zoom (quy luật hình học bình thường của thuật toán, không phải bug) khiến nhìn
+/// như "sai số", gây khó chịu lặp lại nhiều lần khi dùng thật. Ưu tiên số LUÔN ĐÚNG hơn nhìn gọn.
 struct BanDoKhachHangView: View {
     @State private var loading = true
     @State private var loadError: String?
@@ -134,6 +136,8 @@ private final class CustomerAnnotation: NSObject, MKAnnotation {
         self.orders = orders
         self.isSeasonal = isSeasonal
     }
+    var title: String? { "1 khách" }
+    var subtitle: String? { "\(orders) đơn" }
 }
 
 private final class StoreAnnotation: NSObject, MKAnnotation {
@@ -173,7 +177,6 @@ private struct NativeMapView: UIViewRepresentable {
         map.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: "customer")
         map.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: "store")
         map.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: "competitor")
-        map.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: MKMapViewDefaultClusterAnnotationViewReuseIdentifier)
         Task { await context.coordinator.load(into: map) }
         return map
     }
@@ -249,48 +252,18 @@ private struct NativeMapView: UIViewRepresentable {
             }
         }
 
-        /// Gán title/subtitle THẬT cho cụm (MKClusterAnnotation chỉ tự sinh title rỗng vì
-        /// CustomerAnnotation không có title riêng) — "X khách" làm title (số chính quyết định mở
-        /// chi nhánh), "Y đơn" làm subtitle (tần suất mua, xem callout khi bấm vào cụm).
-        func mapView(_ mapView: MKMapView, clusterAnnotationForMemberAnnotations memberAnnotations: [MKAnnotation]) -> MKClusterAnnotation {
-            let cluster = MKClusterAnnotation(memberAnnotations: memberAnnotations)
-            let members = memberAnnotations.compactMap { $0 as? CustomerAnnotation }
-            let tongDon = members.reduce(0) { $0 + $1.orders }
-            cluster.title = "\(members.count) khách"
-            cluster.subtitle = "\(tongDon) đơn"
-            return cluster
-        }
-
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
-            if let cluster = annotation as? MKClusterAnnotation {
-                let view = mapView.dequeueReusableAnnotationView(
-                    withIdentifier: MKMapViewDefaultClusterAnnotationViewReuseIdentifier, for: cluster) as! MKMarkerAnnotationView
-                let members = cluster.memberAnnotations.compactMap { $0 as? CustomerAnnotation }
-                let isSeasonal = members.first?.isSeasonal ?? false
-                view.markerTintColor = isSeasonal ? seasonalUIColor : localUIColor
-                // So tren ghim = SO KHACH (quyet dinh quy mo thi truong, dung de so sanh vi tri mo
-                // chi nhanh) - KHONG phai so don (khach quen dat nhieu lan de gay nham tuong dong
-                // nguoi). So don van co gia tri rieng (tan suat mua) nen dua vao callout khi bam
-                // (title/subtitle set o mapView(_:clusterAnnotationForMemberAnnotations:) ben
-                // duoi, vi MKAnnotationView khong co property title/subtitle rieng).
-                view.glyphText = "\(members.count)"
-                view.canShowCallout = true
-                // Ep .visible thay vi mac dinh .adaptive - .adaptive tu an nhan khi cum dung sat
-                // nhau de tranh de chu, gay hien tuong "luc hien luc khong" kho chiu (phan hoi
-                // 2026-10-03). Chap nhan doi khi chu chong len nhau o vung qua day cum, doi lai
-                // nhat quan.
-                view.titleVisibility = .visible
-                view.displayPriority = .defaultHigh
-                return view
-            }
             if let c = annotation as? CustomerAnnotation {
                 let view = mapView.dequeueReusableAnnotationView(withIdentifier: "customer", for: c) as! MKMarkerAnnotationView
-                view.clusteringIdentifier = c.isSeasonal ? "customer-seasonal" : "customer-local"
-                view.canShowCallout = false
-                view.displayPriority = .defaultLow
+                // KHONG gom cum (clusteringIdentifier) nua - xem comment dau file.
                 view.markerTintColor = c.isSeasonal ? seasonalUIColor : tint(for: c.orders)
                 view.glyphImage = nil
+                // Moi cham = dung 1 khach that - bam vao xem duoc so don cua rieng khach do (title/
+                // subtitle doc tu CustomerAnnotation.title/.subtitle, MKAnnotationView khong co
+                // property nay rieng).
+                view.canShowCallout = true
                 view.titleVisibility = .hidden
+                view.displayPriority = .defaultLow
                 // Chấm nhỏ (không phải ghim to) cho hàng trăm điểm — scale marker xuống qua
                 // transform, MKMarkerAnnotationView không có API đổi kích thước trực tiếp.
                 view.transform = CGAffineTransform(scaleX: 0.55, y: 0.55)
