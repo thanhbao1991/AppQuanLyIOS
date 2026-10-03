@@ -252,6 +252,10 @@ private struct NativeMapView: UIViewRepresentable {
                 // Chấm nhỏ (không phải ghim to) cho hàng trăm điểm — scale marker xuống qua
                 // transform, MKMarkerAnnotationView không có API đổi kích thước trực tiếp.
                 view.transform = CGAffineTransform(scaleX: 0.55, y: 0.55)
+                // Hơi trong suốt (không phải 100%) để khi zoom xa, nhiều chấm chồng lên nhau tự
+                // nhiên đậm màu hơn — cho cảm giác mật độ mà KHÔNG cần in số (tránh lặp lại vấn đề
+                // "số đổi theo zoom" đã bỏ gom cụm vì lý do này, phản hồi 2026-10-04).
+                view.alpha = 0.6
                 return view
             }
             if annotation is StoreAnnotation {
