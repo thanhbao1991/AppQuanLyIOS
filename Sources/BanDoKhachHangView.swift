@@ -42,6 +42,10 @@ struct BanDoKhachHangView: View {
     @State private var showLocal = true
     @State private var showSeasonal = true
     @State private var showCompetitors = true
+    /// Ẩn mọi vị trí (khách/đối thủ) nằm trong vòng tròn 2km quanh quán — mặc định BẬT (ẩn) vì
+    /// mục đích chính của màn này là tìm khu vực TIỀM NĂNG MỞ RỘNG, khu lõi sát quán đã quá rõ
+    /// không cần nhìn lại mỗi lần (yêu cầu 2026-10-03).
+    @State private var hideWithin2km = true
 
     var body: some View {
         ZStack {
@@ -57,7 +61,7 @@ struct BanDoKhachHangView: View {
                 VStack(spacing: 0) {
                     filterBar()
                     NativeMapView(dataURL: mapDataURL, showLocal: showLocal, showSeasonal: showSeasonal,
-                                  showCompetitors: showCompetitors,
+                                  showCompetitors: showCompetitors, hideWithin2km: hideWithin2km,
                                   onLoaded: { loading = false; loadError = nil },
                                   onError: { loadError = $0; loading = false })
                         .frame(maxHeight: .infinity)
@@ -73,12 +77,20 @@ struct BanDoKhachHangView: View {
     }
 
     private func filterBar() -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                filterChip(title: "Dân địa phương", color: localColor, isOn: $showLocal)
-                filterChip(title: "Kho / đại lý (mùa vụ)", color: seasonalColor, isOn: $showSeasonal)
-                filterChip(title: "Đối thủ", color: competitorColor, isOn: $showCompetitors)
+        VStack(spacing: 6) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    filterChip(title: "Dân địa phương", color: localColor, isOn: $showLocal)
+                    filterChip(title: "Kho / đại lý (mùa vụ)", color: seasonalColor, isOn: $showSeasonal)
+                    filterChip(title: "Đối thủ", color: competitorColor, isOn: $showCompetitors)
+                }
+                .padding(.horizontal, 12)
             }
+            Toggle(isOn: $hideWithin2km) {
+                Text("Ẩn trong bán kính 2km quanh quán").font(.caption)
+            }
+            .toggleStyle(.switch)
+            .tint(.brandPrimary)
             .padding(.horizontal, 12)
         }
         .padding(.vertical, 8)
@@ -147,6 +159,7 @@ private struct NativeMapView: UIViewRepresentable {
     let showLocal: Bool
     let showSeasonal: Bool
     let showCompetitors: Bool
+    let hideWithin2km: Bool
     let onLoaded: () -> Void
     let onError: (String) -> Void
 
@@ -212,17 +225,27 @@ private struct NativeMapView: UIViewRepresentable {
         }
 
         func applyFilter(on map: MKMapView) {
+            let storeLocation = CLLocation(latitude: storeCoordinate.latitude, longitude: storeCoordinate.longitude)
+            func within2km(_ coord: CLLocationCoordinate2D) -> Bool {
+                CLLocation(latitude: coord.latitude, longitude: coord.longitude).distance(from: storeLocation) < 2000
+            }
+
             let existingCustomers = map.annotations.compactMap { $0 as? CustomerAnnotation }
             map.removeAnnotations(existingCustomers)
             let filtered = allCustomerAnns.filter { ann in
-                (ann.isSeasonal && parent.showSeasonal) || (!ann.isSeasonal && parent.showLocal)
+                let categoryOn = (ann.isSeasonal && parent.showSeasonal) || (!ann.isSeasonal && parent.showLocal)
+                guard categoryOn else { return false }
+                return !(parent.hideWithin2km && within2km(ann.coordinate))
             }
             map.addAnnotations(filtered)
 
             let existingCompetitors = map.annotations.compactMap { $0 as? CompetitorAnnotation }
             map.removeAnnotations(existingCompetitors)
             if parent.showCompetitors {
-                map.addAnnotations(allCompetitorAnns)
+                let filteredCompetitors = allCompetitorAnns.filter { ann in
+                    !(parent.hideWithin2km && within2km(ann.coordinate))
+                }
+                map.addAnnotations(filteredCompetitors)
             }
         }
 
