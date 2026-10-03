@@ -647,6 +647,14 @@ actor APIClient {
         return env.data ?? []
     }
 
+    /// Bán kính ship trung bình theo tháng — đọc từ DonViTriLog (DB), dùng cho BaoHoaView.
+    func getShipRadiusTrend(soThang: Int = 12) async -> [ShipRadiusThangItemDto] {
+        let req = makeRequest("/api/Map/ship-radius-trend?soThang=\(soThang)")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[ShipRadiusThangItemDto]>.self, from: data), env.isSuccess else { return [] }
+        return env.data ?? []
+    }
+
     // Ngưỡng/số tiền các tính năng giữ chân khách (giới thiệu, sinh nhật, vòng quay, thẻ
     // tem) trong app khách — trước đây hardcode, giờ chỉnh được từ đây.
     func getGamificationConfig() async -> GamificationConfigDto? {

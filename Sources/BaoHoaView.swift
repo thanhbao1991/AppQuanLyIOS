@@ -8,10 +8,13 @@ import SwiftUI
 /// 2. Giờ cao điểm có bị nghẽn không — CHỈ LÀM ĐƯỢC PHẦN "giờ nào đông đơn nhất" (tái dùng
 ///    /api/ThongKe/phan-bo-don-theo-gio). Phần "có bị TRỄ/HUỶ thật không" CHƯA LÀM ĐƯỢC — xem TODO
 ///    cuối màn.
-/// 3. Bán kính ship trung bình theo tháng có tăng dần không — ĐÃ LÀM (từ data.json Bản đồ khách
-///    hàng, tính sẵn ở scripts/build-customer-map.py, field shipRadiusTrend).
+/// 3. Bán kính ship trung bình theo tháng — ĐÃ LÀM, từ 2026-10-04 đọc DB (GET
+///    /api/Map/ship-radius-trend, bảng DonViTriLog) thay vì crawl. QUAN TRỌNG: số này KHÔNG tự nó
+///    nói lên bão hoà — bán kính tăng CÙNG LÚC số đơn tăng mạnh là dấu hiệu MỞ RỘNG THÀNH CÔNG,
+///    chỉ đáng lo khi bán kính tăng mà số đơn đi ngang/giảm (phải "với" xa hơn mới đủ đơn như cũ).
+///    Nhận xét tự động phải GHÉP 2 chỉ số này, không tách riêng — bài học từ phản hồi 2026-10-04
+///    (ban đầu diễn giải một chiều là bão hoà, sai vì không nhìn số đơn đi kèm).
 /// 4. Tỷ lệ khách tháng trước quay lại tháng sau có giảm không — ĐÃ LÀM (Backend HoaDons).
-private let mapDataURLForBaoHoa = URL(string: "https://api.denncoffee.com/map-f90702696b23/data.json")!
 
 struct BaoHoaView: View {
     @State private var doanhThuThang: [DoanhThuTheoThangItemDto] = []
@@ -119,14 +122,40 @@ struct BaoHoaView: View {
                 .frame(height: 160)
                 .chartXAxis { AxisMarks { AxisValueLabel().font(.caption2) } }
 
-                if let first = shipRadiusThang.first, let last = shipRadiusThang.last, shipRadiusThang.count >= 2 {
-                    let delta = last.banKinhTrungBinhKm - first.banKinhTrungBinhKm
-                    Text(delta > 0.3
-                         ? "Bán kính ship đã tăng +\(String(format: "%.1f", delta))km so tháng đầu kỳ — khách gần quán có thể đã khai thác gần hết, đơn mới phải \"với\" ra xa hơn."
-                         : "Bán kính ship khá ổn định (\(String(format: "%+.1f", delta))km so tháng đầu kỳ).")
-                        .font(.caption).foregroundColor(.brandPrimary).fontWeight(.semibold)
+                if let nhanXet = nhanXetBanKinhShip {
+                    Text(nhanXet).font(.caption).foregroundColor(.brandPrimary).fontWeight(.semibold)
                 }
+                Text("Bán kính tăng không tự nó là xấu — phải nhìn kèm số đơn: tăng cùng lúc số đơn tăng mạnh là mở rộng thành công, chỉ đáng lo khi số đơn đi ngang/giảm mà vẫn phải với xa hơn.")
+                    .font(.caption2).foregroundColor(.textMuted)
             }
+        }
+    }
+
+    /// Ghép bán kính VỚI số đơn (shipRadiusThang.soDon, từ DonViTriLog) để tránh diễn giải một
+    /// chiều — xem comment đầu file.
+    private var nhanXetBanKinhShip: String? {
+        guard shipRadiusThang.count >= 4 else { return nil }
+        let items = Array(shipRadiusThang.dropLast())
+        guard items.count >= 4 else { return nil }
+        let mid = items.count / 2
+        let dauKy = items[..<mid]
+        let sauKy = items[mid...]
+        let kmDau = dauKy.map(\.banKinhTrungBinhKm).reduce(0, +) / Double(dauKy.count)
+        let kmSau = sauKy.map(\.banKinhTrungBinhKm).reduce(0, +) / Double(sauKy.count)
+        let donDau = Double(dauKy.map(\.soDon).reduce(0, +)) / Double(dauKy.count)
+        let donSau = Double(sauKy.map(\.soDon).reduce(0, +)) / Double(sauKy.count)
+        let deltaKm = kmSau - kmDau
+        guard donDau > 0 else { return nil }
+        let tangTruongDon = (donSau - donDau) / donDau
+
+        if deltaKm <= 0.3 {
+            return "Bán kính ship khá ổn định (\(String(format: "%+.1f", deltaKm))km nửa sau so nửa đầu kỳ)."
+        } else if tangTruongDon > 0.1 {
+            return "Bán kính tăng +\(String(format: "%.1f", deltaKm))km nhưng số đơn cũng tăng +\(Int(tangTruongDon * 100))% — đang MỞ RỘNG THÀNH CÔNG, không phải bão hoà."
+        } else if tangTruongDon < -0.1 {
+            return "Bán kính tăng +\(String(format: "%.1f", deltaKm))km trong khi số đơn GIẢM \(Int(tangTruongDon * 100))% — dấu hiệu bão hoà thật: phải với xa hơn mới đủ đơn."
+        } else {
+            return "Bán kính tăng +\(String(format: "%.1f", deltaKm))km nhưng số đơn gần như đi ngang — có thể đã bắt đầu bão hoà, cần theo dõi thêm."
         }
     }
 
@@ -189,15 +218,8 @@ struct BaoHoaView: View {
         async let doanhThuTask = APIClient.shared.getDoanhThuTheoThang(soThang: 12)
         async let gioTask = APIClient.shared.getPhanBoDonTheoGio(soNgay: 30)
         async let retentionTask = APIClient.shared.getTyLeKhachQuayLaiTheoThang(soThang: 12)
-        (doanhThuThang, gioItems, retentionThang) = await (doanhThuTask, gioTask, retentionTask)
-        shipRadiusThang = await loadShipRadiusTrend()
+        async let shipRadiusTask = APIClient.shared.getShipRadiusTrend(soThang: 12)
+        (doanhThuThang, gioItems, retentionThang, shipRadiusThang) = await (doanhThuTask, gioTask, retentionTask, shipRadiusTask)
         loading = false
-    }
-
-    private func loadShipRadiusTrend() async -> [ShipRadiusThangItemDto] {
-        struct Response: Decodable { let shipRadiusTrend: [ShipRadiusThangItemDto]? }
-        guard let (data, _) = try? await URLSession.shared.data(from: mapDataURLForBaoHoa),
-              let resp = try? JSONDecoder().decode(Response.self, from: data) else { return [] }
-        return resp.shipRadiusTrend ?? []
     }
 }
