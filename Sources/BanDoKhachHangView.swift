@@ -7,6 +7,7 @@ import SwiftUI
 /// JWT (dữ liệu ẩn danh — không có tên/SĐT khách, chỉ toạ độ + số đơn + doanh thu), khớp cách
 /// trang web đang phục vụ.
 private let mapDataURL = URL(string: "https://api.denncoffee.com/map-f90702696b23/data.json")!
+private let storeCoordinate = CLLocationCoordinate2D(latitude: 12.7095521, longitude: 108.3016576)
 
 private struct MapDataResponse: Decodable {
     struct StoreLocation: Decodable { let lat: Double; let lon: Double }
@@ -21,38 +22,26 @@ private struct MapDataResponse: Decodable {
     let candidates: [Candidate]
 }
 
-private struct CustomerPoint: Identifiable {
-    let id = UUID()
-    let coordinate: CLLocationCoordinate2D
-    let orders: Int
-    let revenue: Double
-}
-
-private struct CandidateZone: Identifiable {
-    let id = UUID()
+struct CandidateInfo: Identifiable {
+    let id: Int
     let rank: Int
-    let coordinate: CLLocationCoordinate2D
     let orders: Int
     let revenue: Double
     let distM: Double
     let sampleAddr: String?
 }
 
-/// Bản đồ mật độ khách hàng (App order) quanh quán — dùng Apple MapKit thật (native, không phải
-/// ảnh nền baked như bản web) để cân nhắc nơi mở chi nhánh mới. Dữ liệu ẩn danh, tải từ file tĩnh
-/// trên VPS, không gọi Backend API — xem comment mapDataURL ở trên.
+/// Bản đồ mật độ khách hàng (App order) quanh quán — dùng Apple MapKit THẬT qua UIKit `MKMapView`
+/// (không phải SwiftUI `Map(annotationItems:)`) vì bản SwiftUI cũ dựng ~700 custom view riêng lẻ
+/// cho 615 khách + 72 điểm viền vòng tròn, không tận dụng được MKAnnotationView gốc/không gom cụm
+/// → lag rõ rệt so với Google Maps khi test thật trên máy (phản hồi 2026-10-03). Bản UIKit này:
+/// clustering tự động cho điểm khách (clusteringIdentifier, giống cách Apple/Google Maps gom cụm
+/// hàng trăm điểm), vòng tròn 2km vẽ bằng MKCircle overlay thật (không còn giả lập bằng chấm rời).
 struct BanDoKhachHangView: View {
-    @State private var storeCoordinate: CLLocationCoordinate2D?
-    @State private var customers: [CustomerPoint] = []
-    @State private var candidates: [CandidateZone] = []
-    @State private var ringPoints: [CLLocationCoordinate2D] = []
-    @State private var region = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 12.7095521, longitude: 108.3016576),
-        span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
-    )
     @State private var loading = true
     @State private var loadError: String?
-    @State private var selectedCandidate: CandidateZone?
+    @State private var selectedCandidate: CandidateInfo?
+    @State private var reloadToken = UUID()
 
     var body: some View {
         ZStack {
@@ -62,106 +51,33 @@ struct BanDoKhachHangView: View {
                 VStack(spacing: 8) {
                     Text("Không tải được dữ liệu bản đồ").font(.headline)
                     Text(loadError).font(.caption).foregroundColor(.textMuted)
-                    Button("Thử lại") { Task { await load() } }
+                    Button("Thử lại") { reloadToken = UUID() }
                         .buttonStyle(.borderedProminent).tint(.brandPrimary)
                 }
                 .padding()
             } else {
-                mapContent
+                VStack(spacing: 0) {
+                    NativeMapView(dataURL: mapDataURL, onLoaded: { loading = false; loadError = nil },
+                                  onError: { loadError = $0; loading = false },
+                                  onSelectCandidate: { selectedCandidate = $0 })
+                        .frame(maxHeight: .infinity)
+                    if let c = selectedCandidate {
+                        candidateDetail(c)
+                    }
+                }
             }
         }
+        .id(reloadToken)
         .navigationTitle("Bản đồ khách hàng")
         .navigationBarTitleDisplayMode(.inline)
-        .task { await load() }
     }
 
-    private var mapContent: some View {
-        VStack(spacing: 0) {
-            Map(coordinateRegion: $region, annotationItems: annotationItems) { item in
-                MapAnnotation(coordinate: item.coordinate) {
-                    annotationView(for: item)
-                }
-            }
-            .frame(maxHeight: .infinity)
-
-            if let selectedCandidate {
-                candidateDetail(selectedCandidate)
-            }
-        }
-    }
-
-    // Gộp 3 nguồn điểm (khách hàng, khu vực tiềm năng, vành đai 2km) vào 1 mảng annotation duy
-    // nhất vì SwiftUI `Map(annotationItems:)` chỉ nhận 1 mảng Identifiable — tách enum theo loại
-    // để annotationView(for:) vẽ khác nhau.
-    private enum AnnotationKind: Identifiable {
-        case customer(CustomerPoint)
-        case candidate(CandidateZone)
-        case store
-        case ring(Int, CLLocationCoordinate2D)
-
-        var id: String {
-            switch self {
-            case .customer(let c): return "c-\(c.id)"
-            case .candidate(let c): return "z-\(c.id)"
-            case .store: return "store"
-            case .ring(let i, _): return "ring-\(i)"
-            }
-        }
-        var coordinate: CLLocationCoordinate2D {
-            switch self {
-            case .customer(let c): return c.coordinate
-            case .candidate(let c): return c.coordinate
-            case .store: return CLLocationCoordinate2D(latitude: 12.7095521, longitude: 108.3016576)
-            case .ring(_, let c): return c
-            }
-        }
-    }
-
-    private var annotationItems: [AnnotationKind] {
-        var items: [AnnotationKind] = ringPoints.enumerated().map { .ring($0.offset, $0.element) }
-        items.append(.store)
-        items.append(contentsOf: customers.map { .customer($0) })
-        items.append(contentsOf: candidates.map { .candidate($0) })
-        return items
-    }
-
-    @ViewBuilder
-    private func annotationView(for item: AnnotationKind) -> some View {
-        switch item {
-        case .ring:
-            Circle().fill(Color.brandPrimary.opacity(0.55)).frame(width: 5, height: 5)
-        case .store:
-            Image(systemName: "mappin.circle.fill")
-                .font(.system(size: 26))
-                .foregroundStyle(.white, Color.brandPrimary)
-                .background(Circle().fill(.white).frame(width: 14, height: 14))
-        case .customer(let c):
-            let t = intensity(for: c.orders)
-            Circle()
-                .fill(Color(hue: 0.08 + 0.08 * (1 - t), saturation: 0.75, brightness: 0.85))
-                .frame(width: sizeFor(c.orders), height: sizeFor(c.orders))
-                .overlay(Circle().stroke(.white, lineWidth: 0.5))
-        case .candidate(let z):
-            Button {
-                selectedCandidate = (selectedCandidate?.id == z.id) ? nil : z
-            } label: {
-                ZStack {
-                    Circle().fill(Color.dangerColor).frame(width: 24, height: 24)
-                    Text("\(z.rank)").font(.system(size: 11, weight: .bold)).foregroundColor(.white)
-                }
-                .overlay(Circle().stroke(.white, lineWidth: 2))
-            }
-        }
-    }
-
-    private func candidateDetail(_ z: CandidateZone) -> some View {
+    private func candidateDetail(_ z: CandidateInfo) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text("Khu vực tiềm năng #\(z.rank)").font(.subheadline.bold())
                 Spacer()
-                Button {
-                    selectedCandidate = nil
-                } label: {
+                Button { selectedCandidate = nil } label: {
                     Image(systemName: "xmark.circle.fill").foregroundColor(.textMuted)
                 }
             }
@@ -174,69 +90,169 @@ struct BanDoKhachHangView: View {
         .padding(12)
         .background(.bar)
     }
+}
 
-    private func intensity(for orders: Int) -> Double {
-        let maxOrders = customers.map(\.orders).max() ?? 1
-        guard maxOrders > 0 else { return 0 }
-        return min(1, Double(orders) / Double(maxOrders))
+private func formatMoney(_ v: Double) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = "."
+    return (formatter.string(from: NSNumber(value: Int(v))) ?? "\(Int(v))") + " đ"
+}
+
+// MARK: - Annotation types
+
+private final class CustomerAnnotation: NSObject, MKAnnotation {
+    let coordinate: CLLocationCoordinate2D
+    let orders: Int
+    init(coordinate: CLLocationCoordinate2D, orders: Int) {
+        self.coordinate = coordinate
+        self.orders = orders
+    }
+}
+
+private final class CandidateAnnotation: NSObject, MKAnnotation {
+    let coordinate: CLLocationCoordinate2D
+    let info: CandidateInfo
+    init(coordinate: CLLocationCoordinate2D, info: CandidateInfo) {
+        self.coordinate = coordinate
+        self.info = info
+    }
+    var title: String? { "Khu vực tiềm năng #\(info.rank)" }
+}
+
+private final class StoreAnnotation: NSObject, MKAnnotation {
+    let coordinate: CLLocationCoordinate2D
+    init(coordinate: CLLocationCoordinate2D) { self.coordinate = coordinate }
+    var title: String? { "Chi nhánh hiện tại" }
+}
+
+// MARK: - UIViewRepresentable
+
+private struct NativeMapView: UIViewRepresentable {
+    let dataURL: URL
+    let onLoaded: () -> Void
+    let onError: (String) -> Void
+    let onSelectCandidate: (CandidateInfo) -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
+
+    func makeUIView(context: Context) -> MKMapView {
+        let map = MKMapView()
+        map.delegate = context.coordinator
+        map.region = MKCoordinateRegion(center: storeCoordinate,
+                                         span: MKCoordinateSpan(latitudeDelta: 0.09, longitudeDelta: 0.09))
+        map.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: "customer")
+        map.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: "candidate")
+        map.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: "store")
+        map.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: MKMapViewDefaultClusterAnnotationViewReuseIdentifier)
+        Task { await context.coordinator.load(into: map) }
+        return map
     }
 
-    private func sizeFor(_ orders: Int) -> CGFloat {
-        6 + CGFloat(intensity(for: orders).squareRoot()) * 10
-    }
+    func updateUIView(_ uiView: MKMapView, context: Context) {}
 
-    private func formatMoney(_ v: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.groupingSeparator = "."
-        return (formatter.string(from: NSNumber(value: Int(v))) ?? "\(Int(v))") + " đ"
-    }
+    final class Coordinator: NSObject, MKMapViewDelegate {
+        let parent: NativeMapView
+        private var maxOrders = 1
 
-    private func load() async {
-        loading = true
-        loadError = nil
-        do {
-            let (data, _) = try await URLSession.shared.data(from: mapDataURL)
-            let resp = try JSONDecoder().decode(MapDataResponse.self, from: data)
-            storeCoordinate = CLLocationCoordinate2D(latitude: resp.store.lat, longitude: resp.store.lon)
-            customers = resp.customers.compactMap { row in
-                guard row.count >= 4 else { return nil }
-                return CustomerPoint(
-                    coordinate: CLLocationCoordinate2D(latitude: row[0], longitude: row[1]),
-                    orders: Int(row[2]), revenue: row[3]
-                )
+        init(parent: NativeMapView) { self.parent = parent }
+
+        func load(into map: MKMapView) async {
+            do {
+                let (data, _) = try await URLSession.shared.data(from: parent.dataURL)
+                let resp = try JSONDecoder().decode(MapDataResponse.self, from: data)
+
+                let customerAnns: [CustomerAnnotation] = resp.customers.compactMap { row in
+                    guard row.count >= 3 else { return nil }
+                    return CustomerAnnotation(
+                        coordinate: CLLocationCoordinate2D(latitude: row[0], longitude: row[1]),
+                        orders: Int(row[2])
+                    )
+                }
+                maxOrders = max(1, customerAnns.map(\.orders).max() ?? 1)
+
+                let candidateAnns: [CandidateAnnotation] = resp.candidates.enumerated().map { idx, c in
+                    let info = CandidateInfo(id: idx, rank: idx + 1, orders: c.orders, revenue: c.revenue,
+                                              distM: c.dist_m, sampleAddr: c.sample_addrs?.first)
+                    return CandidateAnnotation(coordinate: CLLocationCoordinate2D(latitude: c.lat, longitude: c.lon), info: info)
+                }
+
+                let store = StoreAnnotation(coordinate: CLLocationCoordinate2D(latitude: resp.store.lat, longitude: resp.store.lon))
+                let circle = MKCircle(center: store.coordinate, radius: 2000)
+
+                await MainActor.run {
+                    map.addAnnotations(customerAnns)
+                    map.addAnnotations(candidateAnns)
+                    map.addAnnotation(store)
+                    map.addOverlay(circle)
+                    self.parent.onLoaded()
+                }
+            } catch {
+                await MainActor.run { self.parent.onError(error.localizedDescription) }
             }
-            candidates = resp.candidates.enumerated().map { idx, c in
-                CandidateZone(
-                    rank: idx + 1,
-                    coordinate: CLLocationCoordinate2D(latitude: c.lat, longitude: c.lon),
-                    orders: c.orders, revenue: c.revenue, distM: c.dist_m,
-                    sampleAddr: c.sample_addrs?.first
-                )
-            }
-            ringPoints = Self.circlePoints(center: resp.store, radiusMeters: 2000, count: 72)
-            if let store = storeCoordinate {
-                region = MKCoordinateRegion(center: store, span: MKCoordinateSpan(latitudeDelta: 0.09, longitudeDelta: 0.09))
-            }
-        } catch {
-            loadError = error.localizedDescription
         }
-        loading = false
-    }
 
-    /// 72 điểm viền vòng tròn bán kính cố định quanh quán — thay cho MKCircle overlay (API mới,
-    /// cần iOS 17+ với SwiftUI `Map` bản mới; deployment target app này đang là iOS 16).
-    private static func circlePoints(center: MapDataResponse.StoreLocation, radiusMeters: Double, count: Int) -> [CLLocationCoordinate2D] {
-        let earthRadius = 6_371_000.0
-        let latRad = center.lat * .pi / 180
-        return (0..<count).map { i in
-            let bearing = (2 * Double.pi / Double(count)) * Double(i)
-            let lat2 = asin(sin(latRad) * cos(radiusMeters / earthRadius) + cos(latRad) * sin(radiusMeters / earthRadius) * cos(bearing))
-            let lon2 = (center.lon * .pi / 180) + atan2(
-                sin(bearing) * sin(radiusMeters / earthRadius) * cos(latRad),
-                cos(radiusMeters / earthRadius) - sin(latRad) * sin(lat2)
-            )
-            return CLLocationCoordinate2D(latitude: lat2 * 180 / .pi, longitude: lon2 * 180 / .pi)
+        func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            if let cluster = annotation as? MKClusterAnnotation {
+                let view = mapView.dequeueReusableAnnotationView(
+                    withIdentifier: MKMapViewDefaultClusterAnnotationViewReuseIdentifier, for: cluster) as! MKMarkerAnnotationView
+                view.markerTintColor = UIColor(red: 0x1E / 255, green: 0x4E / 255, blue: 0x8C / 255, alpha: 1)
+                view.glyphText = "\(cluster.memberAnnotations.count)"
+                view.canShowCallout = false
+                view.displayPriority = .defaultHigh
+                return view
+            }
+            if let c = annotation as? CustomerAnnotation {
+                let view = mapView.dequeueReusableAnnotationView(withIdentifier: "customer", for: c) as! MKMarkerAnnotationView
+                view.clusteringIdentifier = "customer"
+                view.canShowCallout = false
+                view.displayPriority = .defaultLow
+                view.markerTintColor = tint(for: c.orders)
+                view.glyphImage = nil
+                view.titleVisibility = .hidden
+                // Chấm nhỏ (không phải ghim to) cho 615 điểm — scale marker xuống qua transform,
+                // MKMarkerAnnotationView không có API đổi kích thước trực tiếp.
+                view.transform = CGAffineTransform(scaleX: 0.55, y: 0.55)
+                return view
+            }
+            if let z = annotation as? CandidateAnnotation {
+                let view = mapView.dequeueReusableAnnotationView(withIdentifier: "candidate", for: z) as! MKMarkerAnnotationView
+                view.markerTintColor = UIColor(red: 0xDC / 255, green: 0x35 / 255, blue: 0x45 / 255, alpha: 1)
+                view.glyphText = "\(z.info.rank)"
+                view.canShowCallout = false
+                view.displayPriority = .required
+                view.transform = .identity
+                return view
+            }
+            if annotation is StoreAnnotation {
+                let view = mapView.dequeueReusableAnnotationView(withIdentifier: "store", for: annotation) as! MKMarkerAnnotationView
+                view.markerTintColor = UIColor(red: 0x1E / 255, green: 0x4E / 255, blue: 0x8C / 255, alpha: 1)
+                view.glyphImage = UIImage(systemName: "cup.and.saucer.fill")
+                view.canShowCallout = true
+                view.displayPriority = .required
+                return view
+            }
+            return nil
+        }
+
+        func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
+            guard let z = view.annotation as? CandidateAnnotation else { return }
+            parent.onSelectCandidate(z.info)
+        }
+
+        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            guard let circle = overlay as? MKCircle else { return MKOverlayRenderer(overlay: overlay) }
+            let renderer = MKCircleRenderer(circle: circle)
+            renderer.strokeColor = UIColor(red: 0x1E / 255, green: 0x4E / 255, blue: 0x8C / 255, alpha: 0.7)
+            renderer.lineWidth = 2
+            renderer.fillColor = UIColor(red: 0x1E / 255, green: 0x4E / 255, blue: 0x8C / 255, alpha: 0.06)
+            return renderer
+        }
+
+        private func tint(for orders: Int) -> UIColor {
+            let t = min(1, Double(orders) / Double(maxOrders))
+            // Vàng nhạt (ít đơn) -> cam đậm (nhiều đơn).
+            return UIColor(hue: 0.11 - 0.03 * t, saturation: 0.75, brightness: 0.9, alpha: 1)
         }
     }
 }
