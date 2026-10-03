@@ -29,6 +29,7 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         UIRequiresFullScreen: true
+        ITSAppUsesNonExemptEncryption: false
         NSContactsUsageDescription: Đồng bộ tên khách hàng vào Danh bạ để hiện tên khi khách gọi đến.
         NSCameraUsageDescription: Chụp ảnh hoá đơn mua hàng để đọc tự động vào Chi tiêu, và chụp ảnh món cho menu.
         NSPhotoLibraryUsageDescription: Chọn ảnh từ album Yêu thích để cập nhật ảnh món trong menu.
