@@ -622,6 +622,23 @@ actor APIClient {
         return env.data ?? []
     }
 
+    /// Doanh thu theo tháng (soThang tháng gần đây) — dùng cho BaoHoaView, nhìn xu hướng tăng
+    /// trưởng có đang chững lại không.
+    func getDoanhThuTheoThang(soThang: Int = 12) async -> [DoanhThuTheoThangItemDto] {
+        let req = makeRequest("/api/ThongKe/doanh-thu-theo-thang?soThang=\(soThang)")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[DoanhThuTheoThangItemDto]>.self, from: data), env.isSuccess else { return [] }
+        return env.data ?? []
+    }
+
+    /// Tỷ lệ khách tháng trước quay lại tháng sau — dùng cho BaoHoaView.
+    func getTyLeKhachQuayLaiTheoThang(soThang: Int = 12) async -> [TyLeKhachQuayLaiThangItemDto] {
+        let req = makeRequest("/api/ThongKe/ty-le-khach-quay-lai-theo-thang?soThang=\(soThang)")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[TyLeKhachQuayLaiThangItemDto]>.self, from: data), env.isSuccess else { return [] }
+        return env.data ?? []
+    }
+
     // Ngưỡng/số tiền các tính năng giữ chân khách (giới thiệu, sinh nhật, vòng quay, thẻ
     // tem) trong app khách — trước đây hardcode, giờ chỉnh được từ đây.
     func getGamificationConfig() async -> GamificationConfigDto? {

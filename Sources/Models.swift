@@ -420,6 +420,36 @@ struct PhanBoDoanhThuTheoThuItemDto: Codable, Identifiable {
     let doanhThu: Double
 }
 
+// Doanh thu theo tháng (N tháng gần đây) — xem BaoHoaView + ThongKeService.GetDoanhThuTheoThangAsync.
+struct DoanhThuTheoThangItemDto: Codable, Identifiable {
+    var id: String { "\(nam)-\(thang)" }
+    let thang: Int
+    let nam: Int
+    let soDon: Int
+    let doanhThu: Double
+}
+
+// Tỷ lệ khách có đơn ở tháng N-1 quay lại đặt tiếp ở tháng N — xem BaoHoaView +
+// ThongKeService.GetTyLeKhachQuayLaiTheoThangAsync.
+struct TyLeKhachQuayLaiThangItemDto: Codable, Identifiable {
+    var id: String { "\(nam)-\(thang)" }
+    let thang: Int
+    let nam: Int
+    let soKhachThangTruoc: Int
+    let soKhachQuayLai: Int
+    let tyLeQuayLai: Double
+}
+
+// Bán kính ship trung bình theo tháng — đọc từ data.json của Bản đồ khách hàng (field
+// shipRadiusTrend, tính sẵn ở scripts/build-customer-map.py), KHÔNG qua Backend API. Xem BaoHoaView.
+struct ShipRadiusThangItemDto: Codable, Identifiable {
+    var id: String { "\(nam)-\(thang)" }
+    let thang: Int
+    let nam: Int
+    let soDon: Int
+    let banKinhTrungBinhKm: Double
+}
+
 // ---- Voucher app khách (AppDatHangIOS) ----
 
 struct VoucherDto: Codable, Identifiable {
