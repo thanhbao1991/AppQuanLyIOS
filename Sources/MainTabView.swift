@@ -52,28 +52,72 @@ struct MainTabView: View {
     @ObservedObject private var activeTab = ActiveTab.shared
     @ObservedObject private var deepLink = DeepLinkRouter.shared
     @ObservedObject private var congViecBadge = CongViecBadge.shared
+    @ObservedObject private var thongBaoBadge = ThongBaoBadge.shared
+    @State private var showThongBaoSheet = false
     /// Mặc định Hoá đơn dù Thống kê xếp trước về vị trí hiển thị — mở app luôn vào tab Hoá đơn
     /// theo yêu cầu, thứ tự khai báo trong MainTab không nhất thiết khớp mục mặc định.
     @State private var selection: MainTab = .hoaDon
 
     var body: some View {
         VStack(spacing: 0) {
-            Group {
-                switch selection {
-                case .thongKe: ThongKeView()
-                case .hoaDon: HoaDonListView()
-                case .thanhToan: ThanhToanListView()
-                case .congNo: CongNoListView()
-                case .chiTieu: ChiTieuListView()
-                case .congViec: CongViecListView()
-                case .menu: MoreMenuView(isLoggedIn: $isLoggedIn)
+            ZStack(alignment: .topTrailing) {
+                Group {
+                    switch selection {
+                    case .thongKe: ThongKeView()
+                    case .hoaDon: HoaDonListView()
+                    case .thanhToan: ThanhToanListView()
+                    case .congNo: CongNoListView()
+                    case .chiTieu: ChiTieuListView()
+                    case .congViec: CongViecListView()
+                    case .menu: MoreMenuView(isLoggedIn: $isLoggedIn)
+                    }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                // Icon chuông NỔI cố định góc trên-phải, đè lên mọi tab (2026-10-03, theo yêu cầu
+                // "phải nằm ở tất cả 7 tab") — đặt ở đây thay vì trong từng header riêng của 7 view
+                // con, vì mỗi tab tự vẽ header khác nhau (có tab màu brandPrimary, có tab
+                // navigationBarHidden như Menu) nên 1 overlay chung ở MainTabView là chỗ DUY NHẤT
+                // đảm bảo vị trí/hành vi giống hệt nhau trên cả 7 tab mà không phải sửa 7 file.
+                Button { showThongBaoSheet = true } label: {
+                    ZStack(alignment: .topTrailing) {
+                        // Nền trắng đặc (không phải Color.brandPrimary) — vài tab (Hoá đơn) có header
+                        // tinted cùng tông brandPrimary phủ hết safe area trên, nút cùng màu nền sẽ
+                        // chìm mất; trắng + icon xanh tương phản tốt trên MỌI tab (header màu lẫn nền
+                        // List trắng của tab Menu).
+                        Image(systemName: "bell.fill")
+                            .font(.system(size: 15))
+                            .foregroundColor(.brandPrimary)
+                            .frame(width: 34, height: 34)
+                            .background(Circle().fill(Color.white))
+                            .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
+                        if thongBaoBadge.unreadCount > 0 {
+                            Text(thongBaoBadge.unreadCount > 99 ? "99+" : "\(thongBaoBadge.unreadCount)")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(Color.dangerColor)
+                                .clipShape(Capsule())
+                                .offset(x: 6, y: -4)
+                        }
+                    }
+                }
+                // Đặt NGAY DƯỚI thanh header (không phải sát mép trên) — 1 số tab (Hoá đơn, Thanh
+                // toán, Thống kê) đã có icon riêng ở góc trên-phải NGAY TRONG header (filter/xuất...),
+                // đặt chuông sát mép trên sẽ đè lên đúng icon đó. Dưới header là khoảng trống chung
+                // cho mọi tab, kể cả tab không có header riêng (Công việc, Menu).
+                .padding(.top, Self.topSafeAreaInset + HeaderBarMetrics.rowHeight + HeaderBarMetrics.verticalPadding * 2 + 8)
+                .padding(.trailing, 14)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             Divider()
             tabBar
         }
+        .sheet(isPresented: $showThongBaoSheet) {
+            ThongBaoNoiBoListView()
+        }
+        .task { await thongBaoBadge.refresh() }
         .onChange(of: selection) { newValue in
             switch newValue {
             case .hoaDon: activeTab.tab = .hoaDon
@@ -143,6 +187,12 @@ struct MainTabView: View {
         UIApplication.shared.connectedScenes
             .compactMap { ($0 as? UIWindowScene)?.windows.first { $0.isKeyWindow } }
             .first?.safeAreaInsets.bottom ?? 0
+    }
+
+    private static var topSafeAreaInset: CGFloat {
+        UIApplication.shared.connectedScenes
+            .compactMap { ($0 as? UIWindowScene)?.windows.first { $0.isKeyWindow } }
+            .first?.safeAreaInsets.top ?? 0
     }
 }
 
