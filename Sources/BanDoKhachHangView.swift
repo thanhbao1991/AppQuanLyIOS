@@ -248,7 +248,11 @@ private struct NativeMapView: UIViewRepresentable {
                 view.glyphImage = nil
                 view.canShowCallout = false
                 view.titleVisibility = .hidden
-                view.displayPriority = .defaultLow
+                // .required (khong phai .defaultLow) - ep MapKit LUON hien du moi cham, khong tu
+                // an bot ghim chong nhau de "giam nhieu" (he thong declutter rieng cua MapKit,
+                // khac han clustering) - phan hoi 2026-10-04: zoom xa tuong nhu bi gom nhung thuc
+                // ra la bi an bot.
+                view.displayPriority = .required
                 // Chấm nhỏ (không phải ghim to) cho hàng trăm điểm — scale marker xuống qua
                 // transform, MKMarkerAnnotationView không có API đổi kích thước trực tiếp.
                 view.transform = CGAffineTransform(scaleX: 0.55, y: 0.55)
