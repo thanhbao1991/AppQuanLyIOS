@@ -33,6 +33,7 @@ struct ContentView: View {
                     EntityChangeBus.shared.post(entity, action, id, voice: voice)
                 } }
                 DesktopScreenStore.shared.start()
+                PushNotifications.requestAndRegister()
             } else {
                 Task { await SignalRClient.shared.stop() }
                 DesktopScreenStore.shared.stop()
@@ -82,6 +83,7 @@ struct ContentView: View {
                     EntityChangeBus.shared.post(entity, action, id, voice: voice)
                 }
                 DesktopScreenStore.shared.start()
+                PushNotifications.requestAndRegister()
             }
         }
     }

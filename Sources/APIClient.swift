@@ -124,6 +124,14 @@ actor APIClient {
         return await executeAction(req)
     }
 
+    /// Đăng ký APNs device token của thiết bị hiện tại (hoặc gỡ nếu token=nil) — dùng nhận push "Đơn
+    /// mới". Gọi sau login và mỗi lần mở app khi đã đăng nhập sẵn (token APNs có thể đổi).
+    func registerApnsDeviceToken(_ token: String?) async -> ActionResult {
+        let req = makeRequest("/api/Auth/device-token", method: "PUT",
+                               body: jsonBody(["apnsDeviceToken": token]))
+        return await executeAction(req)
+    }
+
     func getHoaDonListByDay(_ dateIso: String) async -> [HoaDonListDto] {
         let req = makeRequest("/api/dashboard/hoa-don-list?ngay=\(dateIso)")
         let (data, _) = await send(req)

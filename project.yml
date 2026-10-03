@@ -36,12 +36,15 @@ targets:
           - CFBundleURLName: uk.denncoffee.appmobileios
             CFBundleURLSchemes:
               - trasuaapp
+        UIBackgroundModes:
+          - remote-notification
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: uk.denncoffee.appmobileios
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_VERSION: "5.0"
+        CODE_SIGN_ENTITLEMENTS: AppMobileIOS.entitlements
     scheme:
       testTargets:
         - AppMobileIOSTests
