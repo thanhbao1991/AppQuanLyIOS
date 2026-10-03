@@ -17,6 +17,16 @@ private struct MapDataResponse: Decodable {
     /// `seasonal`: 1 = khách ở kho/đại lý thu mua theo mùa vụ (chỉ hoạt động ~3 tháng/năm,
     /// nhận diện qua từ khoá địa chỉ "kho"/"đại lý"/"xưởng"/"sầu riêng"), 0 = dân địa phương.
     let customers: [[Double]]
+    /// Danh sách quán trà sữa/cà phê đối thủ ở Krông Pắc — snapshot tĩnh crawl thủ công từ API
+    /// khách hàng shippershipping.com (xem scripts/competitor_stores_krongpac.json), KHÔNG tự
+    /// động làm mới.
+    let competitors: [CompetitorLocation]?
+}
+
+private struct CompetitorLocation: Decodable {
+    let name: String
+    let lat: Double
+    let lon: Double
 }
 
 /// Bản đồ mật độ khách hàng (App order) quanh quán — dùng Apple MapKit THẬT qua UIKit `MKMapView`
@@ -31,6 +41,7 @@ struct BanDoKhachHangView: View {
     @State private var reloadToken = UUID()
     @State private var showLocal = true
     @State private var showSeasonal = true
+    @State private var showCompetitors = true
 
     var body: some View {
         ZStack {
@@ -46,6 +57,7 @@ struct BanDoKhachHangView: View {
                 VStack(spacing: 0) {
                     filterBar()
                     NativeMapView(dataURL: mapDataURL, showLocal: showLocal, showSeasonal: showSeasonal,
+                                  showCompetitors: showCompetitors,
                                   onLoaded: { loading = false; loadError = nil },
                                   onError: { loadError = $0; loading = false })
                         .frame(maxHeight: .infinity)
@@ -61,12 +73,14 @@ struct BanDoKhachHangView: View {
     }
 
     private func filterBar() -> some View {
-        HStack(spacing: 8) {
-            filterChip(title: "Dân địa phương", color: localColor, isOn: $showLocal)
-            filterChip(title: "Kho / đại lý (mùa vụ)", color: seasonalColor, isOn: $showSeasonal)
-            Spacer()
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                filterChip(title: "Dân địa phương", color: localColor, isOn: $showLocal)
+                filterChip(title: "Kho / đại lý (mùa vụ)", color: seasonalColor, isOn: $showSeasonal)
+                filterChip(title: "Đối thủ", color: competitorColor, isOn: $showCompetitors)
+            }
+            .padding(.horizontal, 12)
         }
-        .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(.bar)
     }
@@ -92,8 +106,10 @@ struct BanDoKhachHangView: View {
 
 private let localColor = Color(red: 0x1E / 255, green: 0x4E / 255, blue: 0x8C / 255)
 private let seasonalColor = Color(red: 0x8E / 255, green: 0x2D / 255, blue: 0x8C / 255)
+private let competitorColor = Color(red: 0xB0 / 255, green: 0x30 / 255, blue: 0x30 / 255)
 private let localUIColor = UIColor(red: 0x1E / 255, green: 0x4E / 255, blue: 0x8C / 255, alpha: 1)
 private let seasonalUIColor = UIColor(red: 0x8E / 255, green: 0x2D / 255, blue: 0x8C / 255, alpha: 1)
+private let competitorUIColor = UIColor(red: 0xB0 / 255, green: 0x30 / 255, blue: 0x30 / 255, alpha: 1)
 
 // MARK: - Annotation types
 
@@ -114,12 +130,23 @@ private final class StoreAnnotation: NSObject, MKAnnotation {
     var title: String? { "Chi nhánh hiện tại" }
 }
 
+private final class CompetitorAnnotation: NSObject, MKAnnotation {
+    let coordinate: CLLocationCoordinate2D
+    let name: String
+    init(coordinate: CLLocationCoordinate2D, name: String) {
+        self.coordinate = coordinate
+        self.name = name
+    }
+    var title: String? { name }
+}
+
 // MARK: - UIViewRepresentable
 
 private struct NativeMapView: UIViewRepresentable {
     let dataURL: URL
     let showLocal: Bool
     let showSeasonal: Bool
+    let showCompetitors: Bool
     let onLoaded: () -> Void
     let onError: (String) -> Void
 
@@ -132,6 +159,7 @@ private struct NativeMapView: UIViewRepresentable {
                                          span: MKCoordinateSpan(latitudeDelta: 0.09, longitudeDelta: 0.09))
         map.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: "customer")
         map.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: "store")
+        map.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: "competitor")
         map.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: MKMapViewDefaultClusterAnnotationViewReuseIdentifier)
         Task { await context.coordinator.load(into: map) }
         return map
@@ -146,6 +174,7 @@ private struct NativeMapView: UIViewRepresentable {
         var parent: NativeMapView
         private var maxOrders = 1
         private var allCustomerAnns: [CustomerAnnotation] = []
+        private var allCompetitorAnns: [CompetitorAnnotation] = []
 
         init(parent: NativeMapView) { self.parent = parent }
 
@@ -164,6 +193,10 @@ private struct NativeMapView: UIViewRepresentable {
                 }
                 maxOrders = max(1, allCustomerAnns.map(\.orders).max() ?? 1)
 
+                allCompetitorAnns = (resp.competitors ?? []).map {
+                    CompetitorAnnotation(coordinate: CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon), name: $0.name)
+                }
+
                 let store = StoreAnnotation(coordinate: storeCoordinate)
                 let circle = MKCircle(center: store.coordinate, radius: 2000)
 
@@ -179,12 +212,18 @@ private struct NativeMapView: UIViewRepresentable {
         }
 
         func applyFilter(on map: MKMapView) {
-            let existing = map.annotations.compactMap { $0 as? CustomerAnnotation }
-            map.removeAnnotations(existing)
+            let existingCustomers = map.annotations.compactMap { $0 as? CustomerAnnotation }
+            map.removeAnnotations(existingCustomers)
             let filtered = allCustomerAnns.filter { ann in
                 (ann.isSeasonal && parent.showSeasonal) || (!ann.isSeasonal && parent.showLocal)
             }
             map.addAnnotations(filtered)
+
+            let existingCompetitors = map.annotations.compactMap { $0 as? CompetitorAnnotation }
+            map.removeAnnotations(existingCompetitors)
+            if parent.showCompetitors {
+                map.addAnnotations(allCompetitorAnns)
+            }
         }
 
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
@@ -224,6 +263,17 @@ private struct NativeMapView: UIViewRepresentable {
                 view.glyphImage = UIImage(systemName: "cup.and.saucer.fill")
                 view.canShowCallout = true
                 view.displayPriority = .required
+                return view
+            }
+            if let comp = annotation as? CompetitorAnnotation {
+                let view = mapView.dequeueReusableAnnotationView(withIdentifier: "competitor", for: comp) as! MKMarkerAnnotationView
+                view.markerTintColor = competitorUIColor
+                view.glyphImage = UIImage(systemName: "storefront.fill")
+                // Khong gom cum - chi 81 quan, giu rieng le de bam xem ten tung quan.
+                view.canShowCallout = true
+                view.titleVisibility = .adaptive
+                view.displayPriority = .defaultLow
+                view.transform = CGAffineTransform(scaleX: 0.7, y: 0.7)
                 return view
             }
             return nil
