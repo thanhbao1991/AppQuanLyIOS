@@ -237,18 +237,11 @@ private struct MoreMenuView: View {
                     }
 
                     if let balance = aiBalance {
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                EmojiLabel("Số dư AI (OpenRouter)", "🤖")
-                                Spacer()
-                                Text("$\(balance.remaining, specifier: "%.2f")")
-                                    .foregroundStyle(balance.remaining < 1 ? .red : .secondary)
-                            }
-                            ForEach(balance.modelUsages) { usage in
-                                Text("\(usage.tinhNang): \(usage.model)")
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
+                        HStack {
+                            EmojiLabel("Số dư AI (OpenRouter)", "🤖")
+                            Spacer()
+                            Text("$\(balance.remaining, specifier: "%.2f")")
+                                .foregroundStyle(balance.remaining < 1 ? .red : .secondary)
                         }
                     }
                 }
