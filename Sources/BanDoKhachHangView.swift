@@ -1,22 +1,15 @@
 import MapKit
 import SwiftUI
 
-/// Dữ liệu tải thẳng từ file tĩnh trên VPS (KHÔNG qua Backend API) — cùng nguồn với trang web
-/// "Bản Đồ Khách Hàng" (api.denncoffee.com/map-f90702696b23/), build lại + đẩy lên mỗi tối 21h
-/// bằng scripts/build-customer-map.py (xem BackupCode_Dropbox.ps1 trên máy dev). URL không qua
-/// JWT (dữ liệu ẩn danh — không có tên/SĐT khách, chỉ toạ độ + số đơn + doanh thu), khớp cách
-/// trang web đang phục vụ.
-private let mapDataURL = URL(string: "https://api.denncoffee.com/map-f90702696b23/data.json")!
+/// Đối thủ cạnh tranh vẫn đọc từ file tĩnh trên VPS (KHÔNG qua Backend API) — snapshot crawl thủ
+/// công, không có trong DB. Khách hàng (customers) từ 2026-10-04 đọc thẳng từ DB qua
+/// APIClient.getMapCustomers() (KhachHangAddresses.Lat/Long) thay vì crawl ngoài platform — xem
+/// memory/session liên quan (gộp theo HoaDons chỉ đạt ~50% do tỷ lệ "bắt đơn" + KhachHangId của
+/// đơn App trỏ vào shipper; gộp theo KhachHangAddresses đạt ~100%).
+private let competitorsDataURL = URL(string: "https://api.denncoffee.com/map-f90702696b23/data.json")!
 private let storeCoordinate = CLLocationCoordinate2D(latitude: 12.7095521, longitude: 108.3016576)
 
 private struct MapDataResponse: Decodable {
-    struct StoreLocation: Decodable { let lat: Double; let lon: Double }
-    let store: StoreLocation
-    /// Mỗi phần tử: [vĩ độ, kinh độ, số đơn, doanh thu, seasonal] — mảng thô (không object) để
-    /// file nhẹ, khớp định dạng `customers` bên data.json (xem build-customer-map.py).
-    /// `seasonal`: 1 = khách ở kho/đại lý thu mua theo mùa vụ (chỉ hoạt động ~3 tháng/năm,
-    /// nhận diện qua từ khoá địa chỉ "kho"/"đại lý"/"xưởng"/"sầu riêng"), 0 = dân địa phương.
-    let customers: [[Double]]
     /// Danh sách quán trà sữa/cà phê đối thủ ở Krông Pắc — snapshot tĩnh crawl thủ công từ API
     /// khách hàng shippershipping.com (xem scripts/competitor_stores_krongpac.json), KHÔNG tự
     /// động làm mới.
@@ -62,7 +55,7 @@ struct BanDoKhachHangView: View {
             } else {
                 VStack(spacing: 0) {
                     filterBar()
-                    NativeMapView(dataURL: mapDataURL, showLocal: showLocal, showSeasonal: showSeasonal,
+                    NativeMapView(showLocal: showLocal, showSeasonal: showSeasonal,
                                   showCompetitors: showCompetitors, hideWithin2km: hideWithin2km,
                                   onLoaded: { loading = false; loadError = nil },
                                   onError: { loadError = $0; loading = false })
@@ -129,15 +122,11 @@ private let competitorUIColor = UIColor(red: 0xB0 / 255, green: 0x30 / 255, blue
 
 private final class CustomerAnnotation: NSObject, MKAnnotation {
     let coordinate: CLLocationCoordinate2D
-    let orders: Int
     let isSeasonal: Bool
-    init(coordinate: CLLocationCoordinate2D, orders: Int, isSeasonal: Bool) {
+    init(coordinate: CLLocationCoordinate2D, isSeasonal: Bool) {
         self.coordinate = coordinate
-        self.orders = orders
         self.isSeasonal = isSeasonal
     }
-    var title: String? { "1 khách" }
-    var subtitle: String? { "\(orders) đơn" }
 }
 
 private final class StoreAnnotation: NSObject, MKAnnotation {
@@ -159,7 +148,6 @@ private final class CompetitorAnnotation: NSObject, MKAnnotation {
 // MARK: - UIViewRepresentable
 
 private struct NativeMapView: UIViewRepresentable {
-    let dataURL: URL
     let showLocal: Bool
     let showSeasonal: Bool
     let showCompetitors: Bool
@@ -188,42 +176,42 @@ private struct NativeMapView: UIViewRepresentable {
 
     final class Coordinator: NSObject, MKMapViewDelegate {
         var parent: NativeMapView
-        private var maxOrders = 1
         private var allCustomerAnns: [CustomerAnnotation] = []
         private var allCompetitorAnns: [CompetitorAnnotation] = []
 
         init(parent: NativeMapView) { self.parent = parent }
 
         func load(into map: MKMapView) async {
-            do {
-                let (data, _) = try await URLSession.shared.data(from: parent.dataURL)
-                let resp = try JSONDecoder().decode(MapDataResponse.self, from: data)
+            // Khach hang: tu DB (KhachHangAddresses.Lat/Long qua APIClient). Doi thu: van tu file
+            // tinh tren VPS (khong co trong DB) - 2 nguon doc song song.
+            async let customersTask = APIClient.shared.getMapCustomers()
+            async let competitorsTask: [CompetitorLocation] = {
+                guard let (data, _) = try? await URLSession.shared.data(from: competitorsDataURL),
+                      let resp = try? JSONDecoder().decode(MapDataResponse.self, from: data) else { return [] }
+                return resp.competitors ?? []
+            }()
+            let (customers, competitors) = await (customersTask, competitorsTask)
 
-                allCustomerAnns = resp.customers.compactMap { row in
-                    guard row.count >= 4 else { return nil }
-                    let isSeasonal = row.count >= 5 && row[4] == 1
-                    return CustomerAnnotation(
-                        coordinate: CLLocationCoordinate2D(latitude: row[0], longitude: row[1]),
-                        orders: Int(row[2]), isSeasonal: isSeasonal
-                    )
-                }
-                maxOrders = max(1, allCustomerAnns.map(\.orders).max() ?? 1)
+            if customers.isEmpty {
+                await MainActor.run { self.parent.onError("Không tải được dữ liệu khách hàng.") }
+                return
+            }
 
-                allCompetitorAnns = (resp.competitors ?? []).map {
-                    CompetitorAnnotation(coordinate: CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon), name: $0.name)
-                }
+            allCustomerAnns = customers.map {
+                CustomerAnnotation(coordinate: CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.long), isSeasonal: $0.seasonal)
+            }
+            allCompetitorAnns = competitors.map {
+                CompetitorAnnotation(coordinate: CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon), name: $0.name)
+            }
 
-                let store = StoreAnnotation(coordinate: storeCoordinate)
-                let circle = MKCircle(center: store.coordinate, radius: 2000)
+            let store = StoreAnnotation(coordinate: storeCoordinate)
+            let circle = MKCircle(center: store.coordinate, radius: 2000)
 
-                await MainActor.run {
-                    applyFilter(on: map)
-                    map.addAnnotation(store)
-                    map.addOverlay(circle)
-                    self.parent.onLoaded()
-                }
-            } catch {
-                await MainActor.run { self.parent.onError(error.localizedDescription) }
+            await MainActor.run {
+                applyFilter(on: map)
+                map.addAnnotation(store)
+                map.addOverlay(circle)
+                self.parent.onLoaded()
             }
         }
 
@@ -256,12 +244,9 @@ private struct NativeMapView: UIViewRepresentable {
             if let c = annotation as? CustomerAnnotation {
                 let view = mapView.dequeueReusableAnnotationView(withIdentifier: "customer", for: c) as! MKMarkerAnnotationView
                 // KHONG gom cum (clusteringIdentifier) nua - xem comment dau file.
-                view.markerTintColor = c.isSeasonal ? seasonalUIColor : tint(for: c.orders)
+                view.markerTintColor = c.isSeasonal ? seasonalUIColor : localUIColor
                 view.glyphImage = nil
-                // Moi cham = dung 1 khach that - bam vao xem duoc so don cua rieng khach do (title/
-                // subtitle doc tu CustomerAnnotation.title/.subtitle, MKAnnotationView khong co
-                // property nay rieng).
-                view.canShowCallout = true
+                view.canShowCallout = false
                 view.titleVisibility = .hidden
                 view.displayPriority = .defaultLow
                 // Chấm nhỏ (không phải ghim to) cho hàng trăm điểm — scale marker xuống qua
@@ -298,12 +283,6 @@ private struct NativeMapView: UIViewRepresentable {
             renderer.lineWidth = 2
             renderer.fillColor = localUIColor.withAlphaComponent(0.06)
             return renderer
-        }
-
-        private func tint(for orders: Int) -> UIColor {
-            let t = min(1, Double(orders) / Double(maxOrders))
-            // Vàng nhạt (ít đơn) -> cam đậm (nhiều đơn).
-            return UIColor(hue: 0.11 - 0.03 * t, saturation: 0.75, brightness: 0.9, alpha: 1)
         }
     }
 }

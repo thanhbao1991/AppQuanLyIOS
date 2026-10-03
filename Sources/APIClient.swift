@@ -639,6 +639,14 @@ actor APIClient {
         return env.data ?? []
     }
 
+    /// Vị trí khách hàng cho Bản đồ khách hàng — đọc thẳng từ DB, xem MapCustomerDto.
+    func getMapCustomers() async -> [MapCustomerDto] {
+        let req = makeRequest("/api/Map/customers")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[MapCustomerDto]>.self, from: data), env.isSuccess else { return [] }
+        return env.data ?? []
+    }
+
     // Ngưỡng/số tiền các tính năng giữ chân khách (giới thiệu, sinh nhật, vòng quay, thẻ
     // tem) trong app khách — trước đây hardcode, giờ chỉnh được từ đây.
     func getGamificationConfig() async -> GamificationConfigDto? {

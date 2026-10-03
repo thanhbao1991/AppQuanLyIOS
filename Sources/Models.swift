@@ -450,6 +450,14 @@ struct ShipRadiusThangItemDto: Codable, Identifiable {
     let banKinhTrungBinhKm: Double
 }
 
+// Vị trí khách hàng cho Bản đồ khách hàng — đọc thẳng từ DB (KhachHangAddresses.Lat/Long) qua
+// GET /api/Map/customers, KHÔNG qua crawl ngoài platform nữa (xem MapService.GetCustomersAsync).
+struct MapCustomerDto: Codable {
+    let lat: Double
+    let long: Double
+    let seasonal: Bool
+}
+
 // ---- Voucher app khách (AppDatHangIOS) ----
 
 struct VoucherDto: Codable, Identifiable {
