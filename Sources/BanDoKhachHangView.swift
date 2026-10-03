@@ -45,9 +45,7 @@ struct BanDoKhachHangView: View {
 
     var body: some View {
         ZStack {
-            if loading {
-                fullScreenLoading()
-            } else if let loadError {
+            if let loadError {
                 VStack(spacing: 8) {
                     Text("Không tải được dữ liệu bản đồ").font(.headline)
                     Text(loadError).font(.caption).foregroundColor(.textMuted)
@@ -64,6 +62,9 @@ struct BanDoKhachHangView: View {
                     if let c = selectedCandidate {
                         candidateDetail(c)
                     }
+                }
+                if loading {
+                    fullScreenLoading()
                 }
             }
         }
