@@ -121,8 +121,11 @@ enum ThongBaoNoiBoFormatting {
         case "HoaDonDel": return "Xoá hoá đơn"
         case "DangGiaoHang": return "Đang giao hàng"
         case "GhiNo": return "Ghi nợ"
+        case "ThanhToanTienMat": return "Tiền mặt"
+        case "ThanhToanChuyenKhoan": return "Chuyển khoản"
+        case "ThanhToanBanking": return "Banking (tự động thu)"
         case "ThanhToan": return "Thanh toán"
-        case "DuyKhanh": return "Duyệt khách"
+        case "DuyKhanh": return "Duy Khánh"
         case "Admin": return "Hệ thống"
         default: return "Thông báo"
         }
