@@ -129,6 +129,24 @@ private final class CustomerAnnotation: NSObject, MKAnnotation {
     }
 }
 
+/// View NHẸ cho chấm khách (thay MKMarkerAnnotationView "balloon" nặng — có bóng đổ/glyph/bezier
+/// phức tạp) — chỉ 1 CALayer tròn đơn giản. ~600 điểm cùng lúc với MKMarkerAnnotationView +
+/// displayPriority=.required (ép hiện đủ, không cho MapKit tự ẩn bớt) làm máy đơ lúc pan/zoom liên
+/// tục (phản hồi 2026-10-04) — đổi sang view nhẹ này để giữ "hiện đủ" mà không đơ.
+private final class CustomerDotAnnotationView: MKAnnotationView {
+    override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
+        super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
+        frame = CGRect(x: 0, y: 0, width: 8, height: 8)
+        layer.cornerRadius = 4
+        layer.masksToBounds = true
+        canShowCallout = false
+        displayPriority = .required
+        collisionMode = .circle
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+}
+
 private final class StoreAnnotation: NSObject, MKAnnotation {
     let coordinate: CLLocationCoordinate2D
     init(coordinate: CLLocationCoordinate2D) { self.coordinate = coordinate }
@@ -162,7 +180,7 @@ private struct NativeMapView: UIViewRepresentable {
         map.delegate = context.coordinator
         map.region = MKCoordinateRegion(center: storeCoordinate,
                                          span: MKCoordinateSpan(latitudeDelta: 0.09, longitudeDelta: 0.09))
-        map.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: "customer")
+        map.register(CustomerDotAnnotationView.self, forAnnotationViewWithReuseIdentifier: "customer")
         map.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: "store")
         map.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: "competitor")
         Task { await context.coordinator.load(into: map) }
@@ -242,23 +260,11 @@ private struct NativeMapView: UIViewRepresentable {
 
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
             if let c = annotation as? CustomerAnnotation {
-                let view = mapView.dequeueReusableAnnotationView(withIdentifier: "customer", for: c) as! MKMarkerAnnotationView
+                let view = mapView.dequeueReusableAnnotationView(withIdentifier: "customer", for: c) as! CustomerDotAnnotationView
                 // KHONG gom cum (clusteringIdentifier) nua - xem comment dau file.
-                view.markerTintColor = c.isSeasonal ? seasonalUIColor : localUIColor
-                view.glyphImage = nil
-                view.canShowCallout = false
-                view.titleVisibility = .hidden
-                // .required (khong phai .defaultLow) - ep MapKit LUON hien du moi cham, khong tu
-                // an bot ghim chong nhau de "giam nhieu" (he thong declutter rieng cua MapKit,
-                // khac han clustering) - phan hoi 2026-10-04: zoom xa tuong nhu bi gom nhung thuc
-                // ra la bi an bot.
-                view.displayPriority = .required
-                // Chấm nhỏ (không phải ghim to) cho hàng trăm điểm — scale marker xuống qua
-                // transform, MKMarkerAnnotationView không có API đổi kích thước trực tiếp.
-                view.transform = CGAffineTransform(scaleX: 0.55, y: 0.55)
-                // Hơi trong suốt (không phải 100%) để khi zoom xa, nhiều chấm chồng lên nhau tự
-                // nhiên đậm màu hơn — cho cảm giác mật độ mà KHÔNG cần in số (tránh lặp lại vấn đề
-                // "số đổi theo zoom" đã bỏ gom cụm vì lý do này, phản hồi 2026-10-04).
+                view.backgroundColor = c.isSeasonal ? seasonalUIColor : localUIColor
+                // Hơi trong suốt để chấm chồng lên nhau khi zoom xa tự nhiên đậm màu hơn (cảm giác
+                // mật độ, không cần in số nào).
                 view.alpha = 0.6
                 return view
             }
