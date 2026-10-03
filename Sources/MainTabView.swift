@@ -216,6 +216,11 @@ private struct MoreMenuView: View {
 
                 Section("Công cụ") {
                     NavigationLink {
+                        BanDoKhachHangView()
+                    } label: {
+                        EmojiLabel("Bản đồ khách hàng", "🗺️")
+                    }
+                    NavigationLink {
                         TinhLuongView(shipperTen: "Khánh")
                     } label: {
                         EmojiLabel("Tính lương Khánh", "⛽")
