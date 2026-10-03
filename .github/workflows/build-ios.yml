@@ -113,9 +113,17 @@ jobs:
   # copy từ AppDatHangIOS — xem memory project_appdathangios_testflight_ci.
   testflight:
     if: ${{ inputs.release }}
-    runs-on: macos-15
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+
+      # App Store Connect tu 10/2026 bat buoc build bang iOS 26 SDK tro len (Xcode 26+) - macos-15
+      # mac dinh chi co Xcode 16.4 (iOS 18.5 SDK), bi tu choi loi 409 "SDK version issue" khi upload.
+      # Chon ban Xcode moi nhat da co san tren runner (khong tai moi, chi chon trong cac ban cai san).
+      - name: Select latest stable Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
 
       - name: Install XcodeGen
         run: brew install xcodegen
