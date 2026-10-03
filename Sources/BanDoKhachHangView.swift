@@ -275,6 +275,11 @@ private struct NativeMapView: UIViewRepresentable {
                 // duoi, vi MKAnnotationView khong co property title/subtitle rieng).
                 view.glyphText = "\(members.count)"
                 view.canShowCallout = true
+                // Ep .visible thay vi mac dinh .adaptive - .adaptive tu an nhan khi cum dung sat
+                // nhau de tranh de chu, gay hien tuong "luc hien luc khong" kho chiu (phan hoi
+                // 2026-10-03). Chap nhan doi khi chu chong len nhau o vung qua day cum, doi lai
+                // nhat quan.
+                view.titleVisibility = .visible
                 view.displayPriority = .defaultHigh
                 return view
             }
