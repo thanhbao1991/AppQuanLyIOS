@@ -375,6 +375,18 @@ struct CongViecNoiBoRequest: Encodable {
     let ngayGio: String?
 }
 
+// ---- Lịch sử thông báo nội bộ (icon chuông, tab Hoá đơn) — thay Discord từ 2026-10-03 ----
+
+struct ThongBaoNoiBoDto: Decodable, Identifiable {
+    let id: String
+    let loai: String
+    let noiDung: String
+    let mau: Int
+    let hoaDonId: String?
+    let taoLuc: String
+    let daXem: Bool
+}
+
 // ---- Thông báo/khuyến mãi (app khách AppDatHangIOS đọc qua ThongBaoService, quản trị ở đây) ----
 
 struct ThongBaoQuanDto: Codable, Identifiable {

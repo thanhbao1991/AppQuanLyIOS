@@ -25,6 +25,8 @@ struct HoaDonListView: View {
     @State private var searchText = ""
     @State private var showAddSheet = false
     @State private var showDesktopSheet = false
+    @State private var showThongBaoSheet = false
+    @ObservedObject private var thongBaoBadge = ThongBaoBadge.shared
     @State private var creatingPending: PendingCreate?
     /// Tick định kỳ để buộc SwiftUI vẽ lại badge "chờ" trên các card — nếu không có state nào đổi,
     /// waitingMinutes chỉ tính 1 lần lúc load rồi đứng yên mãi (không tự cập nhật theo thời gian thực).
@@ -105,6 +107,7 @@ struct HoaDonListView: View {
                     date: $currentDate, searchText: $searchText,
                     placeholder: "Tìm khách, món, ghi chú...",
                     trailing: AnyView(
+                        HStack(spacing: 14) {
                         Menu {
                             // Chỉ lọc 1 loại tại 1 thời điểm (không gộp OR nhiều filter như trước) —
                             // chọn lại đúng filter đang bật để tắt, chọn filter khác để thay hẳn.
@@ -157,6 +160,25 @@ struct HoaDonListView: View {
                                             .offset(x: 8, y: -8)
                                     }
                                 }
+                        }
+
+                        Button { showThongBaoSheet = true } label: {
+                            Image(systemName: "bell")
+                                .font(.title3)
+                                .foregroundColor(.white)
+                                .overlay(alignment: .topTrailing) {
+                                    if thongBaoBadge.unreadCount > 0 {
+                                        Text("\(thongBaoBadge.unreadCount)")
+                                            .font(.caption2.bold())
+                                            .foregroundColor(.white)
+                                            .padding(4)
+                                            .frame(minWidth: 18, minHeight: 18)
+                                            .background(Color.dangerColor)
+                                            .clipShape(Circle())
+                                            .offset(x: 8, y: -8)
+                                    }
+                                }
+                        }
                         }
                     ),
                     tinted: true
@@ -232,6 +254,7 @@ struct HoaDonListView: View {
         .task {
             await load()
             openPendingDeepLink()
+            await thongBaoBadge.refresh()
         }
         .onReceive(clockTimer) { now = $0 }
         .onEntityChanged(["HoaDon"], tab: .hoaDon) { Task { await load() } }
@@ -248,6 +271,9 @@ struct HoaDonListView: View {
         }
         .sheet(isPresented: $showDesktopSheet) {
             DesktopScreenView()
+        }
+        .sheet(isPresented: $showThongBaoSheet) {
+            ThongBaoNoiBoListView()
         }
         .sheet(isPresented: $showAddSheet) {
             AddHoaDonSheet(

@@ -34,6 +34,7 @@ struct ContentView: View {
                 } }
                 DesktopScreenStore.shared.start()
                 PushNotifications.requestAndRegister()
+                Task { await ThongBaoBadge.shared.refresh() }
             } else {
                 Task { await SignalRClient.shared.stop() }
                 DesktopScreenStore.shared.stop()
@@ -84,6 +85,7 @@ struct ContentView: View {
                 }
                 DesktopScreenStore.shared.start()
                 PushNotifications.requestAndRegister()
+                await ThongBaoBadge.shared.refresh()
             }
         }
     }

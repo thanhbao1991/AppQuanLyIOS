@@ -491,7 +491,7 @@ actor APIClient {
     }
 
     /// Đẩy/đồng bộ topping cho TẤT CẢ sản phẩm đã có trên store — chạy nền bên Backend (có thể mất
-    /// vài chục phút), kết quả báo qua Discord Admin chứ không trả về ngay trong request này.
+    /// vài chục phút), kết quả báo qua thông báo Hệ thống (icon chuông) chứ không trả về ngay trong request này.
     func pushToppingAllToStore() async -> ActionResult {
         let req = makeRequest("/api/AppOrder/push-topping-all", method: "POST", body: jsonBody([String: String]()))
         return await executeAction(req)
@@ -505,7 +505,7 @@ actor APIClient {
     }
 
     /// Đẩy Size XL cho TẤT CẢ sản phẩm đủ điều kiện (đã lên store + có Size XL nội bộ) — chạy nền,
-    /// báo qua Discord Admin, khớp pushToppingAllToStore.
+    /// báo qua thông báo Hệ thống, khớp pushToppingAllToStore.
     func pushSizeXLAllToStore() async -> ActionResult {
         let req = makeRequest("/api/AppOrder/push-size-xl-all", method: "POST", body: jsonBody([String: String]()))
         return await executeAction(req)
@@ -535,6 +535,26 @@ actor APIClient {
     func updateCongViec(id: String, ten: String, daHoanThanh: Bool, ngayGio: String?) async -> ActionResult {
         let body = CongViecNoiBoRequest(ten: ten, daHoanThanh: daHoanThanh, ngayGio: ngayGio)
         let req = makeRequest("/api/CongViecNoiBo/\(id)", method: "PUT", body: jsonBody(body))
+        return await executeAction(req)
+    }
+
+    // Lịch sử thông báo nội bộ (icon chuông, tab Hoá đơn) — thay Discord từ 2026-10-03.
+    func getThongBaoNoiBoList(take: Int = 50) async -> [ThongBaoNoiBoDto] {
+        let req = makeRequest("/api/ThongBaoNoiBo?take=\(take)")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[ThongBaoNoiBoDto]>.self, from: data), env.isSuccess else { return [] }
+        return env.data ?? []
+    }
+
+    func getThongBaoUnreadCount() async -> Int {
+        let req = makeRequest("/api/ThongBaoNoiBo/unread-count")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<Int>.self, from: data), env.isSuccess else { return 0 }
+        return env.data ?? 0
+    }
+
+    func markThongBaoSeen() async -> ActionResult {
+        let req = makeRequest("/api/ThongBaoNoiBo/danh-dau-da-xem", method: "POST")
         return await executeAction(req)
     }
 

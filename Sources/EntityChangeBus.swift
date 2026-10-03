@@ -1,4 +1,5 @@
 import AudioToolbox
+import Combine
 import Foundation
 import SwiftUI
 
@@ -24,6 +25,27 @@ final class CongViecBadge: ObservableObject {
     func refresh() async {
         let items = await APIClient.shared.getCongViecList()
         pendingCount = items.filter { !$0.daHoanThanh }.count
+    }
+}
+
+/// Số thông báo nội bộ CHƯA XEM — hiện badge đỏ trên icon chuông (HoaDonListView). Tự refresh khi
+/// nhận SignalR "ThongBaoNoiBo" bất kể tab đang xem (khác CongViecBadge, không cần ai gọi tay) —
+/// InternalNotificationService (Backend) bắn signal này ngay sau khi lưu xong, xem ThongBaoNoiBoService.
+@MainActor
+final class ThongBaoBadge: ObservableObject {
+    static let shared = ThongBaoBadge()
+    @Published var unreadCount: Int = 0
+    private var cancellable: AnyCancellable?
+
+    private init() {
+        cancellable = EntityChangeBus.shared.$lastEvent.sink { [weak self] event in
+            guard let event, event.entityName.lowercased() == "thongbaonoibo" else { return }
+            Task { await self?.refresh() }
+        }
+    }
+
+    func refresh() async {
+        unreadCount = await APIClient.shared.getThongBaoUnreadCount()
     }
 }
 
@@ -130,6 +152,7 @@ final class EntityChangeBus: ObservableObject {
         case "chitieuhangngay": return "Chi tiêu"
         case "congviecnoibo": return "Công việc"
         case "phiendangnhap": return "Đăng nhập"
+        case "thongbaonoibo": return "Thông báo"
         case "sanpham": return "Sản phẩm"
         case "nguyenlieu": return "Nguyên liệu"
         default: return entityName
