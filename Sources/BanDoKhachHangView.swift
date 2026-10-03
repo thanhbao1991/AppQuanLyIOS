@@ -22,11 +22,11 @@ private struct CompetitorLocation: Decodable {
     let lon: Double
 }
 
-/// Bản đồ mật độ khách hàng (App order) quanh quán — dùng Apple MapKit THẬT qua UIKit `MKMapView`
-/// (không phải SwiftUI `Map(annotationItems:)`) vì bản SwiftUI cũ dựng ~700 custom view riêng lẻ
-/// cho 615 khách + 72 điểm viền vòng tròn, không tận dụng được MKAnnotationView gốc → lag rõ rệt
-/// so với Google Maps khi test thật trên máy (phản hồi 2026-10-03). Vòng tròn 2km vẽ bằng MKCircle
-/// overlay thật (không còn giả lập bằng chấm rời).
+/// Bản đồ mật độ khách hàng quanh quán — dùng Apple MapKit THẬT qua UIKit `MKMapView` (không phải
+/// SwiftUI `Map(annotationItems:)`) vì bản SwiftUI cũ dựng hàng trăm custom view riêng lẻ, không
+/// tận dụng được MKAnnotationView gốc → lag rõ rệt so với Google Maps khi test thật trên máy
+/// (phản hồi 2026-10-03). KHÔNG còn vẽ vòng tròn minh hoạ bán kính trên map (bỏ 2026-10-04, chỉ
+/// còn dùng bán kính để LỌC ẩn/hiện qua slider, không vẽ ra).
 /// KHÔNG gom cụm (đã thử clustering tự động rồi BỎ 2026-10-04) — số trên cụm đổi theo cách MapKit
 /// gom lại mỗi lần zoom (quy luật hình học bình thường của thuật toán, không phải bug) khiến nhìn
 /// như "sai số", gây khó chịu lặp lại nhiều lần khi dùng thật. Ưu tiên số LUÔN ĐÚNG hơn nhìn gọn.
@@ -37,10 +37,12 @@ struct BanDoKhachHangView: View {
     @State private var showLocal = true
     @State private var showSeasonal = true
     @State private var showCompetitors = true
-    /// Ẩn mọi vị trí (khách/đối thủ) nằm trong vòng tròn 2km quanh quán — mặc định BẬT (ẩn) vì
-    /// mục đích chính của màn này là tìm khu vực TIỀM NĂNG MỞ RỘNG, khu lõi sát quán đã quá rõ
-    /// không cần nhìn lại mỗi lần (yêu cầu 2026-10-03).
+    /// Ẩn mọi vị trí (khách/đối thủ) nằm trong bán kính quanh quán — mặc định BẬT (ẩn) vì mục đích
+    /// chính của màn này là tìm khu vực TIỀM NĂNG MỞ RỘNG, khu lõi sát quán đã quá rõ không cần
+    /// nhìn lại mỗi lần (yêu cầu 2026-10-03). Bán kính tự chỉnh qua slider (yêu cầu 2026-10-04),
+    /// mặc định 2.2km — không còn vẽ vòng tròn minh hoạ trên map nữa (yêu cầu cùng ngày).
     @State private var hideWithin2km = true
+    @State private var hideRadiusKm: Double = 2.2
 
     var body: some View {
         ZStack {
@@ -57,6 +59,7 @@ struct BanDoKhachHangView: View {
                     filterBar()
                     NativeMapView(showLocal: showLocal, showSeasonal: showSeasonal,
                                   showCompetitors: showCompetitors, hideWithin2km: hideWithin2km,
+                                  hideRadiusKm: hideRadiusKm,
                                   onLoaded: { loading = false; loadError = nil },
                                   onError: { loadError = $0; loading = false })
                         .frame(maxHeight: .infinity)
@@ -82,11 +85,21 @@ struct BanDoKhachHangView: View {
                 .padding(.horizontal, 12)
             }
             Toggle(isOn: $hideWithin2km) {
-                Text("Ẩn trong bán kính 2km quanh quán").font(.caption)
+                Text("Ẩn trong bán kính \(String(format: "%.1f", hideRadiusKm))km quanh quán").font(.caption)
             }
             .toggleStyle(.switch)
             .tint(.brandPrimary)
             .padding(.horizontal, 12)
+
+            if hideWithin2km {
+                HStack(spacing: 8) {
+                    Text("0.5").font(.caption2).foregroundColor(.textMuted)
+                    Slider(value: $hideRadiusKm, in: 0.5...10, step: 0.1)
+                        .tint(.brandPrimary)
+                    Text("10").font(.caption2).foregroundColor(.textMuted)
+                }
+                .padding(.horizontal, 12)
+            }
         }
         .padding(.vertical, 8)
         .background(.bar)
@@ -170,6 +183,7 @@ private struct NativeMapView: UIViewRepresentable {
     let showSeasonal: Bool
     let showCompetitors: Bool
     let hideWithin2km: Bool
+    let hideRadiusKm: Double
     let onLoaded: () -> Void
     let onError: (String) -> Void
 
@@ -223,20 +237,19 @@ private struct NativeMapView: UIViewRepresentable {
             }
 
             let store = StoreAnnotation(coordinate: storeCoordinate)
-            let circle = MKCircle(center: store.coordinate, radius: 2000)
 
             await MainActor.run {
                 applyFilter(on: map)
                 map.addAnnotation(store)
-                map.addOverlay(circle)
                 self.parent.onLoaded()
             }
         }
 
         func applyFilter(on map: MKMapView) {
             let storeLocation = CLLocation(latitude: storeCoordinate.latitude, longitude: storeCoordinate.longitude)
-            func within2km(_ coord: CLLocationCoordinate2D) -> Bool {
-                CLLocation(latitude: coord.latitude, longitude: coord.longitude).distance(from: storeLocation) < 2000
+            let radiusMeters = parent.hideRadiusKm * 1000
+            func withinRadius(_ coord: CLLocationCoordinate2D) -> Bool {
+                CLLocation(latitude: coord.latitude, longitude: coord.longitude).distance(from: storeLocation) < radiusMeters
             }
 
             let existingCustomers = map.annotations.compactMap { $0 as? CustomerAnnotation }
@@ -244,7 +257,7 @@ private struct NativeMapView: UIViewRepresentable {
             let filtered = allCustomerAnns.filter { ann in
                 let categoryOn = (ann.isSeasonal && parent.showSeasonal) || (!ann.isSeasonal && parent.showLocal)
                 guard categoryOn else { return false }
-                return !(parent.hideWithin2km && within2km(ann.coordinate))
+                return !(parent.hideWithin2km && withinRadius(ann.coordinate))
             }
             map.addAnnotations(filtered)
 
@@ -252,7 +265,7 @@ private struct NativeMapView: UIViewRepresentable {
             map.removeAnnotations(existingCompetitors)
             if parent.showCompetitors {
                 let filteredCompetitors = allCompetitorAnns.filter { ann in
-                    !(parent.hideWithin2km && within2km(ann.coordinate))
+                    !(parent.hideWithin2km && withinRadius(ann.coordinate))
                 }
                 map.addAnnotations(filteredCompetitors)
             }
@@ -288,15 +301,6 @@ private struct NativeMapView: UIViewRepresentable {
                 return view
             }
             return nil
-        }
-
-        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
-            guard let circle = overlay as? MKCircle else { return MKOverlayRenderer(overlay: overlay) }
-            let renderer = MKCircleRenderer(circle: circle)
-            renderer.strokeColor = localUIColor.withAlphaComponent(0.7)
-            renderer.lineWidth = 2
-            renderer.fillColor = localUIColor.withAlphaComponent(0.06)
-            return renderer
         }
     }
 }
