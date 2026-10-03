@@ -249,6 +249,18 @@ private struct NativeMapView: UIViewRepresentable {
             }
         }
 
+        /// Gán title/subtitle THẬT cho cụm (MKClusterAnnotation chỉ tự sinh title rỗng vì
+        /// CustomerAnnotation không có title riêng) — "X khách" làm title (số chính quyết định mở
+        /// chi nhánh), "Y đơn" làm subtitle (tần suất mua, xem callout khi bấm vào cụm).
+        func mapView(_ mapView: MKMapView, clusterAnnotationForMemberAnnotations memberAnnotations: [MKAnnotation]) -> MKClusterAnnotation {
+            let cluster = MKClusterAnnotation(memberAnnotations: memberAnnotations)
+            let members = memberAnnotations.compactMap { $0 as? CustomerAnnotation }
+            let tongDon = members.reduce(0) { $0 + $1.orders }
+            cluster.title = "\(members.count) khách"
+            cluster.subtitle = "\(tongDon) đơn"
+            return cluster
+        }
+
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
             if let cluster = annotation as? MKClusterAnnotation {
                 let view = mapView.dequeueReusableAnnotationView(
@@ -256,14 +268,13 @@ private struct NativeMapView: UIViewRepresentable {
                 let members = cluster.memberAnnotations.compactMap { $0 as? CustomerAnnotation }
                 let isSeasonal = members.first?.isSeasonal ?? false
                 view.markerTintColor = isSeasonal ? seasonalUIColor : localUIColor
-                // Tong so DON (khong phai so khach) trong cum - khop cach doc "ghim cang dam =
-                // cang nhieu don" cua ghim le (xem ham tint(for:)).
-                view.glyphText = "\(members.reduce(0) { $0 + $1.orders })"
-                view.canShowCallout = false
-                // An "+N more" tu dong cua he thong (dem theo SO KHACH trong cum) - de lan voi
-                // glyphText o tren vua doi sang SO DON, 2 con so khac nghia dung canh nhau se gay
-                // hieu lam.
-                view.titleVisibility = .hidden
+                // So tren ghim = SO KHACH (quyet dinh quy mo thi truong, dung de so sanh vi tri mo
+                // chi nhanh) - KHONG phai so don (khach quen dat nhieu lan de gay nham tuong dong
+                // nguoi). So don van co gia tri rieng (tan suat mua) nen dua vao callout khi bam
+                // (title/subtitle set o mapView(_:clusterAnnotationForMemberAnnotations:) ben
+                // duoi, vi MKAnnotationView khong co property title/subtitle rieng).
+                view.glyphText = "\(members.count)"
+                view.canShowCallout = true
                 view.displayPriority = .defaultHigh
                 return view
             }
