@@ -191,10 +191,17 @@ private struct NativeMapView: UIViewRepresentable {
             if let cluster = annotation as? MKClusterAnnotation {
                 let view = mapView.dequeueReusableAnnotationView(
                     withIdentifier: MKMapViewDefaultClusterAnnotationViewReuseIdentifier, for: cluster) as! MKMarkerAnnotationView
-                let isSeasonal = (cluster.memberAnnotations.first as? CustomerAnnotation)?.isSeasonal ?? false
+                let members = cluster.memberAnnotations.compactMap { $0 as? CustomerAnnotation }
+                let isSeasonal = members.first?.isSeasonal ?? false
                 view.markerTintColor = isSeasonal ? seasonalUIColor : localUIColor
-                view.glyphText = "\(cluster.memberAnnotations.count)"
+                // Tong so DON (khong phai so khach) trong cum - khop cach doc "ghim cang dam =
+                // cang nhieu don" cua ghim le (xem ham tint(for:)).
+                view.glyphText = "\(members.reduce(0) { $0 + $1.orders })"
                 view.canShowCallout = false
+                // An "+N more" tu dong cua he thong (dem theo SO KHACH trong cum) - de lan voi
+                // glyphText o tren vua doi sang SO DON, 2 con so khac nghia dung canh nhau se gay
+                // hieu lam.
+                view.titleVisibility = .hidden
                 view.displayPriority = .defaultHigh
                 return view
             }
