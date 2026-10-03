@@ -3,6 +3,7 @@ import SwiftUI
 /// Công việc nội bộ — GET/PUT /api/CongViecNoiBo. Chỉ tick hoàn thành, không thêm/xoá/cảnh báo
 /// (NgayCanhBao, XNgayCanhBao) — đơn giản hoá cho bản mobile. Không có footer, khớp màn Ảnh menu.
 struct CongViecListView: View {
+    let notificationBell: AnyView
     @State private var items: [CongViecNoiBoDto] = []
     @State private var loading = false
     @State private var hasLoaded = false
@@ -25,7 +26,7 @@ struct CongViecListView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                SearchBar(text: $searchText, placeholder: "Tìm việc...", tinted: true)
+                SearchBar(text: $searchText, placeholder: "Tìm việc...", trailing: AnyView(notificationBell), tinted: true)
 
                 if !hasLoaded {
                     fullScreenLoading()

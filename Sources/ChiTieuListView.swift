@@ -5,6 +5,7 @@ import SwiftUI
 /// — khớp phong cách HoaDonDetailView, thay cho swipeActions xoá thẳng không xác nhận trước đây. Nút
 /// "+" thêm chi tiêu nằm ở footer, khớp bố cục HoaDonListView (nút tròn cạnh tổng tiền).
 struct ChiTieuListView: View {
+    let notificationBell: AnyView
     @State private var currentDate = Date()
     @State private var items: [ChiTieuHangNgayDto] = []
     @State private var loading = false
@@ -35,6 +36,7 @@ struct ChiTieuListView: View {
                 DaySearchBar(
                     date: $currentDate, searchText: $searchText,
                     placeholder: "Tìm nguyên liệu, ghi chú...",
+                    trailing: AnyView(notificationBell),
                     tinted: true
                 ) { Task { await load() } }
 

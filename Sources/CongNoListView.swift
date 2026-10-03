@@ -5,6 +5,7 @@ import UIKit
 /// khác Hoá đơn/Thanh toán/Chi tiêu). Bấm vào card mở HoaDonDetailView để xem chi tiết + thu tiền
 /// (đã bỏ 2 nút Tiền mặt/Chuyển khoản thu nhanh trên card — quay lại luồng mở sheet).
 struct CongNoListView: View {
+    let notificationBell: AnyView
     @State private var items: [HoaDonListDto] = []
     @State private var loading = false
     @State private var hasLoaded = false
@@ -35,6 +36,7 @@ struct CongNoListView: View {
                 HStack(spacing: 8) {
                     CongNoDateFilterBar(date: $selectedDate)
                     SearchFieldRow(text: $searchText, placeholder: "Tìm có dấu: khách, món, ghi chú...")
+                    notificationBell
                 }
                 .frame(height: HeaderBarMetrics.rowHeight)
                 .padding(.horizontal)

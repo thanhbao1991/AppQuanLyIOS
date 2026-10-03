@@ -5,6 +5,7 @@ import UIKit
 /// mở sheet chi tiết (giống HoaDonDetailView) thay vì vuốt trái để xoá — vuốt dễ bấm nhầm với data
 /// đụng tiền thật, xem ThanhToanDetailView.
 struct ThanhToanListView: View {
+    let notificationBell: AnyView
     @State private var currentDate = Date()
     @State private var items: [ChiTietHoaDonThanhToanDto] = []
     @State private var loading = false
@@ -65,6 +66,7 @@ struct ThanhToanListView: View {
                     date: $currentDate, searchText: $searchText,
                     placeholder: "Tìm khách, món, ghi chú...",
                     trailing: AnyView(
+                        HStack(spacing: 14) {
                         Menu {
                             // Chỉ lọc 1 loại tại 1 thời điểm — khớp cơ chế HoaDonQuickFilter bên tab
                             // Hoá đơn. 2 filter đầu (avatar Khánh) đọc GhiChu=="Shipper" — đúng cờ
@@ -108,6 +110,8 @@ struct ThanhToanListView: View {
                                             .offset(x: 8, y: -8)
                                     }
                                 }
+                        }
+                        notificationBell
                         }
                     ),
                     tinted: true

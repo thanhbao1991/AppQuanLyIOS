@@ -10,6 +10,7 @@ import SwiftUI
 /// Hiển thị dạng danh sách card — chạm vào 1 card để mở rộng NGAY TẠI CHỖ xem chi tiết (accordion),
 /// không dùng sheet — nhiều card có thể mở cùng lúc để dễ so sánh.
 struct ThongKeView: View {
+    let notificationBell: AnyView
     @State private var currentDate = Date()
     @State private var chiTieu: ThongKeChiTieuDto?
     @State private var congNo: ThongKeCongNoDto?
@@ -46,15 +47,18 @@ struct ThongKeView: View {
                 DayDateBar(
                     date: $currentDate,
                     trailing: AnyView(
-                        NavigationLink {
-                            ThongKeThangView()
-                        } label: {
-                            HStack(spacing: 4) {
-                                Text("Thống kê tháng")
-                                Image(systemName: "chevron.right")
+                        HStack(spacing: 14) {
+                            NavigationLink {
+                                ThongKeThangView()
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Text("Thống kê tháng")
+                                    Image(systemName: "chevron.right")
+                                }
+                                .font(.subheadline.bold())
+                                .foregroundColor(.white)
                             }
-                            .font(.subheadline.bold())
-                            .foregroundColor(.white)
+                            notificationBell
                         }
                     ),
                     tinted: true

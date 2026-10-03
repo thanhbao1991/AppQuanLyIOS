@@ -7,11 +7,16 @@ import UIKit
 struct SearchBar: View {
     @Binding var text: String
     var placeholder: String = "Tìm..."
+    /// Nút phụ (vd chuông thông báo) đặt bên phải cùng — khớp pattern `trailing` của DaySearchBar.
+    var trailing: AnyView? = nil
     /// Tô nền gradient brandPrimary tràn lên status bar, khớp DaySearchBar(tinted:) — xem lý do ở đó.
     var tinted: Bool = false
 
     var body: some View {
-        SearchFieldRow(text: $text, placeholder: placeholder)
+        HStack(spacing: 8) {
+            SearchFieldRow(text: $text, placeholder: placeholder)
+            if let trailing { trailing }
+        }
             // Ép cùng chiều cao với DaySearchBar/DayDateBar (HeaderBarMetrics) — trước đây để cao
             // tự nhiên nên tab Công việc (dùng SearchBar) lệch vài điểm ảnh so với các tab còn lại
             // (Hoá đơn/Thanh toán/Công nợ/Chi tiêu/Thống kê dùng DaySearchBar/DayDateBar).

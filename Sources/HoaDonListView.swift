@@ -16,6 +16,7 @@ private struct CompactPopoverModifier: ViewModifier {
 }
 
 struct HoaDonListView: View {
+    let notificationBell: AnyView
     @ObservedObject private var deepLink = DeepLinkRouter.shared
     @State private var currentDate = Date()
     @State private var items: [HoaDonListDto] = []
@@ -105,6 +106,7 @@ struct HoaDonListView: View {
                     date: $currentDate, searchText: $searchText,
                     placeholder: "Tìm khách, món, ghi chú...",
                     trailing: AnyView(
+                        HStack(spacing: 14) {
                         Menu {
                             // Chỉ lọc 1 loại tại 1 thời điểm (không gộp OR nhiều filter như trước) —
                             // chọn lại đúng filter đang bật để tắt, chọn filter khác để thay hẳn.
@@ -157,6 +159,8 @@ struct HoaDonListView: View {
                                             .offset(x: 8, y: -8)
                                     }
                                 }
+                        }
+                        notificationBell
                         }
                     ),
                     tinted: true

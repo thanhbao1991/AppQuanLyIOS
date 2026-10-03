@@ -60,56 +60,18 @@ struct MainTabView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ZStack(alignment: .topTrailing) {
-                Group {
-                    switch selection {
-                    case .thongKe: ThongKeView()
-                    case .hoaDon: HoaDonListView()
-                    case .thanhToan: ThanhToanListView()
-                    case .congNo: CongNoListView()
-                    case .chiTieu: ChiTieuListView()
-                    case .congViec: CongViecListView()
-                    case .menu: MoreMenuView(isLoggedIn: $isLoggedIn)
-                    }
+            Group {
+                switch selection {
+                case .thongKe: ThongKeView(notificationBell: AnyView(notificationBell))
+                case .hoaDon: HoaDonListView(notificationBell: AnyView(notificationBell))
+                case .thanhToan: ThanhToanListView(notificationBell: AnyView(notificationBell))
+                case .congNo: CongNoListView(notificationBell: AnyView(notificationBell))
+                case .chiTieu: ChiTieuListView(notificationBell: AnyView(notificationBell))
+                case .congViec: CongViecListView(notificationBell: AnyView(notificationBell))
+                case .menu: MoreMenuView(isLoggedIn: $isLoggedIn)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                // Icon chuông NỔI cố định góc trên-phải, đè lên mọi tab (2026-10-03, theo yêu cầu
-                // "phải nằm ở tất cả 7 tab") — đặt ở đây thay vì trong từng header riêng của 7 view
-                // con, vì mỗi tab tự vẽ header khác nhau (có tab màu brandPrimary, có tab
-                // navigationBarHidden như Menu) nên 1 overlay chung ở MainTabView là chỗ DUY NHẤT
-                // đảm bảo vị trí/hành vi giống hệt nhau trên cả 7 tab mà không phải sửa 7 file.
-                Button { showThongBaoSheet = true } label: {
-                    ZStack(alignment: .topTrailing) {
-                        // Nền trắng đặc (không phải Color.brandPrimary) — vài tab (Hoá đơn) có header
-                        // tinted cùng tông brandPrimary phủ hết safe area trên, nút cùng màu nền sẽ
-                        // chìm mất; trắng + icon xanh tương phản tốt trên MỌI tab (header màu lẫn nền
-                        // List trắng của tab Menu).
-                        Image(systemName: "bell.fill")
-                            .font(.system(size: 15))
-                            .foregroundColor(.brandPrimary)
-                            .frame(width: 34, height: 34)
-                            .background(Circle().fill(Color.white))
-                            .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
-                        if thongBaoBadge.unreadCount > 0 {
-                            Text(thongBaoBadge.unreadCount > 99 ? "99+" : "\(thongBaoBadge.unreadCount)")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 1)
-                                .background(Color.dangerColor)
-                                .clipShape(Capsule())
-                                .offset(x: 6, y: -4)
-                        }
-                    }
-                }
-                // Đặt NGAY DƯỚI thanh header (không phải sát mép trên) — 1 số tab (Hoá đơn, Thanh
-                // toán, Thống kê) đã có icon riêng ở góc trên-phải NGAY TRONG header (filter/xuất...),
-                // đặt chuông sát mép trên sẽ đè lên đúng icon đó. Dưới header là khoảng trống chung
-                // cho mọi tab, kể cả tab không có header riêng (Công việc, Menu).
-                .padding(.top, Self.topSafeAreaInset + HeaderBarMetrics.rowHeight + HeaderBarMetrics.verticalPadding * 2 + 8)
-                .padding(.trailing, 14)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             Divider()
             tabBar
@@ -138,6 +100,37 @@ struct MainTabView: View {
             if id != nil { selection = .hoaDon }
         }
         .task { await congViecBadge.refresh() }
+    }
+
+    /// Icon chuông đặt làm trailing TRONG header riêng của 6 tab (Thống kê/Hoá đơn/Thanh toán/Công
+    /// nợ/Chi tiêu/Công việc — khớp pattern AppDatHangIOS/MainTabView.swift, notificationBell truyền
+    /// AnyView xuống qua init) — thay cho bản nổi cố định .overlay(alignment: .topTrailing) trên
+    /// toàn màn hình trước đây (2026-10-03). Overlay nổi tự nó vẫn bấm được (verify qua test tay),
+    /// nhưng không cần thiết: AppDatHangIOS chưa bao giờ cần nổi, và tự tính padding theo chiều cao
+    /// header (topSafeAreaInset + HeaderBarMetrics...) dễ lệch mỗi khi 1 tab đổi layout header — đặt
+    /// thẳng vào HStack header của từng tab (view con tự layout, không phải tính tay) bền hơn. Icon
+    /// trắng không cần nền tròn riêng vì 6 tab này đều có header tinted brandPrimary. Riêng tab Menu
+    /// (thứ 7) KHÔNG có chuông — không có header riêng, theo yêu cầu không cần thêm cho tab đó.
+    private var notificationBell: some View {
+        Button { showThongBaoSheet = true } label: {
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: "bell.fill")
+                    .font(.system(size: 18))
+                    .foregroundColor(.white)
+                    .frame(width: 30, height: 30)
+                if thongBaoBadge.unreadCount > 0 {
+                    Text(thongBaoBadge.unreadCount > 99 ? "99+" : "\(thongBaoBadge.unreadCount)")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1)
+                        .background(Color.dangerColor)
+                        .clipShape(Capsule())
+                        .overlay(Capsule().stroke(Color.white, lineWidth: 1.2))
+                        .offset(x: 6, y: -4)
+                }
+            }
+        }
     }
 
     private var tabBar: some View {
@@ -182,12 +175,6 @@ struct MainTabView: View {
         // safe area đáy/home indicator, chỉ cần padding nhỏ cho thoáng.
         .padding(.bottom, 4)
         .background(.bar)
-    }
-
-    private static var topSafeAreaInset: CGFloat {
-        UIApplication.shared.connectedScenes
-            .compactMap { ($0 as? UIWindowScene)?.windows.first { $0.isKeyWindow } }
-            .first?.safeAreaInsets.top ?? 0
     }
 }
 
@@ -328,8 +315,9 @@ private struct MoreMenuView: View {
                     Text("Đồng bộ danh bạ: đưa tên khách hàng vào Danh bạ iPhone theo số điện thoại, để hiện tên khi khách gọi đến.\nPhiên bản \(appVersionString)")
                 }
             }
-            // Bỏ hẳn thanh tiêu đề "Menu" phía trên (không cần vùng top màu như các tab khác) —
-            // tabBar bên dưới đã tự có nhãn "Menu" rồi (2026-09-28, theo yêu cầu).
+            // Bỏ hẳn thanh tiêu đề "Menu" phía trên (không cần vùng top màu như các tab khác, và
+            // không cần chuông thông báo ở đây theo yêu cầu) — tabBar bên dưới đã tự có nhãn "Menu"
+            // rồi (2026-09-28).
             .navigationBarHidden(true)
             .tint(.brandPrimary)
             .alert("Đồng bộ danh bạ", isPresented: Binding(get: { syncResultMessage != nil }, set: { if !$0 { syncResultMessage = nil } })) {
