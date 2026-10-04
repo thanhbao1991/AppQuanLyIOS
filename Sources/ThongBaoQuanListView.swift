@@ -34,6 +34,7 @@ struct ThongBaoQuanListView: View {
                     }
                 }
                 .listStyle(.plain)
+                .softScrollEdgeTop()
                 .refreshable { await load() }
             }
         }

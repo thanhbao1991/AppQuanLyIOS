@@ -78,6 +78,7 @@ struct NguyenLieuListView: View {
                     }
                 }
                 .listStyle(.plain)
+                .softScrollEdgeTop()
                 .refreshable { await load() }
             }
         }

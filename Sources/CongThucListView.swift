@@ -61,6 +61,7 @@ struct CongThucListView: View {
                     }
                 }
                 .listStyle(.plain)
+                .softScrollEdgeTop()
                 .refreshable { await load() }
             }
         }
@@ -425,6 +426,7 @@ private struct NguyenLieuBanHangPickerSheet: View {
                     }
                 }
                 .listStyle(.plain)
+                .softScrollEdgeTop()
             }
             .navigationTitle("Chọn nguyên liệu")
             .navigationBarTitleDisplayMode(.inline)

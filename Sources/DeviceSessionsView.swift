@@ -35,6 +35,7 @@ struct DeviceSessionsView: View {
                     }
                 }
                 .listStyle(.plain)
+                .softScrollEdgeTop()
                 .scrollContentBackground(.hidden)
                 .background(Color(.systemGroupedBackground))
                 .refreshable { await load() }

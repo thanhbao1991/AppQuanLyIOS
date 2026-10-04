@@ -72,6 +72,7 @@ struct CongNoListView: View {
                         }
                     }
                     .listStyle(.plain)
+                    .softScrollEdgeTop()
                     .padding(.top, 4)
                     .scrollDismissesKeyboard(.immediately)
                     .refreshable { await load() }

@@ -52,6 +52,7 @@ struct KhachHangListView: View {
                     }
                 }
                 .listStyle(.plain)
+                .softScrollEdgeTop()
                 .refreshable { await load() }
             }
         }
@@ -413,6 +414,7 @@ private struct ViTienHistoryView: View {
                         }
                     }
                     .listStyle(.plain)
+                    .softScrollEdgeTop()
                 }
             }
             .navigationTitle("Ví — \(khach.ten)")
@@ -478,6 +480,7 @@ private struct KhachHangLichSuView: View {
                         }
                     }
                     .listStyle(.plain)
+                    .softScrollEdgeTop()
                 }
             }
             .navigationTitle("Lịch sử — \(khach.ten)")

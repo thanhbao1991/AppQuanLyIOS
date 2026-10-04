@@ -39,6 +39,7 @@ struct ThongBaoNoiBoListView: View {
                             .listRowSeparator(.hidden)
                     }
                     .listStyle(.plain)
+                    .softScrollEdgeTop()
                     .refreshable { await load() }
                 }
             }

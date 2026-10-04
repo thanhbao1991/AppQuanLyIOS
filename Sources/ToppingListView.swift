@@ -40,6 +40,7 @@ struct ToppingListView: View {
                     }
                 }
                 .listStyle(.plain)
+                .softScrollEdgeTop()
                 .refreshable { await load() }
             }
         }

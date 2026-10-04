@@ -48,6 +48,7 @@ struct SanPhamHinhAnhListView: View {
                     }
                 }
                 .listStyle(.plain)
+                .softScrollEdgeTop()
                 .padding(.top, 4)
             }
         }

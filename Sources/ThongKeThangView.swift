@@ -271,6 +271,7 @@ struct ChiTieuThangDetailSheet: View {
                 }
             }
             .listStyle(.plain)
+            .softScrollEdgeTop()
             .navigationTitle(ten)
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Color.brandPrimary, for: .navigationBar)
@@ -322,6 +323,7 @@ struct KhachHangNoDetailSheet: View {
                         }
                     }
                     .listStyle(.plain)
+                    .softScrollEdgeTop()
 
                     Divider()
                     CongNoFooterView(items: filtered, label: tenKhachHang, showName: false, onPaid: {
@@ -403,6 +405,7 @@ struct ThanhToanChiTietSheet: View {
                         }
                     }
                     .listStyle(.plain)
+                    .softScrollEdgeTop()
                 }
             }
             .navigationTitle(ten)
@@ -499,6 +502,7 @@ struct DoanhThuChiTietSheet: View {
                         }
                     }
                     .listStyle(.plain)
+                    .softScrollEdgeTop()
                 }
             }
             .navigationTitle(ten)
@@ -584,6 +588,7 @@ struct GiamGiaChiTietSheet: View {
                 }
             }
             .listStyle(.plain)
+            .softScrollEdgeTop()
             .navigationTitle(label)
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Color.brandPrimary, for: .navigationBar)

@@ -187,6 +187,7 @@ struct HoaDonListView: View {
                         }
                     }
                     .listStyle(.plain)
+                    .softScrollEdgeTop()
                     // +4pt để khớp khoảng cách header→card đầu tiên bên tab Thống kê (12pt) — mặc
                     // định List chỉ có 8pt từ listRowInsets top của dòng đầu.
                     .padding(.top, 4)
@@ -1120,6 +1121,7 @@ private struct AppOrderPickerSheet: View {
                         .disabled(fetchingId != nil)
                     }
                     .listStyle(.plain)
+                    .softScrollEdgeTop()
                 }
             }
             .navigationTitle("Bắt đơn App")
@@ -1206,6 +1208,7 @@ private struct KhachGoiSomSheet: View {
                         }
                     }
                     .listStyle(.plain)
+                    .softScrollEdgeTop()
                 }
             }
             .navigationTitle("Khách hay gọi trước 7h")

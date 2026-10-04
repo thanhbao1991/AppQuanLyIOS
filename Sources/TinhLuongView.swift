@@ -259,6 +259,7 @@ private struct DoanhThuShipperChiTietSheet: View {
                         }
                     }
                     .listStyle(.plain)
+                    .softScrollEdgeTop()
                 }
             }
             .navigationTitle("Đơn \(shipperTen) ship")

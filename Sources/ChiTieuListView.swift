@@ -59,6 +59,7 @@ struct ChiTieuListView: View {
                         }
                     }
                     .listStyle(.plain)
+                    .softScrollEdgeTop()
                     .padding(.top, 4)
                     .refreshable { await load() }
                 }
