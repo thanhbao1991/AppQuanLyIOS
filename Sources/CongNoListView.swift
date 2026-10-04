@@ -445,6 +445,9 @@ struct CongNoFooterView: View {
             if !result.success { failCount += 1 }
         }
         payingAll = false
+        // Tự load() lại ngay, không chờ SignalR onEntityChanged — tránh list đứng im phía sau alert
+        // "Kết quả" làm tưởng chưa thu được dù API đã trả thành công (bẫy thực tế 2026-10-04).
+        await load()
         let ptText = payAllIsCash ? "tiền mặt" : "chuyển khoản"
         payAllResultMessage = failCount == 0
             ? "Đã thu \(ptText) \(targets.count) hoá đơn."
