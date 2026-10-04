@@ -141,11 +141,14 @@ private struct ReceiptDraftLine: Identifiable {
 /// (kể cả khi Gemini đã gợi ý sẵn, người dùng vẫn đổi được), có thể bỏ dòng không muốn lưu. Lưu qua
 /// POST /api/ChiTieuHangNgay/bulk kèm rawText từng dòng để Backend tự học mapping cho lần đọc ảnh sau.
 private struct ReceiptReviewSheet: View {
-    let date: Date
     let result: ReceiptParseResultDto
     let onSaved: () -> Void
 
     @Environment(\.dismiss) private var dismiss
+    // Mặc định = ngày đang xem ở tab Chi tiêu (truyền vào qua init) nhưng cho sửa lại ngay trong màn
+    // này — trước đây cố định theo ngày tab, hoá đơn chụp/nhập trễ (bill tháng về sau ngày đã xem)
+    // phải thoát ra đổi ngày tab rồi mở lại từ đầu mới nhập được đúng ngày.
+    @State private var selectedDate: Date
     @State private var lines: [ReceiptDraftLine]
     @State private var nguyenLieuList: [NguyenLieuDto] = []
     // Mặc định bật — luồng "Thêm từ ảnh"/camera hầu hết dùng cho bill nhà cung cấp cuối tháng, người
@@ -156,7 +159,7 @@ private struct ReceiptReviewSheet: View {
     @State private var warningAlertText: String?
 
     init(date: Date, result: ReceiptParseResultDto, onSaved: @escaping () -> Void) {
-        self.date = date
+        _selectedDate = State(initialValue: date)
         self.result = result
         self.onSaved = onSaved
         _lines = State(initialValue: result.lines.map { l in
@@ -183,6 +186,8 @@ private struct ReceiptReviewSheet: View {
         NavigationStack {
             Form {
                 Section {
+                    DatePicker("Ngày", selection: $selectedDate, displayedComponents: .date)
+                        .environment(\.locale, Locale(identifier: "vi_VN"))
                     Toggle("Bill tháng", isOn: $billThang)
                 } footer: {
                     Text("Áp dụng chung cho tất cả dòng bên dưới.")
@@ -322,7 +327,7 @@ private struct ReceiptReviewSheet: View {
     private func save() async {
         saving = true
         errorMessage = nil
-        let dateIso = DateNavFormat.queryDate.string(from: date) + "T00:00:00"
+        let dateIso = DateNavFormat.queryDate.string(from: selectedDate) + "T00:00:00"
         let items = includedLines.compactMap { line -> ChiTieuHangNgayBulkItemRequest? in
             guard let nguyenLieuId = line.nguyenLieuId else { return nil }
             return ChiTieuHangNgayBulkItemRequest(
