@@ -78,7 +78,7 @@ struct CongNoListView: View {
                 }
 
                 Divider()
-                CongNoFooterView(items: sortedItems, label: searchText, showSendButton: !searchText.isEmpty)
+                CongNoFooterView(items: sortedItems, label: searchText, showSendButton: !searchText.isEmpty, onPaid: load)
             }
         }
         .task { await load() }
@@ -167,6 +167,10 @@ struct CongNoFooterView: View {
     /// Truyền xuống CongNoRowView khi render ảnh — false ở KhachHangNoDetailSheet (đã lọc 1 khách,
     /// list trên màn hình cũng đang ẩn tên) để ảnh xuất ra khớp đúng những gì đang thấy.
     var showName: Bool = true
+    /// Gọi lại sau khi thu hàng loạt xong (executeThu) — mỗi nơi dùng CongNoFooterView tự có cách
+    /// load() riêng (CongNoListView.load(), KhachHangNoDetailSheet.task{}), không reach-through được
+    /// "items" ở đây (chỉ là `let` truyền vào, không phải @State của view này).
+    var onPaid: (() async -> Void)? = nil
 
     @State private var copiedFeedback = false
     @State private var showPayAllConfirm = false
@@ -445,9 +449,9 @@ struct CongNoFooterView: View {
             if !result.success { failCount += 1 }
         }
         payingAll = false
-        // Tự load() lại ngay, không chờ SignalR onEntityChanged — tránh list đứng im phía sau alert
+        // Tự reload lại ngay, không chờ SignalR onEntityChanged — tránh list đứng im phía sau alert
         // "Kết quả" làm tưởng chưa thu được dù API đã trả thành công (bẫy thực tế 2026-10-04).
-        await load()
+        await onPaid?()
         let ptText = payAllIsCash ? "tiền mặt" : "chuyển khoản"
         payAllResultMessage = failCount == 0
             ? "Đã thu \(ptText) \(targets.count) hoá đơn."

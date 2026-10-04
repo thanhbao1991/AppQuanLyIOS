@@ -324,7 +324,9 @@ struct KhachHangNoDetailSheet: View {
                     .listStyle(.plain)
 
                     Divider()
-                    CongNoFooterView(items: filtered, label: tenKhachHang, showName: false)
+                    CongNoFooterView(items: filtered, label: tenKhachHang, showName: false, onPaid: {
+                        items = await APIClient.shared.getCongNoList()
+                    })
                 }
             }
             .navigationTitle(tenKhachHang)
