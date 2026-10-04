@@ -302,7 +302,7 @@ private struct ReceiptReviewSheet: View {
         } else {
             TextField("Tìm nguyên liệu...", text: line.searchText)
             if !line.wrappedValue.searchText.isEmpty {
-                let matches = nguyenLieuList.filter { $0.ten.matchesSearch(line.wrappedValue.searchText) }.prefix(20)
+                let matches = nguyenLieuList.filter { !$0.ngungSuDung && $0.ten.matchesSearch(line.wrappedValue.searchText) }.prefix(20)
                 ForEach(matches) { nl in
                     Button {
                         line.wrappedValue.nguyenLieuId = nl.id
