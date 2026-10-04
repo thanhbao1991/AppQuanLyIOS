@@ -42,13 +42,15 @@ struct ReceiptImportButton: View {
             }
             .ignoresSafeArea()
         }
-        .alert("Đọc ảnh thất bại", isPresented: Binding(
-            get: { loadError != nil },
-            set: { if !$0 { loadError = nil } }
-        )) {
-            Button("OK") {}
-        } message: {
-            Text(loadError ?? "")
+        .popupHost { host in
+            host.alert("Đọc ảnh thất bại", isPresented: Binding(
+                get: { loadError != nil },
+                set: { if !$0 { loadError = nil } }
+            )) {
+                Button("OK") {}
+            } message: {
+                Text(loadError ?? "")
+            }
         }
         .sheet(item: $parseResult) { result in
             ReceiptReviewSheet(date: date, result: result) {
@@ -236,13 +238,15 @@ private struct ReceiptReviewSheet: View {
         .task { nguyenLieuList = await APIClient.shared.getNguyenLieu() }
         // Đã lưu thành công nhưng có dòng giá lệch lớn so với lần mua gần nhất — chỉ cảnh báo,
         // không chặn (xem AddExpenseSheet cùng cơ chế).
-        .alert("⚠️ Giá bất thường", isPresented: Binding(
-            get: { warningAlertText != nil },
-            set: { if !$0 { warningAlertText = nil } }
-        )) {
-            Button("Đã hiểu") { onSaved(); dismiss() }
-        } message: {
-            Text(warningAlertText ?? "")
+        .popupHost { host in
+            host.alert("⚠️ Giá bất thường", isPresented: Binding(
+                get: { warningAlertText != nil },
+                set: { if !$0 { warningAlertText = nil } }
+            )) {
+                Button("Đã hiểu") { onSaved(); dismiss() }
+            } message: {
+                Text(warningAlertText ?? "")
+            }
         }
     }
 

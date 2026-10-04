@@ -222,11 +222,13 @@ private struct ChiTieuDetailSheet: View {
                 dismiss()
             }
         }
-        .confirmationDialog("Xoá chi tiêu", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
-            Button("Xoá", role: .destructive) { Task { await delete() } }
-            Button("Huỷ", role: .cancel) {}
-        } message: {
-            Text("Xoá \"\(item.ten)\"? Không thể hoàn tác.")
+        .popupHost { host in
+            host.confirmationDialog("Xoá chi tiêu", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
+                Button("Xoá", role: .destructive) { Task { await delete() } }
+                Button("Huỷ", role: .cancel) {}
+            } message: {
+                Text("Xoá \"\(item.ten)\"? Không thể hoàn tác.")
+            }
         }
     }
 
@@ -518,13 +520,15 @@ struct AddExpenseSheet: View {
         // Backend đã lưu thành công nhưng phát hiện giá lệch lớn so với lần mua gần nhất (xem
         // CheckGiaBatThuongAsync/ChiTieuHangNgayService) — chỉ cảnh báo, không chặn, đóng sheet
         // sau khi người dùng bấm xác nhận đã đọc.
-        .alert("⚠️ Giá bất thường", isPresented: Binding(
-            get: { warningAlertText != nil },
-            set: { if !$0 { warningAlertText = nil } }
-        )) {
-            Button("Đã hiểu") { onSaved(); dismiss() }
-        } message: {
-            Text(warningAlertText ?? "")
+        .popupHost { host in
+            host.alert("⚠️ Giá bất thường", isPresented: Binding(
+                get: { warningAlertText != nil },
+                set: { if !$0 { warningAlertText = nil } }
+            )) {
+                Button("Đã hiểu") { onSaved(); dismiss() }
+            } message: {
+                Text(warningAlertText ?? "")
+            }
         }
     }
 

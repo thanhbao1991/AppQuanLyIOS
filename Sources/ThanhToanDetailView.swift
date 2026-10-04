@@ -83,6 +83,8 @@ struct ThanhToanDetailView: View {
                     Button("Đóng") { dismiss() }
                 }
             }
+            .popupHost { host in
+            host
             .confirmationDialog(
                 "Đổi phương thức sang \(isBank ? "Tiền mặt" : "Chuyển khoản")?",
                 isPresented: $showDoiPhuongThucConfirm, titleVisibility: .visible
@@ -96,6 +98,7 @@ struct ThanhToanDetailView: View {
             ) {
                 Button("Xoá", role: .destructive) { Task { await delete() } }
                 Button("Huỷ", role: .cancel) {}
+            }
             }
         }
     }

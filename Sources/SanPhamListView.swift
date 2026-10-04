@@ -96,6 +96,8 @@ struct SanPhamListView: View {
         .sheet(item: $editing) { item in
             SanPhamEditSheet(existing: item, allItems: items, nhoms: nhoms) { Task { await load() } }
         }
+        .popupHost { host in
+        host
         .alert("Store", isPresented: Binding(get: { toastMessage != nil }, set: { if !$0 { toastMessage = nil } })) {
             Button("OK") { toastMessage = nil }
         } message: {
@@ -114,6 +116,7 @@ struct SanPhamListView: View {
         ) {
             Button("Đẩy hàng loạt", role: .destructive) { Task { await pushSizeXLAll() } }
             Button("Huỷ", role: .cancel) {}
+        }
         }
     }
 
@@ -343,10 +346,12 @@ private struct SanPhamEditSheet: View {
                 .background(Color(.systemBackground))
                 .overlay(Divider(), alignment: .top)
             }
-            .alert("Store", isPresented: Binding(get: { storeActionMessage != nil }, set: { if !$0 { storeActionMessage = nil } })) {
-                Button("OK") { storeActionMessage = nil }
-            } message: {
-                Text(storeActionMessage ?? "")
+            .popupHost { host in
+                host.alert("Store", isPresented: Binding(get: { storeActionMessage != nil }, set: { if !$0 { storeActionMessage = nil } })) {
+                    Button("OK") { storeActionMessage = nil }
+                } message: {
+                    Text(storeActionMessage ?? "")
+                }
             }
         }
     }

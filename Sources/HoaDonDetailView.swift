@@ -103,16 +103,18 @@ struct HoaDonDetailView: View {
                 }
             }
         }
-        .confirmationDialog(
-            pendingAction?.title ?? "",
-            isPresented: Binding(get: { pendingAction != nil }, set: { if !$0 { pendingAction = nil } }),
-            titleVisibility: .visible
-        ) {
-            if let pendingAction {
-                Button(pendingAction.confirmLabel, role: pendingAction.destructive ? .destructive : nil) {
-                    Task { await execute(pendingAction) }
+        .popupHost { host in
+            host.confirmationDialog(
+                pendingAction?.title ?? "",
+                isPresented: Binding(get: { pendingAction != nil }, set: { if !$0 { pendingAction = nil } }),
+                titleVisibility: .visible
+            ) {
+                if let pendingAction {
+                    Button(pendingAction.confirmLabel, role: pendingAction.destructive ? .destructive : nil) {
+                        Task { await execute(pendingAction) }
+                    }
+                    Button("Huỷ", role: .cancel) {}
                 }
-                Button("Huỷ", role: .cancel) {}
             }
         }
     }

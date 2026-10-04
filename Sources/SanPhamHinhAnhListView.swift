@@ -58,13 +58,15 @@ struct SanPhamHinhAnhListView: View {
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .task { await load() }
-        .alert("Lỗi", isPresented: Binding(
-            get: { errorMessage != nil },
-            set: { if !$0 { errorMessage = nil } }
-        )) {
-            Button("OK") {}
-        } message: {
-            Text(errorMessage ?? "")
+        .popupHost { host in
+            host.alert("Lỗi", isPresented: Binding(
+                get: { errorMessage != nil },
+                set: { if !$0 { errorMessage = nil } }
+            )) {
+                Button("OK") {}
+            } message: {
+                Text(errorMessage ?? "")
+            }
         }
     }
 

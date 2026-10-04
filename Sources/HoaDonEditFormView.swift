@@ -202,9 +202,11 @@ struct HoaDonEditFormView: View {
         // Có thay đổi chưa lưu (nút Lưu đang vàng) thì chặn vuốt xuống để đóng — bắt phải bấm
         // "Đóng" (rơi vào confirmationDialog xác nhận huỷ) hoặc bấm "Lưu" tường minh.
         .interactiveDismissDisabled(hasChanges)
-        .confirmationDialog("Huỷ thay đổi chưa lưu?", isPresented: $showDiscardConfirm, titleVisibility: .visible) {
-            Button("Thoát không lưu", role: .destructive) { dismiss() }
-            Button("Tiếp tục sửa", role: .cancel) {}
+        .popupHost { host in
+            host.confirmationDialog("Huỷ thay đổi chưa lưu?", isPresented: $showDiscardConfirm, titleVisibility: .visible) {
+                Button("Thoát không lưu", role: .destructive) { dismiss() }
+                Button("Tiếp tục sửa", role: .cancel) {}
+            }
         }
         .task { await load() }
     }

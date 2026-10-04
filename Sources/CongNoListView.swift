@@ -282,6 +282,8 @@ struct CongNoFooterView: View {
         .padding(.vertical, 4)
         .frame(minHeight: FooterBarMetrics.minHeight)
         .overlay { if payingAll { ProgressView() } }
+        .popupHost { host in
+        host
         .alert(items.count > 1 ? "Xác nhận thanh toán toàn bộ nợ" : "Xác nhận thanh toán", isPresented: $showPayAllConfirm) {
             // Chỉ bắt gõ lại số tiền khi thu GỘP nhiều hoá đơn cùng lúc — rủi ro bấm nhầm hàng loạt.
             // Chỉ 1 đơn thì hỏi xác nhận thường là đủ, khớp cách xác nhận F1/F4 trong chi tiết đơn.
@@ -315,6 +317,7 @@ struct CongNoFooterView: View {
             Button("OK") {}
         } message: {
             Text(payAllResultMessage ?? "")
+        }
         }
     }
 

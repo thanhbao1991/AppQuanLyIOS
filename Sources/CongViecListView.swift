@@ -79,6 +79,8 @@ struct CongViecListView: View {
             }
             .navigationBarHidden(true)
             .task { await load() }
+            .popupHost { host in
+            host
             .alert("Thêm việc thất bại", isPresented: Binding(
                 get: { errorMessage != nil },
                 set: { if !$0 { errorMessage = nil } }
@@ -100,6 +102,7 @@ struct CongViecListView: View {
                 Button("Huỷ", role: .cancel) {}
             } message: {
                 Text(confirmItem?.ten ?? "")
+            }
             }
         }
     }

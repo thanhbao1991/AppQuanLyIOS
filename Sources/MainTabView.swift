@@ -325,20 +325,23 @@ private struct MoreMenuView: View {
             // rồi (2026-09-28).
             .navigationBarHidden(true)
             .tint(.brandPrimary)
-            .alert("Đồng bộ danh bạ", isPresented: Binding(get: { syncResultMessage != nil }, set: { if !$0 { syncResultMessage = nil } })) {
-                Button("OK") { syncResultMessage = nil }
-            } message: {
-                Text(syncResultMessage ?? "")
-            }
-            .alert("Chưa cấp quyền Danh bạ", isPresented: $showAccessDeniedAlert) {
-                Button("Mở Cài đặt") {
-                    if let url = URL(string: UIApplication.openSettingsURLString) {
-                        UIApplication.shared.open(url)
+            .popupHost { host in
+                host
+                    .alert("Đồng bộ danh bạ", isPresented: Binding(get: { syncResultMessage != nil }, set: { if !$0 { syncResultMessage = nil } })) {
+                        Button("OK") { syncResultMessage = nil }
+                    } message: {
+                        Text(syncResultMessage ?? "")
                     }
-                }
-                Button("Huỷ", role: .cancel) {}
-            } message: {
-                Text("Vào Cài đặt > ĐENN > Danh bạ để bật quyền truy cập trước khi đồng bộ.")
+                    .alert("Chưa cấp quyền Danh bạ", isPresented: $showAccessDeniedAlert) {
+                        Button("Mở Cài đặt") {
+                            if let url = URL(string: UIApplication.openSettingsURLString) {
+                                UIApplication.shared.open(url)
+                            }
+                        }
+                        Button("Huỷ", role: .cancel) {}
+                    } message: {
+                        Text("Vào Cài đặt > ĐENN > Danh bạ để bật quyền truy cập trước khi đồng bộ.")
+                    }
             }
             .task {
                 aiBalance = await APIClient.shared.getAiBalance()

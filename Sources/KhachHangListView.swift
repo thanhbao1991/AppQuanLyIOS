@@ -631,14 +631,16 @@ private struct MergeReviewSheet: View {
                 .background(Color(.systemBackground))
                 .overlay(Divider(), alignment: .top)
             }
-            .alert("Xác nhận gộp khách", isPresented: $showConfirm) {
-                Button("Huỷ", role: .cancel) { countdownTimer?.invalidate() }
-                Button(countdown > 0 ? "Gộp sau \(countdown)s..." : "Gộp ngay", role: .destructive) {
-                    if countdown <= 0 { Task { await doMerge() } }
+            .popupHost { host in
+                host.alert("Xác nhận gộp khách", isPresented: $showConfirm) {
+                    Button("Huỷ", role: .cancel) { countdownTimer?.invalidate() }
+                    Button(countdown > 0 ? "Gộp sau \(countdown)s..." : "Gộp ngay", role: .destructive) {
+                        if countdown <= 0 { Task { await doMerge() } }
+                    }
+                    .disabled(countdown > 0)
+                } message: {
+                    Text("Thao tác KHÔNG THỂ HOÀN TÁC. Kiểm tra lại thông tin trước khi tiếp tục.")
                 }
-                .disabled(countdown > 0)
-            } message: {
-                Text("Thao tác KHÔNG THỂ HOÀN TÁC. Kiểm tra lại thông tin trước khi tiếp tục.")
             }
         }
     }
