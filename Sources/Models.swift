@@ -944,13 +944,12 @@ struct SanPhamBienTheAdminDto: Codable, Identifiable, Hashable {
 }
 
 /// DTO đầy đủ cho màn quản trị Sản phẩm (SanPhamListView) — khác SanPhamDto (nhẹ, chỉ đọc, dùng
-/// khi tạo hoá đơn) ở chỗ có đủ field để sửa (VietTat/TichDiem/KhongLenStore/NhomSanPhamId...).
+/// khi tạo hoá đơn) ở chỗ có đủ field để sửa (VietTat/KhongLenStore/NhomSanPhamId...).
 struct SanPhamAdminDto: Codable, Identifiable {
     let id: String
     var ten: String
     var vietTat: String?
     var thuTu: Int
-    var tichDiem: Bool
     var ngungBan: Bool
     var khongLenStore: Bool
     var nhomSanPhamId: String?

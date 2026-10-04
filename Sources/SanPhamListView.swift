@@ -238,7 +238,6 @@ private struct SanPhamEditSheet: View {
     @State private var ten: String
     @State private var vietTat: String
     @State private var nhomSanPhamId: String?
-    @State private var tichDiem: Bool
     @State private var ngungBan: Bool
     @State private var khongLenStore: Bool
     @State private var bienThe: [BienTheEditRow]
@@ -255,7 +254,6 @@ private struct SanPhamEditSheet: View {
         _ten = State(initialValue: existing?.ten ?? "")
         _vietTat = State(initialValue: existing?.vietTat ?? "")
         _nhomSanPhamId = State(initialValue: existing?.nhomSanPhamId)
-        _tichDiem = State(initialValue: existing?.tichDiem ?? false)
         _ngungBan = State(initialValue: existing?.ngungBan ?? false)
         _khongLenStore = State(initialValue: existing?.khongLenStore ?? false)
         _bienThe = State(initialValue: existing?.bienThe.isEmpty == false
@@ -280,7 +278,6 @@ private struct SanPhamEditSheet: View {
                 }
 
                 Section {
-                    Toggle("Tích điểm", isOn: $tichDiem)
                     Toggle("Ngừng bán", isOn: $ngungBan)
                     Toggle("Không lên store", isOn: $khongLenStore)
                 }
@@ -420,7 +417,6 @@ private struct SanPhamEditSheet: View {
             ten: ten.trimmingCharacters(in: .whitespaces),
             vietTat: vietTat.trimmingCharacters(in: .whitespaces).isEmpty ? nil : vietTat.trimmingCharacters(in: .whitespaces),
             thuTu: thuTu,
-            tichDiem: tichDiem,
             ngungBan: ngungBan,
             khongLenStore: khongLenStore,
             nhomSanPhamId: nhomSanPhamId,
