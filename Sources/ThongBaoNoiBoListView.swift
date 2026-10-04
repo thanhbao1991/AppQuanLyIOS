@@ -1,16 +1,5 @@
 import SwiftUI
 
-/// Màu Int (0xRRGGBB, xem MauThongBaoNoiBo.For bên Backend) -> Color — chỉ dùng cho badge icon ở đây.
-private extension Color {
-    init(rgbHex: Int) {
-        self.init(
-            red: Double((rgbHex >> 16) & 0xFF) / 255,
-            green: Double((rgbHex >> 8) & 0xFF) / 255,
-            blue: Double(rgbHex & 0xFF) / 255
-        )
-    }
-}
-
 /// Lịch sử thông báo nghiệp vụ (icon chuông, đầu tab Hoá đơn) — thay kênh Discord cũ từ 2026-10-03.
 /// Mở sheet này tự đánh dấu TẤT CẢ đã xem (xoá badge đỏ), khớp hành vi mở kênh Discord đọc hết trước đây.
 struct ThongBaoNoiBoListView: View {
@@ -79,10 +68,9 @@ private struct ThongBaoNoiBoRowView: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            Circle()
-                .fill(Color(rgbHex: item.mau))
-                .frame(width: 10, height: 10)
-                .padding(.top, 5)
+            Text(ThongBaoNoiBoFormatting.emoji(item.loai))
+                .font(.body)
+                .frame(width: 22, height: 22)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(ThongBaoNoiBoFormatting.tieuDe(item.loai))
@@ -129,6 +117,30 @@ enum ThongBaoNoiBoFormatting {
         case "DuyKhanh": return "Duy Khánh"
         case "Admin": return "Hệ thống"
         default: return "Thông báo"
+        }
+    }
+
+    /// Icon emoji theo loại thông báo, thay cho chấm màu `mau` cũ. Loại lạ rơi về 🔔.
+    static func emoji(_ loai: String) -> String {
+        switch loai {
+        case "HoaDonNew": return "➕"
+        case "HoaDonNewShip": return "🛵"
+        case "HoaDonNewMuaVe": return "🛍️"
+        case "HoaDonNewTaiCho": return "🪑"
+        case "HoaDonNewApp": return "📱"
+        case "HoaDonNewMuaHo": return "✋"
+        case "HoaDonNewAppDatHang": return "🛒"
+        case "HoaDonEdit": return "✏️"
+        case "HoaDonDel": return "🗑️"
+        case "DangGiaoHang": return "🚚"
+        case "GhiNo": return "⚠️"
+        case "ThanhToanTienMat": return "💵"
+        case "ThanhToanChuyenKhoan": return "💳"
+        case "ThanhToanBanking": return "🤖"
+        case "ThanhToan": return "💰"
+        case "DuyKhanh": return "👤"
+        case "Admin": return "⚙️"
+        default: return "🔔"
         }
     }
 
