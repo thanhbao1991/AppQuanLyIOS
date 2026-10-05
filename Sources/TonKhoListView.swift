@@ -7,11 +7,17 @@ struct TonKhoListView: View {
     @State private var hasLoaded = false
     @State private var searchText = ""
     @State private var adjusting: NguyenLieuBanHangDto?
+    /// ⭐ đang ghim — giữ local để bấm sao đổi ngay, khớp server sau khi load lại.
+    @State private var yeuThichIds: Set<String> = []
 
     private var filteredItems: [NguyenLieuBanHangDto] {
         let sorted = items
             .filter { $0.dangSuDung != false }
-            .sorted { $0.ten.localizedStandardCompare($1.ten) == .orderedAscending }
+            .sorted { a, b in
+                let fa = yeuThichIds.contains(a.id), fb = yeuThichIds.contains(b.id)
+                if fa != fb { return fa }
+                return a.ten.localizedStandardCompare(b.ten) == .orderedAscending
+            }
         guard !searchText.isEmpty else { return sorted }
         return sorted.filter { $0.ten.matchesSearch(searchText) }
     }
@@ -29,16 +35,26 @@ struct TonKhoListView: View {
             } else {
                 List {
                     ForEach(filteredItems) { item in
-                        Button {
-                            adjusting = item
-                        } label: {
-                            HStack {
-                                Text(item.ten)
-                                    .foregroundColor(.primary)
-                                Spacer()
-                                Text(TonKhoFormatting.soLuong(item))
-                                    .font(.body.monospacedDigit().bold())
-                                    .foregroundColor(TonKhoFormatting.mau(item.tonKho))
+                        HStack(spacing: 12) {
+                            Button {
+                                toggleYeuThich(item)
+                            } label: {
+                                Image(systemName: yeuThichIds.contains(item.id) ? "star.fill" : "star")
+                                    .foregroundColor(yeuThichIds.contains(item.id) ? .yellow : .textMuted)
+                            }
+                            .buttonStyle(.borderless)
+
+                            Button {
+                                adjusting = item
+                            } label: {
+                                HStack {
+                                    Text(item.ten)
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                    Text(TonKhoFormatting.soLuong(item))
+                                        .font(.body.monospacedDigit().bold())
+                                        .foregroundColor(TonKhoFormatting.mau(item.tonKho))
+                                }
                             }
                         }
                     }
@@ -62,7 +78,18 @@ struct TonKhoListView: View {
 
     private func load() async {
         items = await APIClient.shared.getNguyenLieuBanHang()
+        yeuThichIds = Set(items.filter { $0.yeuThich == true }.map(\.id))
         hasLoaded = true
+    }
+
+    /// Bấm sao: đổi local ngay, gọi server; lỗi thì hoàn lại trạng thái cũ.
+    private func toggleYeuThich(_ item: NguyenLieuBanHangDto) {
+        let newValue = !yeuThichIds.contains(item.id)
+        if newValue { yeuThichIds.insert(item.id) } else { yeuThichIds.remove(item.id) }
+        Task {
+            let ok = await APIClient.shared.setNguyenLieuBanHangYeuThich(id: item.id, value: newValue)
+            if !ok { await load() }
+        }
     }
 }
 

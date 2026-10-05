@@ -300,6 +300,8 @@ struct NguyenLieuBanHangDto: Decodable, Identifiable {
     /// Tồn kho theo đơn vị bán — backend luôn trả, optional để an toàn với bản backend cũ.
     let tonKho: Double?
     let dangSuDung: Bool?
+    /// ⭐ ghim lên đầu màn Tồn kho — optional để không vỡ khi backend cũ chưa trả field.
+    let yeuThich: Bool?
 }
 
 /// Body PUT /api/NguyenLieuBanHang/{id}/adjust — khớp DieuChinhTonKhoDto bên Backend.

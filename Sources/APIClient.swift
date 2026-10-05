@@ -339,6 +339,12 @@ actor APIClient {
         return await executeAction(req)
     }
 
+    /// Bật/tắt ⭐ nguyên liệu bán hàng (PATCH riêng, không ghi đè field khác).
+    func setNguyenLieuBanHangYeuThich(id: String, value: Bool) async -> Bool {
+        let req = makeRequest("/api/NguyenLieuBanHang/\(id)/yeu-thich?value=\(value)", method: "PATCH")
+        return await executeAction(req).success
+    }
+
     /// Điều chỉnh tồn kho theo kiểm kê — ghi đè số tồn thực tế, không tự cộng/trừ.
     func dieuChinhTonKho(id: String, tonKhoThucTe: Double, ghiChu: String?) async -> ActionResult {
         let body = DieuChinhTonKhoRequest(tonKhoThucTe: tonKhoThucTe, ghiChu: ghiChu)
