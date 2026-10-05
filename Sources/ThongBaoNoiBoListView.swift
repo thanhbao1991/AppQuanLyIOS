@@ -7,6 +7,10 @@ struct ThongBaoNoiBoListView: View {
     @State private var items: [ThongBaoNoiBoDto] = []
     @State private var hasLoaded = false
     @State private var openHoaDonId: String?
+    @State private var loadingMore = false
+    @State private var hasMore = true
+
+    private let pageSize = 50
 
     var body: some View {
         NavigationStack {
@@ -18,14 +22,24 @@ struct ThongBaoNoiBoListView: View {
                         .foregroundColor(.textMuted)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    List(items) { item in
-                        ThongBaoNoiBoRowView(item: item)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                if let id = item.hoaDonId { openHoaDonId = id }
-                            }
-                            .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
-                            .listRowSeparator(.hidden)
+                    List {
+                        ForEach(items) { item in
+                            ThongBaoNoiBoRowView(item: item)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    if let id = item.hoaDonId { openHoaDonId = id }
+                                }
+                                .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+                                .listRowSeparator(.hidden)
+                                .onAppear {
+                                    if item.id == items.last?.id { Task { await loadMore() } }
+                                }
+                        }
+                        if loadingMore {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                                .listRowSeparator(.hidden)
+                        }
                     }
                     .listStyle(.plain)
                     .softScrollEdgeTop()
@@ -58,8 +72,20 @@ struct ThongBaoNoiBoListView: View {
     }
 
     private func load() async {
-        items = await APIClient.shared.getThongBaoNoiBoList()
+        let first = await APIClient.shared.getThongBaoNoiBoList(take: pageSize)
+        items = first
+        hasMore = first.count >= pageSize
         hasLoaded = true
+    }
+
+    private func loadMore() async {
+        guard hasMore, !loadingMore, let last = items.last else { return }
+        loadingMore = true
+        defer { loadingMore = false }
+        let page = await APIClient.shared.getThongBaoNoiBoList(take: pageSize, before: last.taoLuc)
+        let known = Set(items.map(\.id))
+        items.append(contentsOf: page.filter { !known.contains($0.id) })
+        hasMore = page.count >= pageSize
     }
 }
 

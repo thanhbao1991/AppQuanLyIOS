@@ -539,8 +539,13 @@ actor APIClient {
     }
 
     // Lịch sử thông báo nội bộ (icon chuông, tab Hoá đơn) — thay Discord từ 2026-10-03.
-    func getThongBaoNoiBoList(take: Int = 50) async -> [ThongBaoNoiBoDto] {
-        let req = makeRequest("/api/ThongBaoNoiBo?take=\(take)")
+    /// before = taoLuc (nguyên chuỗi server trả) của dòng cuối trang trước — cuộn xuống tải trang kế.
+    func getThongBaoNoiBoList(take: Int = 50, before: String? = nil) async -> [ThongBaoNoiBoDto] {
+        var path = "/api/ThongBaoNoiBo?take=\(take)"
+        if let before, let encoded = before.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
+            path += "&before=\(encoded)"
+        }
+        let req = makeRequest(path)
         let (data, _) = await send(req)
         guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[ThongBaoNoiBoDto]>.self, from: data), env.isSuccess else { return [] }
         return env.data ?? []
