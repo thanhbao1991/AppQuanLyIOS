@@ -127,10 +127,7 @@ private struct SanPhamHinhAnhRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            thumbnail
-            Text(sanPham.ten)
-                .font(.subheadline)
-            Spacer()
+            // ⭐ bên trái ảnh/tên — đồng bộ với màn Tồn kho và Giá nguyên liệu.
             if togglingNoiBat {
                 ProgressView().frame(width: 28, height: 28)
             } else {
@@ -142,6 +139,10 @@ private struct SanPhamHinhAnhRow: View {
                 }
                 .buttonStyle(.borderless)
             }
+            thumbnail
+            Text(sanPham.ten)
+                .font(.subheadline)
+            Spacer()
             if uploading {
                 ProgressView().frame(width: 28, height: 28)
             } else {

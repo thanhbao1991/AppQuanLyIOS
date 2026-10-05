@@ -173,6 +173,14 @@ struct GiaNguyenLieuView: View {
     /// Có đề xuất `d` thì hiện thêm số lượng thường mua + mức gấp (trễ/hôm nay/còn N ngày).
     private func row(_ nl: NguyenLieuDto, _ d: MuaHangDeXuatDto? = nil) -> some View {
         HStack {
+            // ⭐ bên trái tên — đồng bộ với màn Tồn kho và màn Ảnh menu.
+            Button {
+                Task { await toggleYeuThich(nl) }
+            } label: {
+                Image(systemName: nl.yeuThich == true ? "star.fill" : "star")
+                    .foregroundColor(nl.yeuThich == true ? .yellow : .textMuted)
+            }
+            .buttonStyle(.borderless)
             Button {
                 selected = nl
                 showDetail = true
@@ -193,13 +201,6 @@ struct GiaNguyenLieuView: View {
                     }
                 }
             }
-            Button {
-                Task { await toggleYeuThich(nl) }
-            } label: {
-                Image(systemName: nl.yeuThich == true ? "star.fill" : "star")
-                    .foregroundColor(nl.yeuThich == true ? .yellow : .textMuted)
-            }
-            .buttonStyle(.borderless)
             // Nút "Ngừng dùng" cạnh ⭐: loại nguyên liệu không còn mua khỏi danh sách (đặt NgungSuDung).
             if !nl.ngungSuDung {
                 Button {
