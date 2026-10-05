@@ -195,6 +195,11 @@ private struct MoreMenuView: View {
                         EmojiLabel("Nguyên liệu", "🧂")
                     }
                     NavigationLink {
+                        TonKhoListView()
+                    } label: {
+                        EmojiLabel("Tồn kho", "📦")
+                    }
+                    NavigationLink {
                         SanPhamListView()
                     } label: {
                         EmojiLabel("Sản phẩm", "🍹")

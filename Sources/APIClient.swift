@@ -339,6 +339,13 @@ actor APIClient {
         return await executeAction(req)
     }
 
+    /// Điều chỉnh tồn kho theo kiểm kê — ghi đè số tồn thực tế, không tự cộng/trừ.
+    func dieuChinhTonKho(id: String, tonKhoThucTe: Double, ghiChu: String?) async -> ActionResult {
+        let body = DieuChinhTonKhoRequest(tonKhoThucTe: tonKhoThucTe, ghiChu: ghiChu)
+        let req = makeRequest("/api/NguyenLieuBanHang/\(id)/adjust", method: "PUT", body: jsonBody(body))
+        return await executeAction(req)
+    }
+
     func getNguyenLieuBanHang() async -> [NguyenLieuBanHangDto] {
         let req = makeRequest("/api/NguyenLieuBanHang?take=1000")
         let (data, _) = await send(req)

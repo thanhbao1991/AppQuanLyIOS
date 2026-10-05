@@ -297,6 +297,15 @@ struct NguyenLieuBanHangDto: Decodable, Identifiable {
     let id: String
     let ten: String
     let donViTinh: String?
+    /// Tồn kho theo đơn vị bán — backend luôn trả, optional để an toàn với bản backend cũ.
+    let tonKho: Double?
+    let dangSuDung: Bool?
+}
+
+/// Body PUT /api/NguyenLieuBanHang/{id}/adjust — khớp DieuChinhTonKhoDto bên Backend.
+struct DieuChinhTonKhoRequest: Encodable {
+    let tonKhoThucTe: Double
+    let ghiChu: String?
 }
 
 // ---- Công thức / Định lượng (quản trị — CongThucListView, thay CongThucWindow bên Desktop) ----
