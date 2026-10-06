@@ -123,6 +123,8 @@ struct GiaNguyenLieuView: View {
                     }
                 }
             }
+            .listStyle(.plain)
+            .softScrollEdgeTop()
         }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
@@ -221,6 +223,7 @@ struct GiaNguyenLieuView: View {
                 .padding(.leading, 8)
             }
         }
+        .listRowInsets(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12))
     }
 
     /// Đánh dấu ngừng sử dụng — ẩn dòng ngay (goiYList lọc theo ngungSuDung), lỗi thì hoàn lại.
