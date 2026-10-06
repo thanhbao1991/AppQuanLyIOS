@@ -90,36 +90,36 @@ struct GiaNguyenLieuView: View {
     }
 
     var body: some View {
-        List {
-            Section("Nguyên liệu") {
-                TextField("Tìm nguyên liệu...", text: $searchText)
-            }
+        VStack(spacing: 0) {
+            SearchBar(text: $searchText, placeholder: "Tìm nguyên liệu...")
 
-            if searchText.isEmpty {
-                // Tách nhóm ⭐ riêng với nhóm đến hạn/trễ hạn còn lại. ⭐ trên từng dòng vẫn bấm để ghim/bỏ ghim.
-                if !goiYYeuThich.isEmpty {
-                    Section("⭐ Yêu thích") {
-                        ForEach(goiYYeuThich) { row($0.nl, $0.d) }
+            List {
+                // Không tiêu đề nhóm (đồng bộ màn Tồn kho). Tách ⭐ riêng với nhóm còn lại; ⭐ trên từng dòng vẫn bấm để ghim/bỏ ghim.
+                if searchText.isEmpty {
+                    if !goiYYeuThich.isEmpty {
+                        Section {
+                            ForEach(goiYYeuThich) { row($0.nl, $0.d) }
+                        }
                     }
-                }
-                if !goiYKhac.isEmpty {
-                    Section("Gợi ý mua") {
-                        ForEach(goiYKhac) { row($0.nl, $0.d) }
+                    if !goiYKhac.isEmpty {
+                        Section {
+                            ForEach(goiYKhac) { row($0.nl, $0.d) }
+                        }
+                    } else if canMuaLoaded && goiYYeuThich.isEmpty {
+                        Section {
+                            Text("Chưa có nguyên liệu nào đến hạn mua.").foregroundColor(.textMuted)
+                        }
                     }
-                } else if canMuaLoaded && goiYYeuThich.isEmpty {
-                    Section("Gợi ý mua") {
-                        Text("Chưa có nguyên liệu nào đến hạn mua.").foregroundColor(.textMuted)
+                } else {
+                    if !filteredYeuThich.isEmpty {
+                        Section {
+                            ForEach(filteredYeuThich.prefix(30)) { row($0) }
+                        }
                     }
-                }
-            } else {
-                if !filteredYeuThich.isEmpty {
-                    Section("⭐ Yêu thích") {
-                        ForEach(filteredYeuThich.prefix(30)) { row($0) }
-                    }
-                }
-                if !filteredKhac.isEmpty {
-                    Section("Kết quả") {
-                        ForEach(filteredKhac.prefix(30)) { row($0) }
+                    if !filteredKhac.isEmpty {
+                        Section {
+                            ForEach(filteredKhac.prefix(30)) { row($0) }
+                        }
                     }
                 }
             }

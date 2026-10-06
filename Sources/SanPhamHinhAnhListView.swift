@@ -20,8 +20,6 @@ struct SanPhamHinhAnhListView: View {
             .sorted { $0.ten < $1.ten }
     }
 
-    private var soLuongNoiBat: Int { sanPhams.filter(\.noiBat).count }
-
     var body: some View {
         VStack(spacing: 0) {
             SearchBar(text: $query, placeholder: "Tìm món...")
@@ -29,13 +27,6 @@ struct SanPhamHinhAnhListView: View {
             if loading {
                 fullScreenLoading()
             } else {
-                HStack {
-                    Text("⭐ Nổi bật: \(soLuongNoiBat) món")
-                        .font(.caption).foregroundColor(.textMuted)
-                    Spacer()
-                }
-                .padding(.horizontal, 16).padding(.top, 6)
-
                 List {
                     ForEach(filtered) { sp in
                         SanPhamHinhAnhRow(
