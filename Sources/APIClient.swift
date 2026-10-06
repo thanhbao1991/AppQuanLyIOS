@@ -914,11 +914,12 @@ actor APIClient {
 
     /// Danh sách sản phẩm/topping đang bán — tải 1 lần lúc mở form thêm hoá đơn rồi lọc/tìm cục bộ
     /// (khớp cách Desktop cache AppDataCache.SanPhams, không gọi search API theo từng phím gõ).
-    func getSanPhamList() async -> [SanPhamDto] {
+    /// includeNgungBan = true để giữ cả sản phẩm đã ngừng bán (màn Công thức cần tên của công thức cũ).
+    func getSanPhamList(includeNgungBan: Bool = false) async -> [SanPhamDto] {
         let req = makeRequest("/api/SanPham")
         let (data, _) = await send(req)
         guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[SanPhamDto]>.self, from: data), env.isSuccess else { return [] }
-        return (env.data ?? []).filter { !$0.ngungBan }
+        return (env.data ?? []).filter { includeNgungBan || !$0.ngungBan }
     }
 
     func getToppingList() async -> [ToppingDto] {

@@ -96,7 +96,7 @@ struct CongThucListView: View {
     private func load() async {
         async let ctTask = APIClient.shared.getCongThucList()
         async let dlTask = APIClient.shared.getSuDungNguyenLieuList()
-        async let spTask = APIClient.shared.getSanPhamList()
+        async let spTask = APIClient.shared.getSanPhamList(includeNgungBan: true)
         async let nlTask = APIClient.shared.getNguyenLieuBanHang()
         congThucs = await ctTask
         dinhLuongAll = await dlTask
@@ -207,7 +207,7 @@ private struct CongThucEditSheet: View {
 
     private var matchingSanPham: [SanPhamDto] {
         guard !spSearchText.isEmpty else { return [] }
-        return allSanPham.filter { $0.ten.matchesSearch(spSearchText) }
+        return allSanPham.filter { !$0.ngungBan && $0.ten.matchesSearch(spSearchText) }
     }
 
     var body: some View {
