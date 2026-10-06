@@ -28,8 +28,6 @@ struct ThongBaoQuanListView: View {
                             } onDelete: {
                                 Task { await delete(item) }
                             }
-                            .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
-                            .listRowSeparator(.hidden)
                         }
                     }
                 }
@@ -105,10 +103,7 @@ private struct ThongBaoQuanRowView: View {
                         .foregroundColor(.textMuted)
                 }
             }
-            .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.brandPrimary.pastelBackground())
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(.plain)
         .swipeActions(edge: .trailing) {

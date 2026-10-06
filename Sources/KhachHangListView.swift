@@ -189,12 +189,7 @@ private struct KhachHangRowView: View {
                 }
             }
         }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background((isSelected ? Color.brandPrimary : Color.brandPrimary).pastelBackground(isSelected ? 0.75 : 0.9))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .listRowInsets(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12))
-        .listRowSeparator(.hidden)
+        .listRowBackground(isSelected ? Color.brandPrimary.opacity(0.12) : Color.clear)
         .swipeActions(edge: .trailing) {
             if !isMergeMode {
                 Button(role: .destructive, action: onDelete) {

@@ -99,14 +99,8 @@ private struct ToppingRowView: View {
                     .font(.caption).fontWeight(.bold)
                     .foregroundColor(.brandPrimary)
             }
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.brandPrimary.pastelBackground(0.9))
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(.plain)
-        .listRowInsets(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12))
-        .listRowSeparator(.hidden)
         .swipeActions(edge: .trailing) {
             Button(role: .destructive, action: onDelete) {
                 EmojiLabel("Xoá", "🗑️")
