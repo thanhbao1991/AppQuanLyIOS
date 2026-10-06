@@ -133,9 +133,7 @@ private struct SanPhamHinhAnhRow: View {
             } else {
                 Button(action: onToggleNoiBat) {
                     Image(systemName: sanPham.noiBat ? "star.fill" : "star")
-                        .font(.system(size: 18))
-                        .foregroundColor(sanPham.noiBat ? .yellow : .textMuted.opacity(0.5))
-                        .frame(width: 32, height: 32)
+                        .foregroundColor(sanPham.noiBat ? .yellow : .textMuted)
                 }
                 .buttonStyle(.borderless)
             }

@@ -172,7 +172,7 @@ struct GiaNguyenLieuView: View {
     /// Dòng nguyên liệu: chạm tên để xem giá, chạm ⭐ để ghim/bỏ ghim (cập nhật ngay, lỗi thì hoàn lại).
     /// Có đề xuất `d` thì hiện thêm số lượng thường mua + mức gấp (trễ/hôm nay/còn N ngày).
     private func row(_ nl: NguyenLieuDto, _ d: MuaHangDeXuatDto? = nil) -> some View {
-        HStack {
+        HStack(spacing: 12) {
             // ⭐ bên trái tên — đồng bộ với màn Tồn kho và màn Ảnh menu.
             Button {
                 Task { await toggleYeuThich(nl) }
