@@ -48,11 +48,6 @@ struct TenDuongTextField: View {
         return String(text[..<r.upperBound])
     }
 
-    private func normalized(_ s: String) -> String {
-        s.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "vi_VN"))
-            .trimmingCharacters(in: .whitespaces)
-    }
-
     /// Chỉ hiện khi đang gõ (còn focus) VÀ fragment sau số nhà chưa khớp CHÍNH XÁC 1 tên đường có
     /// sẵn — tránh xổ dropdown thừa ngay sau khi vừa chọn gợi ý hoặc gõ đủ tên.
     private var suggestions: [String] {
@@ -60,7 +55,7 @@ struct TenDuongTextField: View {
         let fragment = streetFragment.trimmingCharacters(in: .whitespaces)
         guard !fragment.isEmpty else { return [] }
         let matches = cache.items.map(\.ten).filter { $0.matchesSearch(fragment) }
-        if matches.count == 1 && normalized(matches[0]) == normalized(fragment) { return [] }
+        if matches.count == 1 && matches[0].caseInsensitiveCompare(fragment) == .orderedSame { return [] }
         return Array(matches.prefix(8))
     }
 
