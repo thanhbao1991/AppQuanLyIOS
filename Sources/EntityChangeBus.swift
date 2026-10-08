@@ -92,7 +92,10 @@ final class EntityChangeBus: ObservableObject {
     /// biết có cập nhật mới mà không cần dán mắt vào màn hình. post() chỉ được gọi từ callback
     /// SignalRClient (xem ContentView) nên chỉ kêu khi kết nối đang sống, tức app đang mở.
     private func notifyReceived(entityName: String, action: String, voice: String) {
-        AudioServicesPlaySystemSound(1007) // SMS-received1 — "ting" ngắn, quen thuộc
+        // Signal ThongBaoNoiBo đi kèm push APNs đọc tiêu đề (tts_*.wav) — bỏ "ting" để khỏi chồng tiếng.
+        if entityName.lowercased() != "thongbaonoibo" {
+            AudioServicesPlaySystemSound(1007) // SMS-received1 — "ting" ngắn, quen thuộc
+        }
         AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
 
         let style = Self.style(entityName: entityName, action: action)
