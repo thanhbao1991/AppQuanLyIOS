@@ -96,7 +96,7 @@ final class EntityChangeBus: ObservableObject {
         // lastEvent vẫn đã được post ở trên nên badge chuông vẫn tự cập nhật.
         if entityName.lowercased() == "thongbaonoibo" { return }
 
-        AudioServicesPlaySystemSound(1007) // SMS-received1 — "ting" ngắn, quen thuộc
+        // Chỉ rung + toast, không "ting": tiếng dành riêng cho push (đọc tiêu đề).
         AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
 
         let style = Self.style(entityName: entityName, action: action)
