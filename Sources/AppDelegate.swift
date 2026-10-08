@@ -11,9 +11,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     }
 
     // Không có hàm này thì iOS im lặng nuốt push khi app đang mở — cần để vẫn đọc tiêu đề (âm tts_*.wav).
-    // Không .banner: toast của signal SignalR (EntityChangeBus) đã hiện rồi, banner nữa là trùng.
+    // Push là kênh chính cho thông báo nội bộ; signal ThongBaoNoiBo trong EntityChangeBus không toast/kêu nữa để khỏi trùng.
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
-        [.list, .sound]
+        [.banner, .list, .sound]
     }
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
