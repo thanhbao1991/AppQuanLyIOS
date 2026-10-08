@@ -1160,3 +1160,11 @@ extension APIClient {
         return data
     }
 }
+
+extension APIClient {
+    func getTtsSoundIndex() async -> [String: String] {
+        let (data, _) = await send(makeRequest("/api/tts-sounds/index"))
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[String: String]>.self, from: data), env.isSuccess else { return [:] }
+        return env.data ?? [:]
+    }
+}

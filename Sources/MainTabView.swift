@@ -282,6 +282,11 @@ private struct MoreMenuView: View {
                     } label: {
                         EmojiLabel("Giờ vắng khách", "🕑")
                     }
+                    NavigationLink {
+                        TtsSoundsView()
+                    } label: {
+                        EmojiLabel("Âm báo đã tải", "🔊")
+                    }
 
                     if let balance = aiBalance {
                         HStack {
