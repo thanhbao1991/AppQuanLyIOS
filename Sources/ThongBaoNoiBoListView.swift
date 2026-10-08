@@ -164,7 +164,7 @@ enum ThongBaoNoiBoFormatting {
         case "ThanhToanChuyenKhoan": return "💳"
         case "ThanhToanBanking": return "🤖"
         case "ThanhToan": return "💰"
-        case "DuyKhanh": return "👤"
+        case "DuyKhanh", "DuyKhanhGhiNo", "DuyKhanhTraNo", "DuyKhanhChuyenKhoan": return "👤"
         case "Admin": return "⚙️"
         default: return "🔔"
         }
