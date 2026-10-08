@@ -16,7 +16,14 @@ enum TtsSoundSync {
         let dir = lib.appendingPathComponent("Sounds", isDirectory: true)
         try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
 
-        for name in await APIClient.shared.getTtsSoundNames() {
+        let names = await APIClient.shared.getTtsSoundNames()
+        if !names.isEmpty {
+            let keep = Set(names)
+            for f in (try? fm.contentsOfDirectory(atPath: dir.path)) ?? [] where f.hasPrefix("n_") && f.hasSuffix(".wav") && !keep.contains(f) {
+                try? fm.removeItem(at: dir.appendingPathComponent(f))
+            }
+        }
+        for name in names {
             let dest = dir.appendingPathComponent(name)
             if fm.fileExists(atPath: dest.path) { continue }
             if let data = await APIClient.shared.downloadTtsSound(name) {
