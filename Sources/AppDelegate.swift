@@ -4,7 +4,17 @@ import UserNotifications
 /// Cầu nối APNs — SwiftUI App không có hook nhận device token, phải qua UIApplicationDelegate.
 /// Chỉ lo phần đăng ký/nhận token; xin quyền + gọi registerForRemoteNotifications() nằm ở
 /// LoginView (sau khi đăng nhập) và ContentView (khi mở app với phiên cũ còn hiệu lực).
-final class AppDelegate: NSObject, UIApplicationDelegate {
+final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        UNUserNotificationCenter.current().delegate = self
+        return true
+    }
+
+    // Không có hàm này thì iOS im lặng nuốt push khi app đang mở — cần để vẫn đọc tiêu đề (âm tts_*.wav) lúc đang dùng app.
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+        [.banner, .list, .sound]
+    }
+
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         let token = deviceToken.map { String(format: "%02x", $0) }.joined()
         Task {
