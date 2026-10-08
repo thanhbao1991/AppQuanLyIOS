@@ -23,6 +23,13 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         }
     }
 
+    // Silent push (backend vừa sinh âm báo tên khách mới) → tải file về Library/Sounds.
+    func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any]) async -> UIBackgroundFetchResult {
+        guard userInfo["ttsSync"] != nil else { return .noData }
+        await TtsSoundSync.sync()
+        return .newData
+    }
+
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
         print("[APNs] Đăng ký remote notification thất bại: \(error)")
     }

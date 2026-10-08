@@ -34,6 +34,7 @@ struct ContentView: View {
                 } }
                 DesktopScreenStore.shared.start()
                 PushNotifications.requestAndRegister()
+                Task { await TtsSoundSync.sync() }
                 Task { await ThongBaoBadge.shared.refresh() }
             } else {
                 Task { await SignalRClient.shared.stop() }
@@ -69,6 +70,7 @@ struct ContentView: View {
                 // — dù kết nối vẫn còn sống, vẫn bị phá đi tạo lại, đúng cảm giác "mất kết nối liền"
                 // user báo dù có beginBackgroundTask.
                 if isLoggedIn {
+                    Task { await TtsSoundSync.sync() }
                     Task {
                         if await !SignalRClient.shared.isConnected {
                             await SignalRClient.shared.kickReconnect()
@@ -85,6 +87,7 @@ struct ContentView: View {
                 }
                 DesktopScreenStore.shared.start()
                 PushNotifications.requestAndRegister()
+                await TtsSoundSync.sync()
                 await ThongBaoBadge.shared.refresh()
             }
         }

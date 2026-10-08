@@ -1146,3 +1146,17 @@ actor APIClient {
         return await executeAction(req)
     }
 }
+
+extension APIClient {
+    func getTtsSoundNames() async -> [String] {
+        let (data, _) = await send(makeRequest("/api/tts-sounds"))
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[String]>.self, from: data), env.isSuccess else { return [] }
+        return env.data ?? []
+    }
+
+    func downloadTtsSound(_ name: String) async -> Data? {
+        let (data, resp) = await send(makeRequest("/api/tts-sounds/\(name)"))
+        guard resp?.statusCode == 200, let data, data.count > 44 else { return nil }
+        return data
+    }
+}
