@@ -376,12 +376,12 @@ struct ShipperAvatarView: View {
 ///   của Khánh, đọc tiền tố GhiChuShipper y hệt app đó.
 /// - 2 filter kế (avatar Nhã) là filter chung của quán (không riêng shipper nào, không port từ
 ///   app nào) — dùng ConLai/NgayNo trực tiếp trên HoaDon, khác hẳn logic đọc GhiChuShipper ở trên.
-/// - 5 filter cuối lọc theo PhanLoai (icon hệ thống, không phải avatar) — khớp bộ icon dùng ở
+/// - 6 filter cuối lọc theo PhanLoai (icon hệ thống, không phải avatar) — khớp bộ icon dùng ở
 ///   AddHoaDonSheet.categories, để nhân viên lọc nhanh theo loại đơn không cần mở phần thống kê.
 enum HoaDonQuickFilter: CaseIterable, Hashable {
     case tiNuaChuyenKhoan, ghiNo, traNo, chuaChon
     case chuaThanhToan, daGhiNo
-    case ship, taiCho, muaVe, muaHo, app
+    case ship, taiCho, muaVe, muaHo, app, appDatHang
 
     /// Nhóm để chèn Divider giữa các cụm filter trong menu — đổi giá trị này thì đổi luôn vị trí
     /// đường phân cách, không cần sửa view.
@@ -389,7 +389,7 @@ enum HoaDonQuickFilter: CaseIterable, Hashable {
         switch self {
         case .tiNuaChuyenKhoan, .ghiNo, .traNo, .chuaChon: return 0
         case .chuaThanhToan, .daGhiNo: return 1
-        case .taiCho, .ship, .muaVe, .muaHo, .app: return 2
+        case .taiCho, .ship, .muaVe, .muaHo, .app, .appDatHang: return 2
         }
     }
 
@@ -413,6 +413,7 @@ enum HoaDonQuickFilter: CaseIterable, Hashable {
         case .muaVe: return "Mua về"
         case .muaHo: return "Mua hộ"
         case .app: return "App"
+        case .appDatHang: return "App Đenn"
         }
     }
 
@@ -423,7 +424,7 @@ enum HoaDonQuickFilter: CaseIterable, Hashable {
         switch self {
         case .tiNuaChuyenKhoan, .ghiNo, .traNo, .chuaChon: return "Khánh"
         case .chuaThanhToan, .daGhiNo: return "Nhã"
-        case .taiCho, .ship, .muaVe, .muaHo, .app: return nil
+        case .taiCho, .ship, .muaVe, .muaHo, .app, .appDatHang: return nil
         }
     }
 
@@ -436,6 +437,7 @@ enum HoaDonQuickFilter: CaseIterable, Hashable {
         case .muaVe: return "🛍️"
         case .muaHo: return "✋"
         case .app: return "📱"
+        case .appDatHang: return "🛒"
         default: return nil
         }
     }
@@ -447,6 +449,7 @@ enum HoaDonQuickFilter: CaseIterable, Hashable {
         case .muaVe: return "Mv"
         case .muaHo: return "Mh"
         case .app: return "App"
+        case .appDatHang: return "AppDatHang"
         default: return nil
         }
     }
@@ -480,7 +483,7 @@ enum HoaDonQuickFilter: CaseIterable, Hashable {
             return self == .daGhiNo
                 ? item.conLai > 0 && daGhiNoFlag
                 : item.conLai > 0 && !daGhiNoFlag
-        case .taiCho, .ship, .muaVe, .muaHo, .app:
+        case .taiCho, .ship, .muaVe, .muaHo, .app, .appDatHang:
             return item.phanLoai == phanLoaiCode
         }
     }
