@@ -68,7 +68,7 @@ struct HoaDonListView: View {
     /// bị xuống 2 dòng như bản text cũ ("Ship 203k, T.chỗ 230k...").
     private var phanLoaiTotals: [(phanLoai: String, icon: String, color: Color, text: String)] {
         // Thiếu AppDatHang ở đây thì doanh thu đơn app khách biến mất khỏi thanh tổng, dù vẫn còn
-        // trong cachedSorted — mirror đúng lỗi đã sửa ở ThongKeService (Backend, thêm nhãn "Đặt qua app").
+        // trong cachedSorted — mirror đúng lỗi đã sửa ở ThongKeService (Backend, thêm nhãn "App Đenn").
         let order: [(code: String, icon: String)] = [
             ("Ship", "🛵"), ("Tại Chỗ", "🪑"), ("Mv", "🛍️"),
             ("Mh", "✋"), ("App", "📱"), ("AppDatHang", "🛒"),
