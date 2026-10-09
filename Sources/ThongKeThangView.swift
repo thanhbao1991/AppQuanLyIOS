@@ -101,22 +101,18 @@ struct ThongKeThangView: View {
                                 }
                             }
                             if let giamGia {
-                                // Chỉ hiện 3 dòng phân loại chung (khớp hành vi card "Doanh thu") thay vì
+                                // Chỉ hiện các dòng phân loại (Ship/Tại chỗ/Mua về/Mua hộ/App/App Đenn) (khớp hành vi card "Doanh thu") thay vì
                                 // liệt kê từng đơn ngay trong card — bấm vào 1 phân loại mới mở sheet ra
                                 // danh sách đơn của phân loại đó (GiamGiaChiTietSheet, dữ liệu đã có sẵn
                                 // trong response nên không cần gọi thêm API).
                                 StatCard(icon: "tag", title: "Giảm giá", value: giamGia.tongGiamGia, color: .thongKePurple, isExpanded: expandedCards.contains(.giamGia)) {
                                     toggle(.giamGia)
                                 } content: {
-                                    AmountRow(label: "Đơn Quán", value: giamGia.tongDonQuan)
-                                        .contentShape(Rectangle())
-                                        .onTapGesture { selectedGiamGiaCategory = GiamGiaCategorySelection(label: "Đơn Quán", items: giamGia.danhSachDonQuan) }
-                                    AmountRow(label: "Đơn App", value: giamGia.tongDonApp)
-                                        .contentShape(Rectangle())
-                                        .onTapGesture { selectedGiamGiaCategory = GiamGiaCategorySelection(label: "Đơn App", items: giamGia.danhSachDonApp) }
-                                    AmountRow(label: "Đơn Mua hộ", value: giamGia.tongDonMuaHo)
-                                        .contentShape(Rectangle())
-                                        .onTapGesture { selectedGiamGiaCategory = GiamGiaCategorySelection(label: "Đơn Mua hộ", items: giamGia.danhSachDonMuaHo) }
+                                    ForEach(giamGia.nhom ?? [], id: \.ten) { nhom in
+                                        AmountRow(label: nhom.ten, value: nhom.tong)
+                                            .contentShape(Rectangle())
+                                            .onTapGesture { selectedGiamGiaCategory = GiamGiaCategorySelection(label: nhom.ten, items: nhom.danhSach) }
+                                    }
                                 }
                             }
                         }

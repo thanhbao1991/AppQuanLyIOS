@@ -694,6 +694,13 @@ struct ThongKeGiamGiaDto: Decodable {
     let danhSachDonApp: [GiamGiaItemDto]
     let tongDonMuaHo: Double
     let danhSachDonMuaHo: [GiamGiaItemDto]
+    let nhom: [GiamGiaNhomDto]?
+}
+
+struct GiamGiaNhomDto: Decodable {
+    let ten: String
+    let tong: Double
+    let danhSach: [GiamGiaItemDto]
 }
 
 struct TongNoDto: Decodable {
