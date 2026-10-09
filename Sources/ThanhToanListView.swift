@@ -219,9 +219,15 @@ private struct ThanhToanRowView: View {
 
     /// Chỉ 2 màu theo phương thức thanh toán (tiền mặt/chuyển khoản) — không còn phân biệt theo
     /// loaiThanhToan (Trả nợ qua ngày/trong ngày) như trước.
-    private var borderColor: Color {
-        isBank ? .brandPrimary : .successColor
+    private var isViXu: Bool {
+        item.phuongThucThanhToanId?.lowercased() == PaymentMethod.viXuId
     }
+
+    private var methodColor: Color {
+        isViXu ? .orange : (isBank ? .brandPrimary : .successColor)
+    }
+
+    private var borderColor: Color { methodColor }
 
     var body: some View {
         HStack(spacing: 10) {
@@ -256,11 +262,11 @@ private struct ThanhToanRowView: View {
                     if isAutoBank {
                         Text("🤖").font(.caption2)
                     }
-                    Text(isBank ? "Chuyển khoản" : "Tiền mặt").font(.caption2.bold())
+                    Text(isViXu ? "Ví Xu" : (isBank ? "Chuyển khoản" : "Tiền mặt")).font(.caption2.bold())
                 }
                 .padding(.horizontal, 8).padding(.vertical, 2)
-                .background((isBank ? Color.brandPrimary : Color.successColor).opacity(0.15))
-                .foregroundColor(isBank ? .brandPrimary : .successColor)
+                .background(methodColor.opacity(0.15))
+                .foregroundColor(methodColor)
                 .clipShape(Capsule())
             }
         }

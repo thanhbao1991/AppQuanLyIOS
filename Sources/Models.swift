@@ -145,6 +145,7 @@ struct HoaDonDetailDto: Decodable {
 enum PaymentMethod {
     static let tienMatId = "0121fc04-0469-4908-8b9a-7002f860fb5c"
     static let chuyenKhoanId = "2cf9a88f-3bc0-4d4b-940d-f8ffa4affa02"
+    static let viXuId = "5b6f0c1e-8d3a-4c7b-9e21-4a7d6b3f2c10"
 }
 
 struct ThanhToanRequest: Encodable {
