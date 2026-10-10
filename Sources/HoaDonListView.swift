@@ -539,7 +539,7 @@ private struct HoaDonRowView: View {
     /// thoát". Trước đây check laChoXacNhan trước ngayNo nên đơn Ship tạo tay ở quầy (không qua app,
     /// NgayXacNhanOnline luôn NULL) dù đã ghi nợ/đã giao ship từ lâu vẫn hiện "Chờ xác nhận".
     private var statusText: String? {
-        if item.conLai <= 0.0 { return (item.isBank == true) ? "Chuyển khoản" : "Tiền mặt" }
+        if item.conLai <= 0.0 { return (item.isBank == true) ? "Chuyển khoản" : (item.isXu == true ? "Ví Xu" : "Tiền mặt") }
         if !(item.ngayNo?.isEmpty ?? true) { return "Ghi nợ" }
         return laChoXacNhan ? "Chờ xác nhận" : "Chưa thoát"
     }

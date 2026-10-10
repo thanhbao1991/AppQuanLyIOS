@@ -62,6 +62,7 @@ struct HoaDonListDto: Decodable, Identifiable {
     let diaChiText: String?
     let soDienThoaiText: String?
     let isBank: Bool?
+    let isXu: Bool?
     /// true = có dòng chuyển khoản do SePay webhook tự thu — hiện icon robot trên badge "Chuyển khoản"
     /// để phân biệt với thu tay. Xem ChiTietHoaDonThanhToanDto.tuDongLuc.
     let isAutoBank: Bool?

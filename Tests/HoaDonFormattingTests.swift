@@ -131,7 +131,7 @@ final class HoaDonFormattingTests: XCTestCase {
             phanLoai: phanLoai, ngayGio: nil, lastModified: nil, ngayShip: nil,
             ngayNo: ngayNo, ngayIn: nil, ngayXacNhanOnline: nil, ngayThanhToan: nil, nguoiShip: nguoiShip,
             ghiChu: nil, ghiChuShipper: nil, diaChiText: nil, soDienThoaiText: nil,
-            isBank: nil, isAutoBank: nil, thanhTien: 50_000, conLai: conLai,
+            isBank: nil, isXu: nil, isAutoBank: nil, thanhTien: 50_000, conLai: conLai,
             tenMonSummary: nil, maHoaDon: "HD00000001"
         )
     }

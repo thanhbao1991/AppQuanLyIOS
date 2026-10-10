@@ -13,6 +13,10 @@ struct ThanhToanDetailView: View {
     @State private var showDoiPhuongThucConfirm = false
     @State private var showDeleteConfirm = false
 
+    private var isViXu: Bool {
+        item.phuongThucThanhToanId?.lowercased() == PaymentMethod.viXuId
+    }
+
     private var isBank: Bool {
         item.phuongThucThanhToanId?.lowercased() == PaymentMethod.chuyenKhoanId
     }
@@ -39,7 +43,7 @@ struct ThanhToanDetailView: View {
                         if let mon = item.tenMonSummary, !mon.isEmpty { infoRow("Món", mon) }
                         if let gc = item.ghiChu, !gc.isEmpty { infoRow("Ghi chú", gc) }
                         if let tk = item.tenTaiKhoan, !tk.isEmpty { infoRow("Thu bởi", tk) }
-                        infoRow("Phương thức", isBank ? "Chuyển khoản" : "Tiền mặt")
+                        infoRow("Phương thức", isViXu ? "Ví Xu" : (isBank ? "Chuyển khoản" : "Tiền mặt"))
                         Divider()
                         HStack {
                             Text("SỐ TIỀN").font(.caption.bold()).foregroundColor(.textMuted)
