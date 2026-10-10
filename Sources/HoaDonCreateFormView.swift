@@ -47,6 +47,7 @@ struct HoaDonCreateFormView: View {
     @State private var tenKhach = ""
     @State private var sdt = ""
     @State private var diaChi = ""
+    @State private var showAddressPicker = false
     @State private var khachSearchText = ""
     @FocusState private var khachSearchFocused: Bool
     @State private var khachSearchResults: [KhachHangDto] = []
@@ -146,6 +147,15 @@ struct HoaDonCreateFormView: View {
             }
             .navigationTitle(HoaDonFormatting.phanLoaiLabel(phanLoai))
             .navigationBarTitleDisplayMode(.inline)
+            .confirmationDialog("Giao đến địa chỉ nào?", isPresented: $showAddressPicker, titleVisibility: .visible) {
+                ForEach(selectedKhach?.addresses ?? [], id: \.id) { a in
+                    Button(a.diaChi) {
+                        diaChi = a.diaChi
+                        Task { await save() }
+                    }
+                }
+                Button("Huỷ", role: .cancel) {}
+            }
             .toolbarBackground(Color.brandPrimary, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
@@ -778,7 +788,8 @@ struct HoaDonCreateFormView: View {
         showEditKhachHang = false
         tenKhach = kh.ten
         sdt = kh.phones.first(where: { $0.isDefault })?.soDienThoai ?? kh.phones.first?.soDienThoai ?? ""
-        diaChi = kh.diaChiCuNhat ?? ""
+        // Khách nhiều địa chỉ: không đoán, để trống — chọn bằng chip, hoặc đơn Ship sẽ hỏi lúc lưu.
+        diaChi = kh.addresses.count > 1 ? "" : (kh.diaChiCuNhat ?? "")
         khachSearchText = ""
         khachSearchResults = []
         khachInfo = nil
@@ -927,6 +938,11 @@ struct HoaDonCreateFormView: View {
         guard !items.isEmpty else { errorMessage = "Chưa có món nào."; return }
         if phanLoai == "Tại Chỗ" && tenBan.trimmingCharacters(in: .whitespaces).isEmpty {
             errorMessage = "Đơn tại chỗ phải chọn bàn trước khi lưu."
+            return
+        }
+        if phanLoai == "Ship", diaChi.trimmingCharacters(in: .whitespaces).isEmpty,
+           let kh = selectedKhach, kh.addresses.count > 1 {
+            showAddressPicker = true
             return
         }
         saving = true
