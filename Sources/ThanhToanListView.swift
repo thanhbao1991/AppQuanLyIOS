@@ -54,6 +54,11 @@ struct ThanhToanListView: View {
             .reduce(0) { $0 + $1.soTien }
     }
 
+    private var totalViXu: Double {
+        filteredItems.filter { $0.phuongThucThanhToanId?.lowercased() == PaymentMethod.viXuId }
+            .reduce(0) { $0 + $1.soTien }
+    }
+
     private var totalChuyenKhoan: Double {
         filteredItems.filter { $0.phuongThucThanhToanId?.lowercased() == PaymentMethod.chuyenKhoanId }
             .reduce(0) { $0 + $1.soTien }
@@ -151,6 +156,10 @@ struct ThanhToanListView: View {
                             .font(.caption2).foregroundColor(.successColor)
                         Text("Chuyển khoản: \(HoaDonFormatting.money(totalChuyenKhoan))")
                             .font(.caption2).foregroundColor(.brandPrimary)
+                        if totalViXu > 0 {
+                            Text("Ví Xu: \(HoaDonFormatting.money(totalViXu))")
+                                .font(.caption2).foregroundColor(.orange)
+                        }
                     }
                     HStack {
                         Spacer()
@@ -284,13 +293,13 @@ private struct ThanhToanRowView: View {
 /// 4=Trả nợ trong ngày — xem AppDbContext, Share).
 enum ThanhToanQuickFilter: CaseIterable, Hashable {
     case tienMatDuyKhanh, traNoDuyKhanh
-    case tienMat, chuyenKhoan
+    case tienMat, chuyenKhoan, viXu
 
     /// Nhóm để chèn Divider giữa 2 cụm: theo Duy Khánh (avatar) / theo phương thức thanh toán (icon).
     var group: Int {
         switch self {
         case .tienMatDuyKhanh, .traNoDuyKhanh: return 0
-        case .tienMat, .chuyenKhoan: return 1
+        case .tienMat, .chuyenKhoan, .viXu: return 1
         }
     }
 
@@ -306,13 +315,14 @@ enum ThanhToanQuickFilter: CaseIterable, Hashable {
         case .traNoDuyKhanh: return "Trả nợ Duy Khánh"
         case .tienMat: return "Tiền mặt"
         case .chuyenKhoan: return "Chuyển khoản"
+        case .viXu: return "Ví Xu"
         }
     }
 
     var avatarName: String? {
         switch self {
         case .tienMatDuyKhanh, .traNoDuyKhanh: return "Khánh"
-        case .tienMat, .chuyenKhoan: return nil
+        case .tienMat, .chuyenKhoan, .viXu: return nil
         }
     }
 
@@ -321,6 +331,7 @@ enum ThanhToanQuickFilter: CaseIterable, Hashable {
         switch self {
         case .tienMat: return "💵"
         case .chuyenKhoan: return "💳"
+        case .viXu: return "🪙"
         default: return nil
         }
     }
@@ -339,6 +350,8 @@ enum ThanhToanQuickFilter: CaseIterable, Hashable {
             return isTienMat
         case .chuyenKhoan:
             return isBank
+        case .viXu:
+            return item.phuongThucThanhToanId?.lowercased() == PaymentMethod.viXuId
         }
     }
 }
