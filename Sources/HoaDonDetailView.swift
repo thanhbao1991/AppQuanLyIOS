@@ -453,14 +453,16 @@ struct HoaDonDetailView: View {
             // toggle 2 phân loại này) — cùng guard "không sửa được đơn đã thu tiền ngày cũ" với nút
             // Sửa đơn (canEdit), vì đổi phân loại cũng làm lệch báo cáo doanh thu theo phân loại hồi
             // tố y hệt sửa món/tiền.
-            let showDoiPhanLoai = (d.phanLoai == "Ship" || d.phanLoai == "Mv") && canEdit
+            let showDoiPhanLoai = (d.phanLoai == "Ship" || d.phanLoai == "Mv" || d.phanLoai == "AppDatHang") && canEdit
             // Emoji/màu gợi liên tưởng đúng bộ icon PhanLoai dùng chung toàn app (HoaDonQuickFilter.
             // systemIcon: Ship="scooter", Mv="bag.fill" — HoaDonFormatting.phanLoaiColor) — hiện
             // icon/màu của phân loại SẼ CHUYỂN ĐẾN (giống cách doiPhuongThucColor ở trên tô màu theo
             // phương thức đích, không phải phương thức hiện tại).
-            let doiPhanLoaiCaption = d.phanLoai == "Ship" ? "Đổi sang Mv" : "Đổi sang Ship"
-            let doiPhanLoaiIcon = d.phanLoai == "Ship" ? "🛍️" : "🛵"
-            let doiPhanLoaiColor = HoaDonFormatting.phanLoaiColor(d.phanLoai == "Ship" ? "Mv" : "Ship")
+            // Đơn AppDatHang chỉ đổi một chiều sang Mua hộ (Mh), cùng vị trí nút vì chỉ hiện 1 trong 3.
+            let doiPhanLoaiDich = d.phanLoai == "AppDatHang" ? "Mh" : (d.phanLoai == "Ship" ? "Mv" : "Ship")
+            let doiPhanLoaiCaption = "Đổi sang \(doiPhanLoaiDich)"
+            let doiPhanLoaiIcon = doiPhanLoaiDich == "Mh" ? "✋" : (doiPhanLoaiDich == "Mv" ? "🛍️" : "🛵")
+            let doiPhanLoaiColor = HoaDonFormatting.phanLoaiColor(doiPhanLoaiDich)
 
             // Thứ tự theo yêu cầu: hàng 1 = Esc/F12/Sửa/Del (thao tác trên đơn), hàng 2 = Đổi phân
             // loại/Đổi phương thức/Hoàn tác (thao tác trên thanh toán), ô cuối để trống.
