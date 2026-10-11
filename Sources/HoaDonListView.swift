@@ -550,17 +550,8 @@ private struct HoaDonRowView: View {
         return laChoXacNhan ? .warningColor : .dangerColor
     }
 
-    /// Đóng băng thời gian chờ tại thời điểm sự kiện xảy ra SỚM NHẤT trong 3 mốc ghi nợ/thanh
-    /// toán/đi ship (nếu đã xảy ra) — sau mốc đó khách không còn "chờ" nữa nên số phút phải đứng
-    /// yên, không tiếp tục chạy theo `now`. Đơn chưa có mốc nào thì vẫn chạy live theo `now`.
-    private var waitingEndDate: Date {
-        let candidates = [item.ngayNo, item.ngayThanhToan, item.ngayShip]
-            .compactMap { HoaDonFormatting.parseIso($0) }
-        return candidates.min() ?? now
-    }
-
     private var waitingMinutes: Int? {
-        HoaDonFormatting.minutesSince(item.ngayGio, now: waitingEndDate)
+        HoaDonFormatting.minutesSince(item.ngayGio, now: HoaDonFormatting.waitingEndDate(item, now: now))
     }
 
     private var waitingColor: Color {

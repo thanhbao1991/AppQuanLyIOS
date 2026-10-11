@@ -124,16 +124,46 @@ final class HoaDonFormattingTests: XCTestCase {
         phanLoai: String?,
         conLai: Double = 50_000,
         nguoiShip: String? = nil,
-        ngayNo: String? = nil
+        ngayNo: String? = nil,
+        ngayShip: String? = nil,
+        ngayThanhToan: String? = nil
     ) -> HoaDonListDto {
         HoaDonListDto(
             id: "1", khachHangId: nil, tenKhachHangText: nil, tenBan: nil,
-            phanLoai: phanLoai, ngayGio: nil, lastModified: nil, ngayShip: nil,
-            ngayNo: ngayNo, ngayIn: nil, ngayXacNhanOnline: nil, ngayThanhToan: nil, nguoiShip: nguoiShip,
+            phanLoai: phanLoai, ngayGio: nil, lastModified: nil, ngayShip: ngayShip,
+            ngayNo: ngayNo, ngayIn: nil, ngayXacNhanOnline: nil, ngayThanhToan: ngayThanhToan, nguoiShip: nguoiShip,
             ghiChu: nil, ghiChuShipper: nil, diaChiText: nil, soDienThoaiText: nil,
             isBank: nil, isXu: nil, isAutoBank: nil, thanhTien: 50_000, conLai: conLai,
             tenMonSummary: nil, maHoaDon: "HD00000001"
         )
+    }
+
+    // MARK: - waitingEndDate
+
+    private let moc = HoaDonFormatting.parseIso("2026-10-11T10:00:00")!
+    private func sau(_ phut: Double) -> Date { moc.addingTimeInterval(phut * 60) }
+
+    // Đơn App Đenn chuyển khoản ngay lúc đặt: badge từng đứng ở "0 phút" dù món chưa giao.
+    func test_waitingEndDate_AppDatHangDaThanhToanChuaShip_VanChayTheoNow() {
+        let item = hoaDon(phanLoai: "AppDatHang", conLai: 0, ngayThanhToan: "2026-10-11T10:00:30")
+        XCTAssertEqual(HoaDonFormatting.waitingEndDate(item, now: sau(20)), sau(20))
+    }
+
+    func test_waitingEndDate_ShipVaAppDatHang_DungOLucDiShip_BoQuaThanhToan() {
+        for pl in ["Ship", "AppDatHang"] {
+            let item = hoaDon(phanLoai: pl, conLai: 0, ngayShip: "2026-10-11T10:12:00", ngayThanhToan: "2026-10-11T10:01:00")
+            XCTAssertEqual(HoaDonFormatting.waitingEndDate(item, now: sau(40)), sau(12), pl)
+        }
+    }
+
+    func test_waitingEndDate_ShipGhiNoChuaCoNgayShip_DungONgayNo() {
+        let item = hoaDon(phanLoai: "Ship", ngayNo: "2026-10-11T10:08:00")
+        XCTAssertEqual(HoaDonFormatting.waitingEndDate(item, now: sau(40)), sau(8))
+    }
+
+    func test_waitingEndDate_TaiCho_VanDungOMocSomNhat() {
+        let item = hoaDon(phanLoai: "Tại Chỗ", conLai: 0, ngayThanhToan: "2026-10-11T10:05:00")
+        XCTAssertEqual(HoaDonFormatting.waitingEndDate(item, now: sau(40)), sau(5))
     }
 
     func test_sortPriority_ShipChuaGanShipperUuTienCaoNhat() {

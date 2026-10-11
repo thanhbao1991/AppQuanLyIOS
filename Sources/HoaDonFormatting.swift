@@ -95,6 +95,20 @@ enum HoaDonFormatting {
         return max(0, Int(now.timeIntervalSince(date) / 60))
     }
 
+    /// Mốc đóng băng thời gian chờ — sau mốc đó khách không còn "chờ" nữa nên số phút phải đứng
+    /// yên, không tiếp tục chạy theo `now`. Đơn chưa có mốc nào thì vẫn chạy live theo `now`.
+    /// - Ship/AppDatHang: CHỈ dừng ở lúc đi ship. KHÔNG tính ngayThanhToan — đơn App Đenn khách
+    ///   chuyển khoản ngay lúc đặt nên trước đây badge đứng ở "0 phút" dù món chưa giao. Chưa đi
+    ///   ship mà đã ghi nợ thì dừng ở ngayNo (đơn coi như xong, tránh chạy mãi).
+    /// - Loại khác (Tại chỗ/Mv/Mh/App): mốc SỚM NHẤT trong ghi nợ/thanh toán/đi ship.
+    static func waitingEndDate(_ item: HoaDonListDto, now: Date) -> Date {
+        if item.phanLoai == "Ship" || item.phanLoai == "AppDatHang" {
+            return parseIso(item.ngayShip) ?? parseIso(item.ngayNo) ?? now
+        }
+        let candidates = [item.ngayNo, item.ngayThanhToan, item.ngayShip].compactMap { parseIso($0) }
+        return candidates.min() ?? now
+    }
+
     static func parseIso(_ iso: String?) -> Date? {
         guard let iso, !iso.isEmpty else { return nil }
         for f in isoInFormats {
