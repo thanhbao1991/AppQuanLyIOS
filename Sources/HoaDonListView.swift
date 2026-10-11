@@ -20,8 +20,16 @@ struct HoaDonListView: View {
     @ObservedObject private var deepLink = DeepLinkRouter.shared
     @State private var currentDate = Date()
     @State private var items: [HoaDonListDto] = []
-    @State private var loading = false
     @State private var hasLoaded = false
+    /// Lượt tải gần nhất bị lỗi — hiện banner "Thử lại", GIỮ danh sách đang có (không xoá trắng).
+    @State private var loadFailed = false
+    /// Số thứ tự lượt `load()` — lượt cũ về sau lượt mới (đổi ngày nhanh) phải bị bỏ.
+    @State private var loadGeneration = 0
+    /// Ngày (yyyy-MM-dd) mà `items` đang giữ thuộc về.
+    @State private var loadedKey = ""
+    /// Ngày thật gần nhất app còn đang chạy — để phát hiện đã qua nửa đêm (xem rollOverIfNewDay).
+    @State private var lastSeenToday = Date()
+    @Environment(\.scenePhase) private var scenePhase
     @State private var selectedId: String?
     @State private var searchText = ""
     @State private var showAddSheet = false
@@ -48,9 +56,18 @@ struct HoaDonListView: View {
     /// vào cachedSorted, chỉ tính lại đúng lúc items/searchText/activeFilter thực sự đổi — đỡ giật khi
     /// danh sách dài (list hay bị coi "chậm" ở máy nhân viên là do việc này).
     @State private var cachedSorted: [HoaDonListDto] = []
+    /// Số đơn khớp từng filter (trên tập đã áp search) — tính 1 lần cùng cachedSorted thay vì chạy
+    /// lại search 12 lần mỗi lần body vẽ lại.
+    @State private var filterCounts: [HoaDonQuickFilter: Int] = [:]
 
     private func recomputeSorted() {
-        cachedSorted = searchFilteredItems
+        let searched = searchFilteredItems
+        var counts: [HoaDonQuickFilter: Int] = [:]
+        for filter in HoaDonQuickFilter.allCases {
+            counts[filter] = searched.filter { filter.matches($0) }.count
+        }
+        filterCounts = counts
+        cachedSorted = searched
             .filter { item in activeFilter?.matches(item) ?? true }
             .sorted {
                 let p0 = HoaDonFormatting.sortPriority($0)
@@ -113,7 +130,7 @@ struct HoaDonListView: View {
                             // Chia 3 cụm theo `group`, chèn Divider giữa mỗi cụm — 4 filter Khánh /
                             // 2 filter Nhã / 5 filter theo PhanLoai (icon hệ thống thay avatar).
                             ForEach(HoaDonQuickFilter.allCases, id: \.self) { filter in
-                                let count = searchFilteredItems.filter { filter.matches($0) }.count
+                                let count = filterCounts[filter] ?? 0
                                 if filter.isFirstInGroup {
                                     Divider()
                                 }
@@ -169,6 +186,11 @@ struct HoaDonListView: View {
                 if !hasLoaded {
                     fullScreenLoading()
                 } else {
+                    if loadFailed {
+                        ThongKeLoadErrorBanner(text: "Chưa tải được danh sách đơn") { Task { await load() } }
+                            .padding(.horizontal, 12)
+                            .padding(.top, 8)
+                    }
                     List {
                         if cachedSorted.isEmpty {
                             Text("Không có hoá đơn nào")
@@ -238,7 +260,13 @@ struct HoaDonListView: View {
             await load()
             openPendingDeepLink()
         }
-        .onReceive(clockTimer) { now = $0 }
+        .onReceive(clockTimer) {
+            now = $0
+            rollOverIfNewDay()
+        }
+        .onChange(of: scenePhase) { phase in
+            if phase == .active { rollOverIfNewDay() }
+        }
         .onEntityChanged(["HoaDon"], tab: .hoaDon) { Task { await load() } }
         .onChange(of: deepLink.khachHangIdToOrder) { _ in openPendingDeepLink() }
         .onChange(of: searchText) { _ in recomputeSorted() }
@@ -328,12 +356,39 @@ struct HoaDonListView: View {
     }
 
     private func load() async {
-        loading = true
+        loadGeneration += 1
+        let generation = loadGeneration
         let dateIso = DateNavFormat.queryDate.string(from: currentDate)
-        items = await APIClient.shared.getHoaDonListByDay(dateIso)
-        loading = false
+
+        // Sang ngày khác: đơn ngày cũ không được ở lại dưới tiêu đề ngày mới. Cùng ngày (refresh /
+        // EntityChanged / thử lại): giữ danh sách đang có trong lúc chờ.
+        if dateIso != loadedKey {
+            items = []
+            recomputeSorted()
+            hasLoaded = false
+        }
+
+        let fetched = await APIClient.shared.getHoaDonListByDay(dateIso)
+        guard generation == loadGeneration else { return }   // đã có lượt load mới hơn — bỏ kết quả cũ
+
+        if let fetched { items = fetched }
+        loadFailed = fetched == nil
+        loadedKey = dateIso
         hasLoaded = true
         recomputeSorted()
+    }
+
+    /// App để mở qua đêm (máy POS) thì `currentDate` vẫn là hôm qua — nếu đang xem đúng "hôm nay"
+    /// của lúc trước thì tự nhảy sang hôm nay mới. Đang chủ động xem 1 ngày cũ khác thì KHÔNG đụng.
+    private func rollOverIfNewDay() {
+        let cal = Calendar.current
+        let today = Date()
+        guard !cal.isDate(lastSeenToday, inSameDayAs: today) else { return }
+        let dangXemHomNayCu = cal.isDate(currentDate, inSameDayAs: lastSeenToday)
+        lastSeenToday = today
+        guard dangXemHomNayCu else { return }
+        currentDate = today
+        Task { await load() }
     }
 
     /// Mở sheet tạo đơn Ship prefill khách từ link Danh bạ (DeepLinkRouter) — bỏ qua nếu đang có
@@ -402,7 +457,7 @@ enum HoaDonQuickFilter: CaseIterable, Hashable {
 
     var label: String {
         switch self {
-        case .tiNuaChuyenKhoan: return "Tí nữa chuyển khoản"
+        case .tiNuaChuyenKhoan: return "Tí nữa CK"   // cùng chữ với nhãn trên card (HoaDonRowView)
         case .ghiNo: return "Ghi nợ"
         case .traNo: return "Trả nợ"
         case .chuaChon: return "Chưa chọn"
@@ -589,6 +644,8 @@ private struct HoaDonRowView: View {
                             Text("🕐").font(.caption2)
                             Text(HoaDonFormatting.waitingText(waitingMinutes)).font(.caption2.bold())
                         }
+                        .lineLimit(1)
+                        .fixedSize()   // dòng tiêu đề chật (đơn App Đenn) từng bẻ badge thành "0 / phút"
                         .foregroundColor(.white)
                         .padding(.horizontal, 6).padding(.vertical, 2)
                         .background(waitingColor)

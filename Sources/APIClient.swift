@@ -132,10 +132,12 @@ actor APIClient {
         return await executeAction(req)
     }
 
-    func getHoaDonListByDay(_ dateIso: String) async -> [HoaDonListDto] {
+    /// nil = tải LỖI (mất mạng/decode hỏng), khác với [] = ngày đó thật sự không có đơn — caller
+    /// phải phân biệt, không được hiện "Không có hoá đơn nào" khi chỉ là rớt mạng.
+    func getHoaDonListByDay(_ dateIso: String) async -> [HoaDonListDto]? {
         let req = makeRequest("/api/dashboard/hoa-don-list?ngay=\(dateIso)")
         let (data, _) = await send(req)
-        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[HoaDonListDto]>.self, from: data), env.isSuccess else { return [] }
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[HoaDonListDto]>.self, from: data), env.isSuccess else { return nil }
         return env.data ?? []
     }
 

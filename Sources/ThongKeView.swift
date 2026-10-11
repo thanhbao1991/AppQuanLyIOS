@@ -436,12 +436,13 @@ struct AmountRow: View {
 
 /// Banner báo lỗi tải — dùng chung 2 màn thống kê. Có nút thử lại thay vì để thẻ biến mất im lặng.
 struct ThongKeLoadErrorBanner: View {
+    var text = "Chưa tải được một số mục"
     let onRetry: () -> Void
 
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "exclamationmark.triangle.fill").foregroundColor(.warningColor)
-            Text("Chưa tải được một số mục").font(.footnote.weight(.medium))
+            Text(text).font(.footnote.weight(.medium))
             Spacer()
             Button("Thử lại", action: onRetry).font(.footnote.bold())
         }
