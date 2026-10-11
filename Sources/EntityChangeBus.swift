@@ -23,7 +23,8 @@ final class CongViecBadge: ObservableObject {
     @Published var pendingCount: Int = 0
 
     func refresh() async {
-        let items = await APIClient.shared.getCongViecList()
+        // Tải lỗi thì GIỮ số cũ — không được về 0 (nhìn như đã làm hết việc) chỉ vì rớt mạng.
+        guard let items = await APIClient.shared.getCongViecList() else { return }
         pendingCount = items.filter { !$0.daHoanThanh }.count
     }
 }

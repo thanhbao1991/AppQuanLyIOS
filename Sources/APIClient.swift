@@ -530,10 +530,11 @@ actor APIClient {
         return await executeAction(req)
     }
 
-    func getCongViecList() async -> [CongViecNoiBoDto] {
+    /// nil = tải LỖI, khác với [] = chưa có việc nào (xem getHoaDonListByDay).
+    func getCongViecList() async -> [CongViecNoiBoDto]? {
         let req = makeRequest("/api/CongViecNoiBo")
         let (data, _) = await send(req)
-        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[CongViecNoiBoDto]>.self, from: data), env.isSuccess else { return [] }
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[CongViecNoiBoDto]>.self, from: data), env.isSuccess else { return nil }
         return env.data ?? []
     }
 
