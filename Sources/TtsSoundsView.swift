@@ -28,10 +28,17 @@ struct TtsSoundsView: View {
         }
         .navigationTitle("Âm báo đã tải")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             Button(dangTai ? "Đang tải…" : "Tải lại") { Task { await tai() } }.disabled(dangTai)
         }
-        .task { reload(); index = await APIClient.shared.getTtsSoundIndex() }
+        .task {
+            reload()
+            index = await APIClient.shared.getTtsSoundIndex()
+            reload()
+        }
     }
 
     private func reload() {

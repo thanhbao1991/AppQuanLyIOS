@@ -27,6 +27,7 @@ struct GiaNguyenLieuView: View {
     /// Nguyên liệu cần mua sắp tới (đến hạn/trễ hạn) — hiện dưới ô tìm khi chưa gõ, gấp nhất trước.
     @State private var canMua: [MuaHangDeXuatDto] = []
     @State private var canMuaLoaded = false
+    @State private var loadFailed = false
 
     /// Không chọn nhóm nào (Tất cả) thì lấy hết; chọn nhóm thì lọc đúng nhóm đó (nhóm Nguyên liệu
     /// nhận thêm cả phanLoai == nil).
@@ -94,6 +95,10 @@ struct GiaNguyenLieuView: View {
             SearchBar(text: $searchText, placeholder: "Tìm nguyên liệu...")
 
             List {
+                if loadFailed {
+                    ThongKeLoadErrorBanner(text: "Chưa tải được danh sách nguyên liệu") { Task { await load() } }
+                        .listRowSeparator(.hidden)
+                }
                 // Không tiêu đề nhóm (đồng bộ màn Tồn kho). Tách ⭐ riêng với nhóm còn lại; ⭐ trên từng dòng vẫn bấm để ghim/bỏ ghim.
                 if searchText.isEmpty {
                     if !goiYYeuThich.isEmpty {
@@ -105,7 +110,7 @@ struct GiaNguyenLieuView: View {
                         Section {
                             ForEach(goiYKhac) { row($0.nl, $0.d) }
                         }
-                    } else if canMuaLoaded && goiYYeuThich.isEmpty {
+                    } else if canMuaLoaded && goiYYeuThich.isEmpty && !loadFailed {
                         Section {
                             Text("Chưa có nguyên liệu nào đến hạn mua.").foregroundColor(.textMuted)
                         }
@@ -125,6 +130,7 @@ struct GiaNguyenLieuView: View {
             }
             .listStyle(.plain)
             .softScrollEdgeTop()
+            .refreshable { await load() }
         }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
@@ -164,11 +170,15 @@ struct GiaNguyenLieuView: View {
         .navigationDestination(isPresented: $showDetail) {
             if let selected { GiaNguyenLieuDetailView(nguyenLieu: selected) }
         }
-        .task {
-            allNguyenLieu = await APIClient.shared.getNguyenLieu()
-            canMua = await APIClient.shared.getCanMua()
-            canMuaLoaded = true
-        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        let fresh = await APIClient.shared.getNguyenLieuOrNil()
+        if let fresh { allNguyenLieu = fresh }
+        loadFailed = fresh == nil
+        canMua = await APIClient.shared.getCanMua()
+        canMuaLoaded = true
     }
 
     /// Dòng nguyên liệu: chạm tên để xem giá, chạm ⭐ để ghim/bỏ ghim (cập nhật ngay, lỗi thì hoàn lại).
