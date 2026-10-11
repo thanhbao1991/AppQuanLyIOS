@@ -294,10 +294,10 @@ struct ThongKeView: View {
         traNo = r.4 ?? traNo
         chuaThanhToan = r.5 ?? chuaThanhToan
         tongNo = r.6 ?? tongNo
-        chiTieuDayItems = r.7
+        chiTieuDayItems = r.7 ?? chiTieuDayItems
         giamGia = r.8 ?? giamGia
         loadFailed = r.0 == nil || r.1 == nil || r.2 == nil || r.3 == nil || r.4 == nil
-            || r.5 == nil || r.6 == nil || r.8 == nil
+            || r.5 == nil || r.6 == nil || r.7 == nil || r.8 == nil
         loadedKey = key
         hasLoaded = true
     }

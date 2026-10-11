@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 
 /// Chi tiêu hằng ngày — GET/PUT/DELETE /api/ChiTieuHangNgay. List theo ngày (DayNavBar) + search.
@@ -8,8 +9,17 @@ struct ChiTieuListView: View {
     let notificationBell: AnyView
     @State private var currentDate = Date()
     @State private var items: [ChiTieuHangNgayDto] = []
-    @State private var loading = false
     @State private var hasLoaded = false
+    /// Xem HoaDonListView: banner thử lại khi tải lỗi (giữ danh sách cũ), chặn lượt load cũ ghi đè.
+    @State private var loadFailed = false
+    @State private var loadGeneration = 0
+    @State private var loadedKey = ""
+    /// Tự sang ngày mới khi app mở qua đêm — Ở TAB NÀY là chuyện dữ liệu, không chỉ hiển thị: form
+    /// "Thêm chi tiêu"/"Thêm từ ảnh" ghi vào `currentDate`, để nguyên hôm qua thì khoản chi sáng nay
+    /// rơi nhầm vào ngày hôm trước.
+    @State private var lastSeenToday = Date()
+    @Environment(\.scenePhase) private var scenePhase
+    private let dayRolloverTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
     @State private var searchText = ""
     @State private var selectedItem: ChiTieuHangNgayDto?
     @State private var showAdd = false
@@ -18,20 +28,13 @@ struct ChiTieuListView: View {
         items.filter { anyMatchesSearch(searchText, $0.ten, $0.ghiChu) }
     }
 
-    private var totalText: String {
-        HoaDonFormatting.money(filteredItems.reduce(0) { $0 + $1.thanhTien })
-    }
-
-    private var totalNgayText: String {
-        HoaDonFormatting.money(filteredItems.filter { !$0.billThang }.reduce(0) { $0 + $1.thanhTien })
-    }
-
-    private var totalThangText: String {
-        HoaDonFormatting.money(filteredItems.filter { $0.billThang }.reduce(0) { $0 + $1.thanhTien })
-    }
-
     var body: some View {
-        NavigationStack {
+        // Tính 1 lần cho cả list lẫn 3 con số tổng — filteredItems là computed, mỗi lần đọc chạy lại
+        // search từ đầu.
+        let rows = filteredItems
+        let tongNgay = rows.filter { !$0.billThang }.reduce(0) { $0 + $1.thanhTien }
+        let tongThang = rows.filter { $0.billThang }.reduce(0) { $0 + $1.thanhTien }
+        return NavigationStack {
             VStack(spacing: 0) {
                 DaySearchBar(
                     date: $currentDate, searchText: $searchText,
@@ -43,14 +46,19 @@ struct ChiTieuListView: View {
                 if !hasLoaded {
                     fullScreenLoading()
                 } else {
+                    if loadFailed {
+                        ThongKeLoadErrorBanner(text: "Chưa tải được danh sách chi tiêu") { Task { await load() } }
+                            .padding(.horizontal, 12)
+                            .padding(.top, 8)
+                    }
                     List {
-                        if filteredItems.isEmpty {
+                        if rows.isEmpty {
                             Text("Chưa có chi tiêu nào")
                                 .foregroundColor(.textMuted)
                                 .frame(maxWidth: .infinity)
                                 .listRowSeparator(.hidden)
                         } else {
-                            ForEach(filteredItems) { item in
+                            ForEach(rows) { item in
                                 ChiTieuRowView(item: item, onSelect: { selectedItem = item })
                                     .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
                                     .listRowBackground(Color.clear)
@@ -77,12 +85,12 @@ struct ChiTieuListView: View {
 
                     VStack(alignment: .trailing, spacing: 2) {
                         HStack(spacing: 8) {
-                            Text("Ngày: \(totalNgayText)")
+                            Text("Ngày: \(HoaDonFormatting.money(tongNgay))")
                                 .font(.caption2).foregroundColor(.successColor)
-                            Text("Tháng: \(totalThangText)")
+                            Text("Tháng: \(HoaDonFormatting.money(tongThang))")
                                 .font(.caption2).foregroundColor(.brandPrimary)
                         }
-                        Text(totalText).font(.headline)
+                        Text(HoaDonFormatting.money(tongNgay + tongThang)).font(.headline)
                     }
                     .frame(maxWidth: .infinity, alignment: .trailing)
                 }
@@ -92,6 +100,13 @@ struct ChiTieuListView: View {
             }
         }
         .task { await load() }
+        // Máy khác thêm/sửa/xoá chi tiêu (ChiTieuHangNgayController bắn EntityChanged) — trước đây
+        // tab này không nghe, phải kéo refresh tay.
+        .onEntityChanged(["ChiTieuHangNgay"], tab: .chiTieu) { Task { await load() } }
+        .onReceive(dayRolloverTimer) { _ in rollOverIfNewDay() }
+        .onChange(of: scenePhase) { phase in
+            if phase == .active { rollOverIfNewDay() }
+        }
         .sheet(item: $selectedItem) { item in
             ChiTieuDetailSheet(item: item) {
                 Task { await load() }
@@ -105,10 +120,37 @@ struct ChiTieuListView: View {
     }
 
     private func load() async {
-        loading = true
-        items = await APIClient.shared.getChiTieuByDay(DateNavFormat.queryDate.string(from: currentDate))
-        loading = false
+        loadGeneration += 1
+        let generation = loadGeneration
+        let dateIso = DateNavFormat.queryDate.string(from: currentDate)
+
+        // Sang ngày khác: dòng ngày cũ không được ở lại dưới tiêu đề ngày mới. Cùng ngày (refresh /
+        // EntityChanged / thử lại): giữ danh sách đang có trong lúc chờ.
+        if dateIso != loadedKey {
+            items = []
+            hasLoaded = false
+        }
+
+        let fetched = await APIClient.shared.getChiTieuByDay(dateIso)
+        guard generation == loadGeneration else { return }   // đã có lượt load mới hơn — bỏ kết quả cũ
+
+        if let fetched { items = fetched }
+        loadFailed = fetched == nil
+        loadedKey = dateIso
         hasLoaded = true
+    }
+
+    /// Xem HoaDonListView.rollOverIfNewDay — đang xem "hôm nay" cũ thì tự nhảy sang hôm nay mới; đang
+    /// chủ động xem 1 ngày cũ (vd nhập bù chi tiêu) thì KHÔNG đụng.
+    private func rollOverIfNewDay() {
+        let cal = Calendar.current
+        let today = Date()
+        guard !cal.isDate(lastSeenToday, inSameDayAs: today) else { return }
+        let dangXemHomNayCu = cal.isDate(currentDate, inSameDayAs: lastSeenToday)
+        lastSeenToday = today
+        guard dangXemHomNayCu else { return }
+        currentDate = today
+        Task { await load() }
     }
 }
 
@@ -319,7 +361,7 @@ private struct EditExpenseSheet: View {
                 .buttonStyle(.borderedProminent)
                 .tint(.brandPrimary)
                 .controlSize(.large)
-                .disabled(thanhTien <= 0 || saving)
+                .disabled(thanhTien <= 0 || soLuong <= 0 || saving)
                 .padding(.horizontal, 16)
                 .padding(.top, 10)
                 .padding(.bottom, 8)
@@ -373,7 +415,13 @@ private struct QuantityPriceRow: View {
                         Image(systemName: "minus.circle.fill").font(.system(size: 20))
                     }
                     .disabled(soLuong <= 1)
-                    Text(soLuong.formatted()).font(.subheadline.bold()).frame(minWidth: 16)
+                    // Gõ thẳng được số lượng (kể cả số lẻ 0,3 kg / số lớn 24 hộp) — trước đây chỉ có
+                    // nút −/+ từng 1 đơn vị và − dừng ở 1.
+                    TextField("1", value: $soLuong, format: .number)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.center)
+                        .font(.subheadline.bold())
+                        .frame(minWidth: 28, maxWidth: .infinity)
                     Button {
                         soLuong += 1
                     } label: {
@@ -507,7 +555,7 @@ struct AddExpenseSheet: View {
                 .buttonStyle(.borderedProminent)
                 .tint(.brandPrimary)
                 .controlSize(.large)
-                .disabled(selected == nil || thanhTien <= 0 || saving)
+                .disabled(selected == nil || thanhTien <= 0 || soLuong <= 0 || saving)
                 .padding(.horizontal, 16)
                 .padding(.top, 10)
                 .padding(.bottom, 8)

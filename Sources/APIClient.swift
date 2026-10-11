@@ -166,10 +166,11 @@ actor APIClient {
         return env.data ?? []
     }
 
-    func getChiTieuByDay(_ dateIso: String) async -> [ChiTieuHangNgayDto] {
+    /// nil = tải LỖI, khác với [] = ngày đó không có chi tiêu nào (xem getHoaDonListByDay).
+    func getChiTieuByDay(_ dateIso: String) async -> [ChiTieuHangNgayDto]? {
         let req = makeRequest("/api/ChiTieuHangNgay?ngay=\(dateIso)")
         let (data, _) = await send(req)
-        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[ChiTieuHangNgayDto]>.self, from: data), env.isSuccess else { return [] }
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[ChiTieuHangNgayDto]>.self, from: data), env.isSuccess else { return nil }
         return env.data ?? []
     }
 
