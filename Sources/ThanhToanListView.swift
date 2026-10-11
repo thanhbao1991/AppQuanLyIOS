@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 import UIKit
 
@@ -8,11 +9,21 @@ struct ThanhToanListView: View {
     let notificationBell: AnyView
     @State private var currentDate = Date()
     @State private var items: [ChiTietHoaDonThanhToanDto] = []
-    @State private var loading = false
     @State private var hasLoaded = false
+    /// Xem HoaDonListView: banner thử lại khi tải lỗi (giữ danh sách cũ), chặn lượt load cũ ghi đè,
+    /// và tự sang ngày mới khi app mở qua đêm.
+    @State private var loadFailed = false
+    @State private var loadGeneration = 0
+    @State private var loadedKey = ""
+    @State private var lastSeenToday = Date()
+    @Environment(\.scenePhase) private var scenePhase
     @State private var searchText = ""
-    @State private var selectedId: String?
+    /// Giữ nguyên BẢN CHỤP dòng đã bấm (không tra lại theo id trong `items`) — danh sách tự tải lại
+    /// lúc sheet đang mở mà dòng đó biến mất thì sheet từng thành trang trắng.
+    @State private var selectedItem: ChiTietHoaDonThanhToanDto?
     @State private var activeFilter: ThanhToanQuickFilter?
+    /// Tab này không có đồng hồ tick như tab Đơn — timer thưa chỉ để bắt lúc qua nửa đêm.
+    private let dayRolloverTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
     /// Đã áp search nhưng CHƯA áp activeFilter — dùng để đếm số dòng theo từng filter trong menu,
     /// khớp cơ chế searchFilteredItems bên HoaDonListView.
@@ -24,29 +35,23 @@ struct ThanhToanListView: View {
     // totalTienMat, totalChuyenKhoan) — computed property nên mỗi lần đọc chạy lại search+filter từ
     // đầu, khớp lỗi đã sửa bên HoaDonListView (cachedSorted). Cache lại, chỉ tính khi thực sự đổi.
     @State private var filteredItems: [ChiTietHoaDonThanhToanDto] = []
+    /// Số dòng khớp từng filter (trên tập đã áp search) — tính 1 lần cùng filteredItems.
+    @State private var filterCounts: [ThanhToanQuickFilter: Int] = [:]
 
     private func recomputeFiltered() {
-        filteredItems = searchFilteredItems.filter { activeFilter?.matches($0) ?? true }
-    }
-
-    private var totalText: String {
-        HoaDonFormatting.money(filteredItems.reduce(0) { $0 + $1.soTien })
-    }
-
-    /// Emoji rasterize thành UIImage cho item trong `Menu` (UIMenu thật) — khớp lý do bên
-    /// HoaDonListView.emojiMenuIcon: Text(emoji) thẳng bị UIMenu rớt mất chữ số đếm+tên filter khi
-    /// cả title/icon closure trong Label đều là Text.
-    private func emojiMenuIcon(_ emoji: String, size: CGFloat = 22) -> Image {
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size))
-        let img = renderer.image { _ in
-            let font = UIFont.systemFont(ofSize: size * 0.82)
-            let str = emoji as NSString
-            let strSize = str.size(withAttributes: [.font: font])
-            let rect = CGRect(x: (size - strSize.width) / 2, y: (size - strSize.height) / 2,
-                               width: strSize.width, height: strSize.height)
-            str.draw(in: rect, withAttributes: [.font: font])
+        let searched = searchFilteredItems
+        var counts: [ThanhToanQuickFilter: Int] = [:]
+        for filter in ThanhToanQuickFilter.allCases {
+            counts[filter] = searched.filter { filter.matches($0) }.count
         }
-        return Image(uiImage: img)
+        filterCounts = counts
+        filteredItems = searched.filter { activeFilter?.matches($0) ?? true }
+    }
+
+    /// Tổng thực thu = tiền mặt + chuyển khoản. KHÔNG cộng Ví Xu (xu không phải tiền thật thu trong
+    /// ngày) — Ví Xu vẫn hiện riêng ở dòng phụ phía trên.
+    private var totalText: String {
+        HoaDonFormatting.money(totalTienMat + totalChuyenKhoan)
     }
 
     private var totalTienMat: Double {
@@ -78,7 +83,7 @@ struct ThanhToanListView: View {
                             // "Duy Khánh" mà ThongKeService dùng để tách "Tiền mặt/Trả nợ Khánh" khỏi
                             // phần thu tại quán (xem ThongKeService.GetThanhToanAsync, Backend).
                             ForEach(ThanhToanQuickFilter.allCases, id: \.self) { filter in
-                                let count = searchFilteredItems.filter { filter.matches($0) }.count
+                                let count = filterCounts[filter] ?? 0
                                 if filter.isFirstInGroup { Divider() }
                                 Button {
                                     activeFilter = (activeFilter == filter) ? nil : filter
@@ -125,6 +130,11 @@ struct ThanhToanListView: View {
                 if !hasLoaded {
                     fullScreenLoading()
                 } else {
+                    if loadFailed {
+                        ThongKeLoadErrorBanner(text: "Chưa tải được danh sách thanh toán") { Task { await load() } }
+                            .padding(.horizontal, 12)
+                            .padding(.top, 8)
+                    }
                     List {
                         if filteredItems.isEmpty {
                             Text("Không có thanh toán nào")
@@ -135,7 +145,7 @@ struct ThanhToanListView: View {
                             ForEach(filteredItems) { item in
                                 ThanhToanRowView(item: item)
                                     .contentShape(Rectangle())
-                                    .onTapGesture { selectedId = item.id }
+                                    .onTapGesture { selectedItem = item }
                                     .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
                                     .listRowBackground(Color.clear)
                                     .listRowSeparator(.hidden)
@@ -175,24 +185,50 @@ struct ThanhToanListView: View {
         .onEntityChanged(["HoaDon", "ChiTietHoaDonThanhToan"], tab: .thanhToan) { Task { await load() } }
         .onChange(of: searchText) { _ in recomputeFiltered() }
         .onChange(of: activeFilter) { _ in recomputeFiltered() }
-        .sheet(item: Binding(
-            get: { selectedId.map { IdentifiableId($0) } },
-            set: { selectedId = $0?.value }
-        )) { wrapped in
-            if let item = items.first(where: { $0.id == wrapped.value }) {
-                ThanhToanDetailView(item: item) {
-                    Task { await load() }
-                }
+        .onReceive(dayRolloverTimer) { _ in rollOverIfNewDay() }
+        .onChange(of: scenePhase) { phase in
+            if phase == .active { rollOverIfNewDay() }
+        }
+        .sheet(item: $selectedItem) { item in
+            ThanhToanDetailView(item: item) {
+                Task { await load() }
             }
         }
     }
 
     private func load() async {
-        loading = true
-        items = await APIClient.shared.getThanhToanByDay(DateNavFormat.queryDate.string(from: currentDate))
-        loading = false
+        loadGeneration += 1
+        let generation = loadGeneration
+        let dateIso = DateNavFormat.queryDate.string(from: currentDate)
+
+        // Sang ngày khác: dòng ngày cũ không được ở lại dưới tiêu đề ngày mới. Cùng ngày (refresh /
+        // EntityChanged / thử lại): giữ danh sách đang có trong lúc chờ.
+        if dateIso != loadedKey {
+            items = []
+            recomputeFiltered()
+            hasLoaded = false
+        }
+
+        let fetched = await APIClient.shared.getThanhToanByDay(dateIso)
+        guard generation == loadGeneration else { return }   // đã có lượt load mới hơn — bỏ kết quả cũ
+
+        if let fetched { items = fetched }
+        loadFailed = fetched == nil
+        loadedKey = dateIso
         hasLoaded = true
         recomputeFiltered()
+    }
+
+    /// Xem HoaDonListView.rollOverIfNewDay — đang xem "hôm nay" cũ thì tự nhảy sang hôm nay mới.
+    private func rollOverIfNewDay() {
+        let cal = Calendar.current
+        let today = Date()
+        guard !cal.isDate(lastSeenToday, inSameDayAs: today) else { return }
+        let dangXemHomNayCu = cal.isDate(currentDate, inSameDayAs: lastSeenToday)
+        lastSeenToday = today
+        guard dangXemHomNayCu else { return }
+        currentDate = today
+        Task { await load() }
     }
 }
 
