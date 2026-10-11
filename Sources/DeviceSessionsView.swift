@@ -5,17 +5,31 @@ import SwiftUI
 /// xem/gỡ thiết bị, dù các phiên của Desktop/Android cũng hiện trong danh sách này.
 struct DeviceSessionsView: View {
     @State private var sessions: [PhienDangNhapDto] = []
-    @State private var loading = false
     @State private var hasLoaded = false
+    @State private var loadFailed = false
+    @State private var revoking: PhienDangNhapDto?
 
     var body: some View {
         Group {
             if !hasLoaded {
                 fullScreenLoading()
             } else if sessions.isEmpty {
-                VStack { Spacer(); Text("Không có thiết bị nào").foregroundColor(.textMuted); Spacer() }
+                VStack(spacing: 12) {
+                    Spacer()
+                    if loadFailed {
+                        ThongKeLoadErrorBanner(text: "Chưa tải được danh sách thiết bị") { Task { await load() } }
+                            .padding(.horizontal, 12)
+                    } else {
+                        Text("Không có thiết bị nào").foregroundColor(.textMuted)
+                    }
+                    Spacer()
+                }
             } else {
                 List {
+                    if loadFailed {
+                        ThongKeLoadErrorBanner(text: "Chưa tải được danh sách thiết bị") { Task { await load() } }
+                            .listRowSeparator(.hidden)
+                    }
                     ForEach(groupedSessions, id: \.platform) { group in
                         Section(group.label) {
                             ForEach(group.sessions) { session in
@@ -24,11 +38,12 @@ struct DeviceSessionsView: View {
                                     .listRowBackground(Color.clear)
                                     .listRowSeparator(.hidden)
                                     .swipeActions(edge: .trailing) {
-                                        Button(role: .destructive) {
-                                            Task { await revoke(session) }
+                                        Button {
+                                            revoking = session
                                         } label: {
                                             EmojiLabel("Gỡ", "🗑️")
                                         }
+                                        .tint(.dangerColor)
                                     }
                             }
                         }
@@ -47,6 +62,15 @@ struct DeviceSessionsView: View {
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .task { await load() }
+        .confirmDelete(
+            $revoking,
+            title: "Gỡ thiết bị",
+            confirmLabel: "Gỡ",
+            name: { ($0.thietBi?.isEmpty == false ? $0.thietBi! : "Thiết bị không tên") + ($0.laThietBiHienTai ? " (THIẾT BỊ NÀY)" : "") },
+            note: "Thiết bị đó sẽ bị đăng xuất và phải đăng nhập lại.",
+            perform: { await APIClient.shared.revokeSession(id: $0.id) },
+            onDone: load
+        )
     }
 
     // Thứ tự cố định iOS → Máy tính → Android → khác, ghim thiết bị hiện tại lên đầu nhóm của nó,
@@ -70,17 +94,10 @@ struct DeviceSessionsView: View {
     }
 
     private func load() async {
-        loading = true
-        sessions = await APIClient.shared.getSessions()
-        loading = false
+        let fresh = await APIClient.shared.getSessionsOrNil()
+        if let fresh { sessions = fresh }
+        loadFailed = fresh == nil
         hasLoaded = true
-    }
-
-    private func revoke(_ session: PhienDangNhapDto) async {
-        let result = await APIClient.shared.revokeSession(id: session.id)
-        if result.success {
-            sessions.removeAll { $0.id == session.id }
-        }
     }
 }
 

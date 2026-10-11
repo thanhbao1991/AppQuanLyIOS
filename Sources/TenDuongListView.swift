@@ -9,6 +9,8 @@ struct TenDuongListView: View {
     @State private var searchText = ""
     @State private var showAdd = false
     @State private var editing: TenDuongDto?
+    @State private var deleting: TenDuongDto?
+    @State private var loadFailed = false
 
     private var filteredItems: [TenDuongDto] {
         let sorted = items.sorted { $0.ten.localizedStandardCompare($1.ten) == .orderedAscending }
@@ -23,12 +25,17 @@ struct TenDuongListView: View {
             if !hasLoaded {
                 fullScreenLoading()
             } else {
+                if loadFailed {
+                    ThongKeLoadErrorBanner(text: "Chưa tải được danh sách tên đường") { Task { await load() } }
+                        .padding(.horizontal, 12)
+                        .padding(.top, 8)
+                }
                 List {
                     ForEach(filteredItems) { item in
                         TenDuongRowView(item: item) {
                             editing = item
                         } onDelete: {
-                            Task { await delete(item) }
+                            deleting = item
                         }
                     }
                 }
@@ -48,6 +55,7 @@ struct TenDuongListView: View {
             }
         }
         .task { await load() }
+        .confirmDelete($deleting, name: { $0.ten }, perform: { await APIClient.shared.deleteTenDuong(id: $0.id) }, onDone: load)
         .sheet(isPresented: $showAdd) {
             TenDuongEditSheet(existing: nil) { Task { await load() } }
         }
@@ -57,14 +65,12 @@ struct TenDuongListView: View {
     }
 
     private func load() async {
-        items = await APIClient.shared.getTenDuongList()
+        let fresh = await APIClient.shared.getTenDuongListOrNil()
+        if let fresh { items = fresh }
+        loadFailed = fresh == nil
         hasLoaded = true
     }
 
-    private func delete(_ item: TenDuongDto) async {
-        _ = await APIClient.shared.deleteTenDuong(id: item.id)
-        await load()
-    }
 }
 
 private struct TenDuongRowView: View {
@@ -81,9 +87,10 @@ private struct TenDuongRowView: View {
         }
         .buttonStyle(.plain)
         .swipeActions(edge: .trailing) {
-            Button(role: .destructive, action: onDelete) {
+            Button(action: onDelete) {
                 EmojiLabel("Xoá", "🗑️")
             }
+            .tint(.dangerColor)
         }
     }
 }

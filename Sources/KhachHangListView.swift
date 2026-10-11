@@ -11,6 +11,8 @@ struct KhachHangListView: View {
     @State private var searchText = ""
     @State private var showAdd = false
     @State private var editing: KhachHangDto?
+    @State private var deleting: KhachHangDto?
+    @State private var loadFailed = false
     @State private var viTienFor: KhachHangDto?
     @State private var lichSuFor: KhachHangDto?
 
@@ -38,6 +40,11 @@ struct KhachHangListView: View {
             if !hasLoaded {
                 fullScreenLoading()
             } else {
+                if loadFailed {
+                    ThongKeLoadErrorBanner(text: "Chưa tải được danh sách khách hàng") { Task { await load() } }
+                        .padding(.horizontal, 12)
+                        .padding(.top, 8)
+                }
                 List {
                     ForEach(filteredItems) { item in
                         KhachHangRowView(
@@ -45,7 +52,7 @@ struct KhachHangListView: View {
                             isMergeMode: isMergeMode,
                             isSelected: mergeSelection.contains(where: { $0.id == item.id }),
                             onTap: { handleRowTap(item) },
-                            onDelete: { Task { await delete(item) } },
+                            onDelete: { deleting = item },
                             onViTien: { viTienFor = item },
                             onLichSu: { lichSuFor = item }
                         )
@@ -76,6 +83,7 @@ struct KhachHangListView: View {
             }
         }
         .task { await load() }
+        .confirmDelete($deleting, name: { $0.ten }, perform: { await APIClient.shared.deleteKhachHang(id: $0.id) }, onDone: load)
         .sheet(isPresented: $showAdd) {
             KhachHangEditSheet(existing: nil) { Task { await load() } }
         }
@@ -124,14 +132,12 @@ struct KhachHangListView: View {
     }
 
     private func load() async {
-        items = await APIClient.shared.getAllKhachHang()
+        let fresh = await APIClient.shared.getAllKhachHangOrNil()
+        if let fresh { items = fresh }
+        loadFailed = fresh == nil
         hasLoaded = true
     }
 
-    private func delete(_ item: KhachHangDto) async {
-        _ = await APIClient.shared.deleteKhachHang(id: item.id)
-        await load()
-    }
 }
 
 private struct KhachHangRowView: View {
@@ -192,9 +198,10 @@ private struct KhachHangRowView: View {
         .listRowBackground(isSelected ? Color.brandPrimary.opacity(0.12) : Color.clear)
         .swipeActions(edge: .trailing) {
             if !isMergeMode {
-                Button(role: .destructive, action: onDelete) {
+                Button(action: onDelete) {
                     EmojiLabel("Xoá", "🗑️")
                 }
+                .tint(.dangerColor)
             }
         }
     }

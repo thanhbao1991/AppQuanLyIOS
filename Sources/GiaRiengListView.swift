@@ -10,6 +10,8 @@ struct GiaRiengListView: View {
     @State private var searchText = ""
     @State private var showAdd = false
     @State private var editing: GiaRiengAdminDto?
+    @State private var deleting: GiaRiengAdminDto?
+    @State private var loadFailed = false
 
     private var filteredItems: [GiaRiengAdminDto] {
         guard !searchText.isEmpty else { return items }
@@ -23,12 +25,17 @@ struct GiaRiengListView: View {
             if !hasLoaded {
                 fullScreenLoading()
             } else {
+                if loadFailed {
+                    ThongKeLoadErrorBanner(text: "Chưa tải được danh sách giá riêng") { Task { await load() } }
+                        .padding(.horizontal, 12)
+                        .padding(.top, 8)
+                }
                 List {
                     ForEach(filteredItems) { item in
                         GiaRiengRowView(item: item) {
                             editing = item
                         } onDelete: {
-                            Task { await delete(item) }
+                            deleting = item
                         }
                     }
                 }
@@ -48,6 +55,7 @@ struct GiaRiengListView: View {
             }
         }
         .task { await load() }
+        .confirmDelete($deleting, name: { "giá riêng của " + ($0.tenKhachHang ?? "?") }, perform: { await APIClient.shared.deleteGiaRieng(id: $0.id) }, onDone: load)
         .sheet(isPresented: $showAdd) {
             GiaRiengEditSheet(existing: nil) { Task { await load() } }
         }
@@ -57,15 +65,12 @@ struct GiaRiengListView: View {
     }
 
     private func load() async {
-        items = await APIClient.shared.getGiaRiengAdmin()
-            .sorted { $0.tenKhachHang ?? "" < $1.tenKhachHang ?? "" }
+        let fresh = await APIClient.shared.getGiaRiengAdminOrNil()
+        if let fresh { items = fresh.sorted { $0.tenKhachHang ?? "" < $1.tenKhachHang ?? "" } }
+        loadFailed = fresh == nil
         hasLoaded = true
     }
 
-    private func delete(_ item: GiaRiengAdminDto) async {
-        _ = await APIClient.shared.deleteGiaRieng(id: item.id)
-        await load()
-    }
 }
 
 private struct GiaRiengRowView: View {
@@ -101,9 +106,10 @@ private struct GiaRiengRowView: View {
         }
         .buttonStyle(.plain)
         .swipeActions(edge: .trailing) {
-            Button(role: .destructive, action: onDelete) {
+            Button(action: onDelete) {
                 EmojiLabel("Xoá", "🗑️")
             }
+            .tint(.dangerColor)
         }
     }
 }

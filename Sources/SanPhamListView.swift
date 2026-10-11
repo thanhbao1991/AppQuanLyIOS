@@ -12,6 +12,8 @@ struct SanPhamListView: View {
     @State private var showNgungBan = false
     @State private var showAdd = false
     @State private var editing: SanPhamAdminDto?
+    @State private var deleting: SanPhamAdminDto?
+    @State private var loadFailed = false
     @State private var isSyncingStore = false
     @State private var isPushingToppingAll = false
     @State private var isPushingSizeXLAll = false
@@ -39,12 +41,17 @@ struct SanPhamListView: View {
             if !hasLoaded {
                 fullScreenLoading()
             } else {
+                if loadFailed {
+                    ThongKeLoadErrorBanner(text: "Chưa tải được danh sách sản phẩm") { Task { await load() } }
+                        .padding(.horizontal, 12)
+                        .padding(.top, 8)
+                }
                 List {
                     ForEach(filteredItems) { item in
                         SanPhamRowView(item: item) {
                             editing = item
                         } onDelete: {
-                            Task { await delete(item) }
+                            deleting = item
                         }
                     }
                 }
@@ -90,6 +97,7 @@ struct SanPhamListView: View {
             }
         }
         .task { await load() }
+        .confirmDelete($deleting, name: { $0.ten }, perform: { await APIClient.shared.deleteSanPham(id: $0.id) }, onDone: load)
         .sheet(isPresented: $showAdd) {
             SanPhamEditSheet(existing: nil, allItems: items, nhoms: nhoms) { Task { await load() } }
         }
@@ -121,17 +129,15 @@ struct SanPhamListView: View {
     }
 
     private func load() async {
-        async let itemsTask = APIClient.shared.getSanPhamAdmin()
-        async let nhomsTask = APIClient.shared.getNhomSanPham()
-        items = await itemsTask
-        nhoms = (await nhomsTask).sorted { $0.ten.localizedStandardCompare($1.ten) == .orderedAscending }
+        async let itemsTask = APIClient.shared.getSanPhamAdminOrNil()
+        async let nhomsTask = APIClient.shared.getNhomSanPhamOrNil()
+        let (freshItems, freshNhoms) = await (itemsTask, nhomsTask)
+        if let freshItems { items = freshItems }
+        if let freshNhoms { nhoms = freshNhoms.sorted { $0.ten.localizedStandardCompare($1.ten) == .orderedAscending } }
+        loadFailed = freshItems == nil || freshNhoms == nil
         hasLoaded = true
     }
 
-    private func delete(_ item: SanPhamAdminDto) async {
-        _ = await APIClient.shared.deleteSanPham(id: item.id)
-        await load()
-    }
 
     private func syncStore() async {
         isSyncingStore = true
@@ -207,9 +213,10 @@ private struct SanPhamRowView: View {
         }
         .buttonStyle(.plain)
         .swipeActions(edge: .trailing) {
-            Button(role: .destructive, action: onDelete) {
+            Button(action: onDelete) {
                 EmojiLabel("Xoá", "🗑️")
             }
+            .tint(.dangerColor)
         }
     }
 }

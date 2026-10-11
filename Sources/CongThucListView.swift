@@ -16,6 +16,8 @@ struct CongThucListView: View {
     @State private var searchText = ""
     @State private var showAdd = false
     @State private var editing: CongThucRow?
+    @State private var deleting: CongThucRow?
+    @State private var loadFailed = false
 
     struct CongThucRow: Identifiable {
         let dto: CongThucDto
@@ -51,12 +53,17 @@ struct CongThucListView: View {
             if !hasLoaded {
                 fullScreenLoading()
             } else {
+                if loadFailed {
+                    ThongKeLoadErrorBanner(text: "Chưa tải được công thức") { Task { await load() } }
+                        .padding(.horizontal, 12)
+                        .padding(.top, 8)
+                }
                 List {
                     ForEach(rows) { row in
                         CongThucRowView(row: row) {
                             editing = row
                         } onDelete: {
-                            Task { await delete(row.dto) }
+                            deleting = row
                         }
                     }
                 }
@@ -76,6 +83,13 @@ struct CongThucListView: View {
             }
         }
         .task { await load() }
+        .confirmDelete(
+            $deleting,
+            name: { [$0.tenSanPham, $0.tenBienThe].compactMap { $0 }.joined(separator: " ") },
+            note: "Xoá cả \(deleting?.soNguyenLieu ?? 0) dòng nguyên liệu — món này sẽ KHÔNG còn tự trừ tồn kho khi bán.",
+            perform: { await delete($0.dto) },
+            onDone: load
+        )
         .sheet(isPresented: $showAdd) {
             CongThucEditSheet(existing: nil, existingLines: [], allSanPham: allSanPham, allNguyenLieu: allNguyenLieu) {
                 Task { await load() }
@@ -94,26 +108,46 @@ struct CongThucListView: View {
     }
 
     private func load() async {
-        async let ctTask = APIClient.shared.getCongThucList()
-        async let dlTask = APIClient.shared.getSuDungNguyenLieuList()
-        async let spTask = APIClient.shared.getSanPhamList(includeNgungBan: true)
-        async let nlTask = APIClient.shared.getNguyenLieuBanHang()
-        congThucs = await ctTask
-        dinhLuongAll = await dlTask
-        allSanPham = await spTask
-        allNguyenLieu = (await nlTask).sorted { $0.ten.localizedStandardCompare($1.ten) == .orderedAscending }
+        async let ctTask = APIClient.shared.getCongThucListOrNil()
+        async let dlTask = APIClient.shared.getSuDungNguyenLieuListOrNil()
+        async let spTask = APIClient.shared.getSanPhamListOrNil(includeNgungBan: true)
+        async let nlTask = APIClient.shared.getNguyenLieuBanHangOrNil()
+        let (ct, dl, sp, nl) = await (ctTask, dlTask, spTask, nlTask)
+        // 4 danh sách phải về ĐỦ CẢ BỘ mới áp dụng — thiếu 1 cái mà vẫn hiện thì sai nguy hiểm: thiếu
+        // dinhLuongAll thì mọi công thức hiện "0 nguyên liệu", mở ra sửa rồi Lưu sẽ TẠO TRÙNG toàn bộ
+        // dòng nguyên liệu (trừ tồn kho gấp đôi); thiếu allSanPham thì mọi dòng báo "Biến thể không
+        // còn tồn tại". Lỗi thì giữ nguyên bộ đang có + hiện banner thử lại.
+        if let ct, let dl, let sp, let nl {
+            congThucs = ct
+            dinhLuongAll = dl
+            allSanPham = sp
+            allNguyenLieu = nl.sorted { $0.ten.localizedStandardCompare($1.ten) == .orderedAscending }
+            loadFailed = false
+        } else {
+            loadFailed = true
+        }
         hasLoaded = true
     }
 
     /// FK DinhLuongBanHang→CongThucBanHang là Restrict (không cascade) — phải xoá hết dòng nguyên
     /// liệu con trước, xoá thẳng công thức trước sẽ bị SQL chặn (lỗi chung chung "Có lỗi hệ thống").
-    private func delete(_ dto: CongThucDto) async {
+    /// Dừng ngay ở bước lỗi đầu tiên và nói rõ đang dở ở đâu — trước đây bỏ qua mọi kết quả, lỗi
+    /// giữa chừng thì công thức nằm lại với 0 nguyên liệu (ngừng trừ tồn kho) mà không ai biết.
+    private func delete(_ dto: CongThucDto) async -> ActionResult {
         let lines = dinhLuongAll.filter { $0.congThucId == dto.id }
+        var daXoa = 0
         for line in lines {
-            _ = await APIClient.shared.deleteSuDungNguyenLieu(id: line.id)
+            let r = await APIClient.shared.deleteSuDungNguyenLieu(id: line.id)
+            guard r.success else {
+                return ActionResult(success: false, message: "Mới xoá được \(daXoa)/\(lines.count) dòng nguyên liệu, công thức CHƯA xoá (\(r.message ?? "lỗi không rõ")). Mở lại công thức để kiểm tra.")
+            }
+            daXoa += 1
         }
-        _ = await APIClient.shared.deleteCongThuc(id: dto.id)
-        await load()
+        let r = await APIClient.shared.deleteCongThuc(id: dto.id)
+        guard r.success else {
+            return ActionResult(success: false, message: "Đã xoá hết \(lines.count) dòng nguyên liệu nhưng CHƯA xoá được công thức (\(r.message ?? "lỗi không rõ")). Công thức đang trống — xoá lại, hoặc mở ra thêm lại nguyên liệu.")
+        }
+        return r
     }
 }
 
@@ -148,9 +182,10 @@ private struct CongThucRowView: View {
         .listRowInsets(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12))
         .listRowSeparator(.hidden)
         .swipeActions(edge: .trailing) {
-            Button(role: .destructive, action: onDelete) {
+            Button(action: onDelete) {
                 EmojiLabel("Xoá", "🗑️")
             }
+            .tint(.dangerColor)
         }
     }
 }
@@ -183,6 +218,9 @@ private struct CongThucEditSheet: View {
     @State private var pickingLine: UUID?
     @State private var saving = false
     @State private var errorMessage: String?
+    /// Lưu dở (vài dòng nguyên liệu lỗi) — khoá nút Lưu: `existingLines` của sheet này đã cũ, lưu
+    /// lại lần nữa sẽ diff sai (có thể tạo trùng dòng). Phải đóng rồi mở lại công thức.
+    @State private var luuDoDang = false
 
     init(existing: CongThucDto?, existingLines: [SuDungNguyenLieuDto], allSanPham: [SanPhamDto], allNguyenLieu: [NguyenLieuBanHangDto], onSaved: @escaping () -> Void) {
         self.existing = existing
@@ -276,7 +314,7 @@ private struct CongThucEditSheet: View {
                 .buttonStyle(.borderedProminent)
                 .tint(.brandPrimary)
                 .controlSize(.large)
-                .disabled(sanPhamBienTheId == nil || saving)
+                .disabled(sanPhamBienTheId == nil || saving || luuDoDang)
                 .padding(.horizontal, 16)
                 .padding(.top, 10)
                 .padding(.bottom, 8)
@@ -364,6 +402,7 @@ private struct CongThucEditSheet: View {
         let keepServerIds = Set(usedLines.map { $0.serverId }.filter { $0 != "00000000-0000-0000-0000-000000000000" })
         let originalIds = Set(existingLines.map { $0.id })
 
+        var loiDong = 0
         for line in usedLines {
             guard let nguyenLieuId = line.nguyenLieuId else { continue }
             if line.serverId != "00000000-0000-0000-0000-000000000000",
@@ -371,22 +410,29 @@ private struct CongThucEditSheet: View {
                original.nguyenLieuId == nguyenLieuId {
                 if original.soLuong != line.soLuong {
                     let updDto = SuDungNguyenLieuDto(id: line.serverId, congThucId: congThucId, nguyenLieuId: nguyenLieuId, soLuong: line.soLuong)
-                    _ = await APIClient.shared.updateSuDungNguyenLieu(id: line.serverId, updDto)
+                    if !(await APIClient.shared.updateSuDungNguyenLieu(id: line.serverId, updDto)).success { loiDong += 1 }
                 }
                 continue
             }
             if line.serverId != "00000000-0000-0000-0000-000000000000" {
-                _ = await APIClient.shared.deleteSuDungNguyenLieu(id: line.serverId)
+                if !(await APIClient.shared.deleteSuDungNguyenLieu(id: line.serverId)).success { loiDong += 1 }
             }
             let newDto = SuDungNguyenLieuDto(congThucId: congThucId, nguyenLieuId: nguyenLieuId, soLuong: line.soLuong)
-            _ = await APIClient.shared.createSuDungNguyenLieu(newDto)
+            if !(await APIClient.shared.createSuDungNguyenLieu(newDto)).success { loiDong += 1 }
         }
 
         for oldId in originalIds.subtracting(keepServerIds) {
-            _ = await APIClient.shared.deleteSuDungNguyenLieu(id: oldId)
+            if !(await APIClient.shared.deleteSuDungNguyenLieu(id: oldId)).success { loiDong += 1 }
         }
 
         onSaved()
+        // Trước đây bỏ qua kết quả từng dòng rồi đóng sheet như đã lưu xong — công thức thiếu/thừa
+        // dòng mà không ai biết.
+        if loiDong > 0 {
+            luuDoDang = true
+            errorMessage = "Có \(loiDong) thao tác trên dòng nguyên liệu CHƯA lưu được. Bấm Huỷ rồi mở lại công thức này để kiểm tra và sửa lại."
+            return
+        }
         dismiss()
     }
 }

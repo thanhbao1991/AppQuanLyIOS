@@ -20,6 +20,9 @@ struct VoucherListView: View {
     @State private var hasLoaded = false
     @State private var showAdd = false
     @State private var editing: VoucherDto?
+    @State private var deleting: VoucherDto?
+    @State private var loadFailed = false
+    @State private var actionError: String?
 
     var body: some View {
         Group {
@@ -27,7 +30,13 @@ struct VoucherListView: View {
                 fullScreenLoading()
             } else {
                 List {
-                    if items.isEmpty {
+                    if loadFailed {
+                        ThongKeLoadErrorBanner(text: "Chưa tải được danh sách voucher") { Task { await load() } }
+                            .listRowSeparator(.hidden)
+                    }
+                    if items.isEmpty && loadFailed {
+                        EmptyView()
+                    } else if items.isEmpty {
                         Text("Chưa có voucher nào")
                             .foregroundColor(.textMuted)
                             .frame(maxWidth: .infinity)
@@ -41,7 +50,7 @@ struct VoucherListView: View {
                                     } onEdit: {
                                         editing = item
                                     } onDelete: {
-                                        Task { await delete(item) }
+                                        deleting = item
                                     }
                                     .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
                                     .listRowSeparator(.hidden)
@@ -70,6 +79,8 @@ struct VoucherListView: View {
             }
         }
         .task { await load() }
+        .confirmDelete($deleting, name: { $0.ten }, perform: { await APIClient.shared.deleteVoucher(id: $0.id) }, onDone: load)
+        .actionErrorAlert($actionError)
         .sheet(isPresented: $showAdd) {
             VoucherEditSheet(existing: nil) { await load() }
         }
@@ -93,12 +104,14 @@ struct VoucherListView: View {
     }
 
     private func load() async {
-        items = await APIClient.shared.getVoucherList()
+        let fresh = await APIClient.shared.getVoucherListOrNil()
+        if let fresh { items = fresh }
+        loadFailed = fresh == nil
         hasLoaded = true
     }
 
     private func toggle(_ item: VoucherDto) async {
-        _ = await APIClient.shared.updateVoucher(id: item.id, VoucherRequest(
+        let result = await APIClient.shared.updateVoucher(id: item.id, VoucherRequest(
             ma: item.ma, ten: item.ten, moTa: item.moTa, soTienGiam: item.soTienGiam,
             loaiGiam: item.loaiGiam, phanTramGiam: item.phanTramGiam, giamToiDa: item.giamToiDa,
             donToiThieu: item.donToiThieu,
@@ -111,13 +124,10 @@ struct VoucherListView: View {
             ngayBatDau: item.ngayBatDau, ngayKetThuc: item.ngayKetThuc,
             soNgayHienTruoc: item.soNgayHienTruoc, lapLaiHangNam: item.lapLaiHangNam,
             thuTu: item.thuTu))
+        if !result.success { actionError = result.message ?? "Chưa bật/tắt được voucher." }
         await load()
     }
 
-    private func delete(_ item: VoucherDto) async {
-        _ = await APIClient.shared.deleteVoucher(id: item.id)
-        await load()
-    }
 }
 
 private struct VoucherRowView: View {
@@ -179,9 +189,10 @@ private struct VoucherRowView: View {
         }
         .buttonStyle(.plain)
         .swipeActions(edge: .trailing) {
-            Button(role: .destructive, action: onDelete) {
+            Button(action: onDelete) {
                 EmojiLabel("Xoá", "🗑️")
             }
+            .tint(.dangerColor)
             Button(action: onToggle) {
                 Label(item.dangHoatDong ? "Tắt" : "Bật", systemImage: item.dangHoatDong ? "pause.circle" : "play.circle")
             }

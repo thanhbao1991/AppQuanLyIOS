@@ -9,6 +9,8 @@ struct ToppingListView: View {
     @State private var showNgungBan = false
     @State private var showAdd = false
     @State private var editing: ToppingDto?
+    @State private var deleting: ToppingDto?
+    @State private var loadFailed = false
 
     private var filteredItems: [ToppingDto] {
         var source = items
@@ -30,12 +32,17 @@ struct ToppingListView: View {
             if !hasLoaded {
                 fullScreenLoading()
             } else {
+                if loadFailed {
+                    ThongKeLoadErrorBanner(text: "Chưa tải được danh sách topping") { Task { await load() } }
+                        .padding(.horizontal, 12)
+                        .padding(.top, 8)
+                }
                 List {
                     ForEach(filteredItems) { item in
                         ToppingRowView(item: item) {
                             editing = item
                         } onDelete: {
-                            Task { await delete(item) }
+                            deleting = item
                         }
                     }
                 }
@@ -55,6 +62,7 @@ struct ToppingListView: View {
             }
         }
         .task { await load() }
+        .confirmDelete($deleting, name: { $0.ten }, perform: { await APIClient.shared.deleteTopping(id: $0.id) }, onDone: load)
         .sheet(isPresented: $showAdd) {
             ToppingEditSheet(existing: nil, allItems: items) { Task { await load() } }
         }
@@ -64,14 +72,12 @@ struct ToppingListView: View {
     }
 
     private func load() async {
-        items = await APIClient.shared.getToppingAdmin()
+        let fresh = await APIClient.shared.getToppingAdminOrNil()
+        if let fresh { items = fresh }
+        loadFailed = fresh == nil
         hasLoaded = true
     }
 
-    private func delete(_ item: ToppingDto) async {
-        _ = await APIClient.shared.deleteTopping(id: item.id)
-        await load()
-    }
 }
 
 private struct ToppingRowView: View {
@@ -102,9 +108,10 @@ private struct ToppingRowView: View {
         }
         .buttonStyle(.plain)
         .swipeActions(edge: .trailing) {
-            Button(role: .destructive, action: onDelete) {
+            Button(action: onDelete) {
                 EmojiLabel("Xoá", "🗑️")
             }
+            .tint(.dangerColor)
         }
     }
 }

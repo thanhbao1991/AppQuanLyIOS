@@ -9,6 +9,7 @@ import SwiftUI
 struct SanPhamHinhAnhListView: View {
     @State private var sanPhams: [SanPhamDto] = []
     @State private var loading = true
+    @State private var loadFailed = false
     @State private var query = ""
     @State private var uploadingId: String?
     @State private var togglingNoiBatId: String?
@@ -17,7 +18,7 @@ struct SanPhamHinhAnhListView: View {
     private var filtered: [SanPhamDto] {
         sanPhams
             .filter { $0.ten.matchesSearch(query) }
-            .sorted { $0.ten < $1.ten }
+            .sorted { $0.ten.localizedStandardCompare($1.ten) == .orderedAscending }
     }
 
     var body: some View {
@@ -27,6 +28,11 @@ struct SanPhamHinhAnhListView: View {
             if loading {
                 fullScreenLoading()
             } else {
+                if loadFailed {
+                    ThongKeLoadErrorBanner(text: "Chưa tải được danh sách món") { Task { await load() } }
+                        .padding(.horizontal, 12)
+                        .padding(.top, 8)
+                }
                 List {
                     ForEach(filtered) { sp in
                         SanPhamHinhAnhRow(
@@ -41,6 +47,7 @@ struct SanPhamHinhAnhListView: View {
                 .listStyle(.plain)
                 .softScrollEdgeTop()
                 .padding(.top, 4)
+                .refreshable { await load() }
             }
         }
         .navigationTitle("Ảnh menu")
@@ -62,8 +69,9 @@ struct SanPhamHinhAnhListView: View {
     }
 
     private func load() async {
-        loading = true
-        sanPhams = await APIClient.shared.getSanPhamList()
+        let fresh = await APIClient.shared.getSanPhamListOrNil()
+        if let fresh { sanPhams = fresh }
+        loadFailed = fresh == nil
         loading = false
     }
 

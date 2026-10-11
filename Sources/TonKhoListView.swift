@@ -5,6 +5,7 @@ import SwiftUI
 struct TonKhoListView: View {
     @State private var items: [NguyenLieuBanHangDto] = []
     @State private var hasLoaded = false
+    @State private var loadFailed = false
     @State private var searchText = ""
     @State private var adjusting: NguyenLieuBanHangDto?
     /// ⭐ đang ghim — giữ local để bấm sao đổi ngay, khớp server sau khi load lại.
@@ -28,11 +29,20 @@ struct TonKhoListView: View {
 
             if !hasLoaded {
                 fullScreenLoading()
+            } else if filteredItems.isEmpty && loadFailed {
+                ThongKeLoadErrorBanner(text: "Chưa tải được tồn kho") { Task { await load() } }
+                    .padding(12)
+                Spacer()
             } else if filteredItems.isEmpty {
                 Text("Chưa có nguyên liệu bán hàng")
                     .foregroundColor(.textMuted)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
+                if loadFailed {
+                    ThongKeLoadErrorBanner(text: "Chưa tải được tồn kho") { Task { await load() } }
+                        .padding(.horizontal, 12)
+                        .padding(.top, 8)
+                }
                 List {
                     ForEach(filteredItems) { item in
                         HStack(spacing: 12) {
@@ -77,8 +87,12 @@ struct TonKhoListView: View {
     }
 
     private func load() async {
-        items = await APIClient.shared.getNguyenLieuBanHang()
-        yeuThichIds = Set(items.filter { $0.yeuThich == true }.map(\.id))
+        let fresh = await APIClient.shared.getNguyenLieuBanHangOrNil()
+        if let fresh {
+            items = fresh
+            yeuThichIds = Set(fresh.filter { $0.yeuThich == true }.map(\.id))
+        }
+        loadFailed = fresh == nil
         hasLoaded = true
     }
 

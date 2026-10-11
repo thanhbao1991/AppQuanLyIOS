@@ -55,6 +55,8 @@ struct NguyenLieuListView: View {
     @State private var searchText = ""
     @State private var showAdd = false
     @State private var editing: NguyenLieuDto?
+    @State private var deleting: NguyenLieuDto?
+    @State private var loadFailed = false
     private var filteredItems: [NguyenLieuDto] {
         let sorted = items.sorted { $0.ten.localizedStandardCompare($1.ten) == .orderedAscending }
         guard !searchText.isEmpty else { return sorted }
@@ -68,12 +70,17 @@ struct NguyenLieuListView: View {
             if !hasLoaded {
                 fullScreenLoading()
             } else {
+                if loadFailed {
+                    ThongKeLoadErrorBanner(text: "Chưa tải được danh sách nguyên liệu") { Task { await load() } }
+                        .padding(.horizontal, 12)
+                        .padding(.top, 8)
+                }
                 List {
                     ForEach(filteredItems) { item in
                         NguyenLieuRowView(item: item) {
                             editing = item
                         } onDelete: {
-                            Task { await delete(item) }
+                            deleting = item
                         }
                     }
                 }
@@ -93,6 +100,7 @@ struct NguyenLieuListView: View {
             }
         }
         .task { await load() }
+        .confirmDelete($deleting, name: { $0.ten }, perform: { await APIClient.shared.deleteNguyenLieu(id: $0.id) }, onDone: load)
         .sheet(isPresented: $showAdd) {
             NguyenLieuEditSheet(existing: nil) { Task { await load() } }
         }
@@ -102,14 +110,12 @@ struct NguyenLieuListView: View {
     }
 
     private func load() async {
-        items = await APIClient.shared.getNguyenLieu()
+        let fresh = await APIClient.shared.getNguyenLieuOrNil()
+        if let fresh { items = fresh }
+        loadFailed = fresh == nil
         hasLoaded = true
     }
 
-    private func delete(_ item: NguyenLieuDto) async {
-        _ = await APIClient.shared.deleteNguyenLieu(id: item.id)
-        await load()
-    }
 }
 
 private struct NguyenLieuRowView: View {
@@ -156,9 +162,10 @@ private struct NguyenLieuRowView: View {
         }
         .buttonStyle(.plain)
         .swipeActions(edge: .trailing) {
-            Button(role: .destructive, action: onDelete) {
+            Button(action: onDelete) {
                 EmojiLabel("Xoá", "🗑️")
             }
+            .tint(.dangerColor)
         }
     }
 }

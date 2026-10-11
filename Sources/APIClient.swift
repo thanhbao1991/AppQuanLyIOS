@@ -112,12 +112,15 @@ actor APIClient {
     }
 
     // Danh sách/gỡ thiết bị đăng nhập — màn hình "Thiết bị đăng nhập" trong MoreMenuView.
-    func getSessions() async -> [PhienDangNhapDto] {
+    /// nil = tải LỖI, khác với [] = thật sự trống — màn danh sách dùng bản này để không hiện "trống" khi chỉ rớt mạng.
+    func getSessionsOrNil() async -> [PhienDangNhapDto]? {
         let req = makeRequest("/api/Auth/sessions")
         let (data, _) = await send(req)
-        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[PhienDangNhapDto]>.self, from: data), env.isSuccess else { return [] }
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[PhienDangNhapDto]>.self, from: data), env.isSuccess else { return nil }
         return env.data ?? []
     }
+
+    func getSessions() async -> [PhienDangNhapDto] { await getSessionsOrNil() ?? [] }
 
     func revokeSession(id: String) async -> ActionResult {
         let req = makeRequest("/api/Auth/sessions/\(id)", method: "DELETE")
@@ -358,21 +361,27 @@ actor APIClient {
         return await executeAction(req)
     }
 
-    func getNguyenLieuBanHang() async -> [NguyenLieuBanHangDto] {
+    /// nil = tải LỖI, khác với [] = thật sự trống — màn danh sách dùng bản này để không hiện "trống" khi chỉ rớt mạng.
+    func getNguyenLieuBanHangOrNil() async -> [NguyenLieuBanHangDto]? {
         let req = makeRequest("/api/NguyenLieuBanHang?take=1000")
         let (data, _) = await send(req)
-        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[NguyenLieuBanHangDto]>.self, from: data), env.isSuccess else { return [] }
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[NguyenLieuBanHangDto]>.self, from: data), env.isSuccess else { return nil }
         return env.data ?? []
     }
+
+    func getNguyenLieuBanHang() async -> [NguyenLieuBanHangDto] { await getNguyenLieuBanHangOrNil() ?? [] }
 
     // ---- Công thức / Định lượng (quản trị — CongThucListView, thay CongThucWindow bên Desktop) ----
 
-    func getCongThucList() async -> [CongThucDto] {
+    /// nil = tải LỖI, khác với [] = thật sự trống — màn danh sách dùng bản này để không hiện "trống" khi chỉ rớt mạng.
+    func getCongThucListOrNil() async -> [CongThucDto]? {
         let req = makeRequest("/api/CongThuc")
         let (data, _) = await send(req)
-        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[CongThucDto]>.self, from: data), env.isSuccess else { return [] }
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[CongThucDto]>.self, from: data), env.isSuccess else { return nil }
         return env.data ?? []
     }
+
+    func getCongThucList() async -> [CongThucDto] { await getCongThucListOrNil() ?? [] }
 
     func createCongThuc(_ body: CongThucDto) async -> CreateActionResult {
         let req = makeRequest("/api/CongThuc", method: "POST", body: jsonBody(body))
@@ -393,12 +402,15 @@ actor APIClient {
         return await executeAction(req)
     }
 
-    func getSuDungNguyenLieuList() async -> [SuDungNguyenLieuDto] {
+    /// nil = tải LỖI, khác với [] = thật sự trống — màn danh sách dùng bản này để không hiện "trống" khi chỉ rớt mạng.
+    func getSuDungNguyenLieuListOrNil() async -> [SuDungNguyenLieuDto]? {
         let req = makeRequest("/api/SuDungNguyenLieu")
         let (data, _) = await send(req)
-        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[SuDungNguyenLieuDto]>.self, from: data), env.isSuccess else { return [] }
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[SuDungNguyenLieuDto]>.self, from: data), env.isSuccess else { return nil }
         return env.data ?? []
     }
+
+    func getSuDungNguyenLieuList() async -> [SuDungNguyenLieuDto] { await getSuDungNguyenLieuListOrNil() ?? [] }
 
     func createSuDungNguyenLieu(_ body: SuDungNguyenLieuDto) async -> ActionResult {
         let req = makeRequest("/api/SuDungNguyenLieu", method: "POST", body: jsonBody(body))
@@ -416,12 +428,15 @@ actor APIClient {
     }
 
     /// Nguyên liệu NHẬP dùng cho form Thêm chi tiêu — khớp desktop ChiTieuInputPanel (GET /api/NguyenLieu).
-    func getNguyenLieu() async -> [NguyenLieuDto] {
+    /// nil = tải LỖI, khác với [] = thật sự trống — màn danh sách dùng bản này để không hiện "trống" khi chỉ rớt mạng.
+    func getNguyenLieuOrNil() async -> [NguyenLieuDto]? {
         let req = makeRequest("/api/NguyenLieu")
         let (data, _) = await send(req)
-        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[NguyenLieuDto]>.self, from: data), env.isSuccess else { return [] }
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[NguyenLieuDto]>.self, from: data), env.isSuccess else { return nil }
         return env.data ?? []
     }
+
+    func getNguyenLieu() async -> [NguyenLieuDto] { await getNguyenLieuOrNil() ?? [] }
 
     /// Thêm nguyên liệu mới ngay trong form Thêm chi tiêu — chỉ Ten là bắt buộc phía server
     /// (NguyenLieuService.CreateAsync), các field khác server tự để mặc định (0/false/null).
@@ -454,19 +469,25 @@ actor APIClient {
 
     // ---- Sản phẩm (quản trị — SanPhamListView, thay SanPhamWindow bên Desktop) ----
 
-    func getSanPhamAdmin() async -> [SanPhamAdminDto] {
+    /// nil = tải LỖI, khác với [] = thật sự trống — màn danh sách dùng bản này để không hiện "trống" khi chỉ rớt mạng.
+    func getSanPhamAdminOrNil() async -> [SanPhamAdminDto]? {
         let req = makeRequest("/api/SanPham")
         let (data, _) = await send(req)
-        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[SanPhamAdminDto]>.self, from: data), env.isSuccess else { return [] }
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[SanPhamAdminDto]>.self, from: data), env.isSuccess else { return nil }
         return env.data ?? []
     }
 
-    func getNhomSanPham() async -> [NhomSanPhamDto] {
+    func getSanPhamAdmin() async -> [SanPhamAdminDto] { await getSanPhamAdminOrNil() ?? [] }
+
+    /// nil = tải LỖI, khác với [] = thật sự trống — màn danh sách dùng bản này để không hiện "trống" khi chỉ rớt mạng.
+    func getNhomSanPhamOrNil() async -> [NhomSanPhamDto]? {
         let req = makeRequest("/api/NhomSanPham")
         let (data, _) = await send(req)
-        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[NhomSanPhamDto]>.self, from: data), env.isSuccess else { return [] }
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[NhomSanPhamDto]>.self, from: data), env.isSuccess else { return nil }
         return env.data ?? []
     }
+
+    func getNhomSanPham() async -> [NhomSanPhamDto] { await getNhomSanPhamOrNil() ?? [] }
 
     func createSanPham(_ body: SanPhamAdminDto) async -> ActionResult {
         let req = makeRequest("/api/SanPham", method: "POST", body: jsonBody(body))
@@ -584,12 +605,15 @@ actor APIClient {
     }
 
     // Tin khuyến mãi hiện cho app khách (AppDatHangIOS) — quản trị từ đây.
-    func getThongBaoQuanList() async -> [ThongBaoQuanDto] {
+    /// nil = tải LỖI, khác với [] = thật sự trống — màn danh sách dùng bản này để không hiện "trống" khi chỉ rớt mạng.
+    func getThongBaoQuanListOrNil() async -> [ThongBaoQuanDto]? {
         let req = makeRequest("/api/ThongBaoQuan")
         let (data, _) = await send(req)
-        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[ThongBaoQuanDto]>.self, from: data), env.isSuccess else { return [] }
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[ThongBaoQuanDto]>.self, from: data), env.isSuccess else { return nil }
         return env.data ?? []
     }
+
+    func getThongBaoQuanList() async -> [ThongBaoQuanDto] { await getThongBaoQuanListOrNil() ?? [] }
 
     func createThongBaoQuan(tieude: String, noiDung: String, dangHoatDong: Bool) async -> ActionResult {
         let body = ThongBaoQuanRequest(tieude: tieude, noiDung: noiDung, dangHoatDong: dangHoatDong)
@@ -609,12 +633,15 @@ actor APIClient {
     }
 
     // Voucher app khách (AppDatHangIOS) — quản trị từ đây.
-    func getVoucherList() async -> [VoucherDto] {
+    /// nil = tải LỖI, khác với [] = thật sự trống — màn danh sách dùng bản này để không hiện "trống" khi chỉ rớt mạng.
+    func getVoucherListOrNil() async -> [VoucherDto]? {
         let req = makeRequest("/api/Voucher")
         let (data, _) = await send(req)
-        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[VoucherDto]>.self, from: data), env.isSuccess else { return [] }
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[VoucherDto]>.self, from: data), env.isSuccess else { return nil }
         return env.data ?? []
     }
+
+    func getVoucherList() async -> [VoucherDto] { await getVoucherListOrNil() ?? [] }
 
     func createVoucher(_ v: VoucherRequest) async -> ActionResult {
         let req = makeRequest("/api/Voucher", method: "POST", body: jsonBody(v))
@@ -932,11 +959,16 @@ actor APIClient {
     /// Danh sách sản phẩm/topping đang bán — tải 1 lần lúc mở form thêm hoá đơn rồi lọc/tìm cục bộ
     /// (khớp cách Desktop cache AppDataCache.SanPhams, không gọi search API theo từng phím gõ).
     /// includeNgungBan = true để giữ cả sản phẩm đã ngừng bán (màn Công thức cần tên của công thức cũ).
-    func getSanPhamList(includeNgungBan: Bool = false) async -> [SanPhamDto] {
+    /// nil = tải LỖI, khác với [] = thật sự trống.
+    func getSanPhamListOrNil(includeNgungBan: Bool = false) async -> [SanPhamDto]? {
         let req = makeRequest("/api/SanPham")
         let (data, _) = await send(req)
-        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[SanPhamDto]>.self, from: data), env.isSuccess else { return [] }
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[SanPhamDto]>.self, from: data), env.isSuccess else { return nil }
         return (env.data ?? []).filter { includeNgungBan || !$0.ngungBan }
+    }
+
+    func getSanPhamList(includeNgungBan: Bool = false) async -> [SanPhamDto] {
+        await getSanPhamListOrNil(includeNgungBan: includeNgungBan) ?? []
     }
 
     func getToppingList() async -> [ToppingDto] {
@@ -949,12 +981,15 @@ actor APIClient {
     // ---- Topping (quản trị — ToppingListView, thay ToppingWindow bên Desktop) ----
 
     /// Khác getToppingList() ở chỗ KHÔNG lọc ngừng bán — màn quản trị cần thấy cả món đã ngừng bán.
-    func getToppingAdmin() async -> [ToppingDto] {
+    /// nil = tải LỖI, khác với [] = thật sự trống — màn danh sách dùng bản này để không hiện "trống" khi chỉ rớt mạng.
+    func getToppingAdminOrNil() async -> [ToppingDto]? {
         let req = makeRequest("/api/Topping")
         let (data, _) = await send(req)
-        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[ToppingDto]>.self, from: data), env.isSuccess else { return [] }
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[ToppingDto]>.self, from: data), env.isSuccess else { return nil }
         return env.data ?? []
     }
+
+    func getToppingAdmin() async -> [ToppingDto] { await getToppingAdminOrNil() ?? [] }
 
     func createTopping(_ body: ToppingDto) async -> ActionResult {
         let req = makeRequest("/api/Topping", method: "POST", body: jsonBody(body))
@@ -972,12 +1007,15 @@ actor APIClient {
     }
 
     /// Tải 1 lần rồi lọc cục bộ, khớp cách Desktop cache AppDataCache.TenDuongs cho TenDuongBox.
-    func getTenDuongList() async -> [TenDuongDto] {
+    /// nil = tải LỖI, khác với [] = thật sự trống — màn danh sách dùng bản này để không hiện "trống" khi chỉ rớt mạng.
+    func getTenDuongListOrNil() async -> [TenDuongDto]? {
         let req = makeRequest("/api/TenDuong")
         let (data, _) = await send(req)
-        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[TenDuongDto]>.self, from: data), env.isSuccess else { return [] }
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[TenDuongDto]>.self, from: data), env.isSuccess else { return nil }
         return env.data ?? []
     }
+
+    func getTenDuongList() async -> [TenDuongDto] { await getTenDuongListOrNil() ?? [] }
 
     // ---- Tên đường (quản trị — TenDuongListView, thay TenDuongWindow bên Desktop) ----
 
@@ -1007,12 +1045,15 @@ actor APIClient {
 
     // ---- Giá riêng (quản trị — GiaRiengListView, thay GiaRiengWindow bên Desktop) ----
 
-    func getGiaRiengAdmin() async -> [GiaRiengAdminDto] {
+    /// nil = tải LỖI, khác với [] = thật sự trống — màn danh sách dùng bản này để không hiện "trống" khi chỉ rớt mạng.
+    func getGiaRiengAdminOrNil() async -> [GiaRiengAdminDto]? {
         let req = makeRequest("/api/KhachHangGiaBan?take=5000")
         let (data, _) = await send(req)
-        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[GiaRiengAdminDto]>.self, from: data), env.isSuccess else { return [] }
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[GiaRiengAdminDto]>.self, from: data), env.isSuccess else { return nil }
         return env.data ?? []
     }
+
+    func getGiaRiengAdmin() async -> [GiaRiengAdminDto] { await getGiaRiengAdminOrNil() ?? [] }
 
     func upsertGiaRieng(_ body: GiaRiengUpsertRequest) async -> ActionResult {
         let req = makeRequest("/api/KhachHangGiaBan/upsert", method: "POST", body: jsonBody(body))
@@ -1026,12 +1067,15 @@ actor APIClient {
 
     /// Toàn bộ khách hàng (không lọc) — dùng cho tính năng đồng bộ Danh bạ, take cao để chắc chắn
     /// lấy hết (GetAllAsync bên backend không có cap cứng, chỉ giới hạn khi truyền take).
-    func getAllKhachHang() async -> [KhachHangDto] {
+    /// nil = tải LỖI, khác với [] = thật sự trống — màn danh sách dùng bản này để không hiện "trống" khi chỉ rớt mạng.
+    func getAllKhachHangOrNil() async -> [KhachHangDto]? {
         let req = makeRequest("/api/KhachHang?take=100000")
         let (data, _) = await send(req)
-        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[KhachHangDto]>.self, from: data), env.isSuccess else { return [] }
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[KhachHangDto]>.self, from: data), env.isSuccess else { return nil }
         return env.data ?? []
     }
+
+    func getAllKhachHang() async -> [KhachHangDto] { await getAllKhachHangOrNil() ?? [] }
 
     func searchKhachHang(_ q: String) async -> [KhachHangDto] {
         guard !q.trimmingCharacters(in: .whitespaces).isEmpty else { return [] }

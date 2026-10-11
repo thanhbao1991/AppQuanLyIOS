@@ -17,6 +17,20 @@ struct GamificationConfigView: View {
                 fullScreenLoading()
             } else if let configBinding = Binding($config) {
                 GamificationConfigForm(config: configBinding, errorMessage: errorMessage, savedMessage: savedMessage)
+            } else {
+                // Tải lỗi (config == nil) — trước đây màn hình trắng trơn, không cách nào thử lại.
+                VStack(spacing: 12) {
+                    Text("Không tải được cấu hình").font(.headline)
+                    Button("Thử lại") {
+                        Task {
+                            hasLoaded = false
+                            await load()
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.brandPrimary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .navigationTitle("Cấu hình App khách")

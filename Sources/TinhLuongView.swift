@@ -19,6 +19,9 @@ struct TinhLuongView: View {
     @State private var luong: LuongShipperDto?
     @State private var chiTieuMonthItems: [ChiTieuHangNgayDto] = []
     @State private var hasLoaded = false
+    /// Xem ThongKeView: chặn lượt load cũ (đổi tháng nhanh) ghi đè, và báo khi tải lỗi thay vì hiện 0đ.
+    @State private var loadFailed = false
+    @State private var loadGeneration = 0
     @State private var tiLeText = "40"
     @State private var luongHienTaiText = Self.formatThousands("10000000")
     @State private var selectedDetail: LuongDetailKind?
@@ -83,6 +86,13 @@ struct TinhLuongView: View {
                     fullScreenLoading()
                 } else {
                     Form {
+                        if loadFailed {
+                            Section {
+                                ThongKeLoadErrorBanner(text: "Chưa tải được số liệu tháng này") { Task { await load() } }
+                            }
+                            .listRowBackground(Color.clear)
+                            .listRowInsets(EdgeInsets())
+                        }
                         Section {
                             if isNha {
                                 AmountRow(label: "Ứng \(shipperTen)", value: luong?.chiUng ?? 0)
@@ -174,17 +184,23 @@ struct TinhLuongView: View {
         let thang = cal.component(.month, from: currentDate)
         let nam = cal.component(.year, from: currentDate)
 
+        loadGeneration += 1
+        let generation = loadGeneration
+
         async let a = APIClient.shared.getLuongShipperThang(ten: shipperTen, thang: thang, nam: nam)
         async let b = APIClient.shared.getChiTieuByMonth(year: nam, month: thang)
-        (luong, chiTieuMonthItems) = await (a, b)
+        let (l, c) = await (a, b)
+        guard generation == loadGeneration else { return }   // đã đổi sang tháng khác — bỏ kết quả cũ
+        (luong, chiTieuMonthItems) = (l, c)
+        loadFailed = l == nil
         hasLoaded = true
 
-        await load6Thang()
+        await load6Thang(generation)
     }
 
     /// 6 tháng gần đây tính tới currentDate (đang chọn) — gọi song song qua TaskGroup, giữ đúng thứ
     /// tự tăng dần theo thời gian cho biểu đồ dù các request hoàn tất không theo thứ tự.
-    private func load6Thang() async {
+    private func load6Thang(_ generation: Int) async {
         let cal = Calendar.current
         let thangNamList: [(thang: Int, nam: Int)] = (0..<6).reversed().compactMap { offset in
             guard let d = cal.date(byAdding: .month, value: -offset, to: currentDate) else { return nil }
@@ -203,6 +219,7 @@ struct TinhLuongView: View {
             return collected.sorted { $0.0 < $1.0 }
         }
 
+        guard generation == loadGeneration else { return }
         luong6ThangRaw = results.compactMap { _, thang, nam, luong in
             luong.map { (thang: thang, nam: nam, luong: $0) }
         }

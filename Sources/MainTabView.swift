@@ -184,6 +184,7 @@ private struct MoreMenuView: View {
     @State private var syncResultMessage: String?
     @State private var showAccessDeniedAlert = false
     @State private var aiBalance: AiBalanceDto?
+    @State private var showLogoutConfirm = false
 
     var body: some View {
         NavigationStack {
@@ -320,9 +321,7 @@ private struct MoreMenuView: View {
                     }
                     .disabled(isSyncingContacts)
                     Button(role: .destructive) {
-                        Prefs.clear()
-                        Prefs.manualLogout = true
-                        isLoggedIn = false
+                        showLogoutConfirm = true
                     } label: {
                         EmojiLabel("Đăng xuất", "🚪")
                     }
@@ -341,6 +340,15 @@ private struct MoreMenuView: View {
                         Button("OK") { syncResultMessage = nil }
                     } message: {
                         Text(syncResultMessage ?? "")
+                    }
+                    // Hỏi lại trước khi đăng xuất — trước đây chạm 1 lần là văng ra màn đăng nhập.
+                    .confirmationDialog("Đăng xuất khỏi thiết bị này?", isPresented: $showLogoutConfirm, titleVisibility: .visible) {
+                        Button("Đăng xuất", role: .destructive) {
+                            Prefs.clear()
+                            Prefs.manualLogout = true
+                            isLoggedIn = false
+                        }
+                        Button("Huỷ", role: .cancel) {}
                     }
                     .alert("Chưa cấp quyền Danh bạ", isPresented: $showAccessDeniedAlert) {
                         Button("Mở Cài đặt") {
@@ -372,7 +380,12 @@ private struct MoreMenuView: View {
         isSyncingContacts = true
         defer { isSyncingContacts = false }
 
-        let khachHangs = await APIClient.shared.getAllKhachHang()
+        // Tải lỗi thì DỪNG và báo rõ — trước đây coi như 0 khách, báo "Tạo mới 0, cập nhật 0" như
+        // thể đồng bộ xong.
+        guard let khachHangs = await APIClient.shared.getAllKhachHangOrNil() else {
+            syncResultMessage = "Không tải được danh sách khách hàng — kiểm tra mạng rồi thử lại."
+            return
+        }
         do {
             let result = try await ContactSyncService.sync(khachHangs: khachHangs)
             syncResultMessage = result.summary

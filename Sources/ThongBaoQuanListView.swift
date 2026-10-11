@@ -7,6 +7,9 @@ struct ThongBaoQuanListView: View {
     @State private var hasLoaded = false
     @State private var showAdd = false
     @State private var editing: ThongBaoQuanDto?
+    @State private var deleting: ThongBaoQuanDto?
+    @State private var loadFailed = false
+    @State private var actionError: String?
 
     var body: some View {
         Group {
@@ -14,7 +17,13 @@ struct ThongBaoQuanListView: View {
                 fullScreenLoading()
             } else {
                 List {
-                    if items.isEmpty {
+                    if loadFailed {
+                        ThongKeLoadErrorBanner(text: "Chưa tải được danh sách thông báo") { Task { await load() } }
+                            .listRowSeparator(.hidden)
+                    }
+                    if items.isEmpty && loadFailed {
+                        EmptyView()
+                    } else if items.isEmpty {
                         Text("Chưa có thông báo/khuyến mãi nào")
                             .foregroundColor(.textMuted)
                             .frame(maxWidth: .infinity)
@@ -26,7 +35,7 @@ struct ThongBaoQuanListView: View {
                             } onEdit: {
                                 editing = item
                             } onDelete: {
-                                Task { await delete(item) }
+                                deleting = item
                             }
                         }
                     }
@@ -47,6 +56,8 @@ struct ThongBaoQuanListView: View {
             }
         }
         .task { await load() }
+        .confirmDelete($deleting, name: { $0.tieude }, perform: { await APIClient.shared.deleteThongBaoQuan(id: $0.id) }, onDone: load)
+        .actionErrorAlert($actionError)
         .sheet(isPresented: $showAdd) {
             ThongBaoQuanEditSheet(existing: nil) { Task { await load() } }
         }
@@ -56,20 +67,19 @@ struct ThongBaoQuanListView: View {
     }
 
     private func load() async {
-        items = await APIClient.shared.getThongBaoQuanList()
+        let fresh = await APIClient.shared.getThongBaoQuanListOrNil()
+        if let fresh { items = fresh }
+        loadFailed = fresh == nil
         hasLoaded = true
     }
 
     private func toggle(_ item: ThongBaoQuanDto) async {
-        _ = await APIClient.shared.updateThongBaoQuan(
+        let result = await APIClient.shared.updateThongBaoQuan(
             id: item.id, tieude: item.tieude, noiDung: item.noiDung, dangHoatDong: !item.dangHoatDong)
+        if !result.success { actionError = result.message ?? "Chưa đổi được trạng thái thông báo." }
         await load()
     }
 
-    private func delete(_ item: ThongBaoQuanDto) async {
-        _ = await APIClient.shared.deleteThongBaoQuan(id: item.id)
-        await load()
-    }
 }
 
 private struct ThongBaoQuanRowView: View {
@@ -107,9 +117,10 @@ private struct ThongBaoQuanRowView: View {
         }
         .buttonStyle(.plain)
         .swipeActions(edge: .trailing) {
-            Button(role: .destructive, action: onDelete) {
+            Button(action: onDelete) {
                 EmojiLabel("Xoá", "🗑️")
             }
+            .tint(.dangerColor)
             Button(action: onToggle) {
                 Label(item.dangHoatDong ? "Ẩn" : "Hiện", systemImage: item.dangHoatDong ? "eye.slash" : "eye")
             }
