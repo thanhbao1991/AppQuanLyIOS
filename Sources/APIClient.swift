@@ -737,18 +737,23 @@ actor APIClient {
     func getThongKeGiamGiaThang(thang: Int, nam: Int) async -> ThongKeGiamGiaDto? {
         await getThongKeThang("giam-gia-thang", thang: thang, nam: nam)
     }
+    func getThongKeGiamGiaNgay(ngay: Int, thang: Int, nam: Int) async -> ThongKeGiamGiaDto? {
+        await getThongKe("giam-gia-ngay", ngay: ngay, thang: thang, nam: nam)
+    }
 
-    func getDoanhThuChiTietThang(thang: Int, nam: Int, ten: String) async -> [HoaDonListDto] {
+    /// `ngay` != nil: backend chỉ trả đơn của đúng ngày đó (màn thống kê NGÀY). Backend cũ chưa có
+    /// tham số này sẽ bỏ qua và trả cả tháng — caller vẫn lọc lại theo ngày phía client cho chắc.
+    func getDoanhThuChiTietThang(thang: Int, nam: Int, ten: String, ngay: Int? = nil) async -> [HoaDonListDto] {
         let tenEncoded = ten.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ten
-        let req = makeRequest("/api/ThongKe/doanh-thu-chi-tiet-thang?thang=\(thang)&nam=\(nam)&ten=\(tenEncoded)")
+        let req = makeRequest("/api/ThongKe/doanh-thu-chi-tiet-thang?thang=\(thang)&nam=\(nam)&ten=\(tenEncoded)\(ngayQuery(ngay))")
         let (data, _) = await send(req)
         guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[HoaDonListDto]>.self, from: data), env.isSuccess else { return [] }
         return env.data ?? []
     }
 
-    func getThanhToanChiTietThang(thang: Int, nam: Int, ten: String) async -> [ThanhToanChiTietItemDto] {
+    func getThanhToanChiTietThang(thang: Int, nam: Int, ten: String, ngay: Int? = nil) async -> [ThanhToanChiTietItemDto] {
         let tenEncoded = ten.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ten
-        let req = makeRequest("/api/ThongKe/thanh-toan-chi-tiet-thang?thang=\(thang)&nam=\(nam)&ten=\(tenEncoded)")
+        let req = makeRequest("/api/ThongKe/thanh-toan-chi-tiet-thang?thang=\(thang)&nam=\(nam)&ten=\(tenEncoded)\(ngayQuery(ngay))")
         let (data, _) = await send(req)
         guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[ThanhToanChiTietItemDto]>.self, from: data), env.isSuccess else { return [] }
         return env.data ?? []
@@ -756,14 +761,19 @@ actor APIClient {
 
     /// Chi tiết card "Khách trả nợ" (bản ngày) — GetTraNoAsync gộp SUM theo tên khách nên card không
     /// có hoaDonId để tap; endpoint riêng này giữ nguyên bộ lọc nhưng trả nguyên danh sách.
-    func getTraNoChiTietThang(thang: Int, nam: Int, ten: String, isShipper: Bool, khachHangId: String? = nil) async -> [ThanhToanChiTietItemDto] {
+    func getTraNoChiTietThang(thang: Int, nam: Int, ten: String, isShipper: Bool, khachHangId: String? = nil, ngay: Int? = nil) async -> [ThanhToanChiTietItemDto] {
         let tenEncoded = ten.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ten
         var url = "/api/ThongKe/tra-no-chi-tiet-thang?thang=\(thang)&nam=\(nam)&ten=\(tenEncoded)&isShipper=\(isShipper)"
         if let khachHangId { url += "&khachHangId=\(khachHangId)" }
+        url += ngayQuery(ngay)
         let req = makeRequest(url)
         let (data, _) = await send(req)
         guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[ThanhToanChiTietItemDto]>.self, from: data), env.isSuccess else { return [] }
         return env.data ?? []
+    }
+
+    private func ngayQuery(_ ngay: Int?) -> String {
+        ngay.map { "&ngay=\($0)" } ?? ""
     }
 
     private func getThongKeThang<T: Decodable>(_ endpoint: String, thang: Int, nam: Int) async -> T? {

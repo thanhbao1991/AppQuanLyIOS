@@ -18,6 +18,10 @@ struct ThongKeThangView: View {
     @State private var giamGia: ThongKeGiamGiaDto?
     @State private var chiTieuMonthItems: [ChiTieuHangNgayDto] = []
     @State private var hasLoaded = false
+    /// Xem ThongKeView: banner thử lại khi có API lỗi + chặn kết quả của lượt load cũ ghi đè lượt mới.
+    @State private var loadFailed = false
+    @State private var loadGeneration = 0
+    @State private var loadedKey = ""
     @State private var expandedCards: Set<ThongKeThangCard> = []
     @State private var selectedChiTieuTen: String?
     @State private var selectedChiTieuNguyenLieuId: String?
@@ -35,6 +39,9 @@ struct ThongKeThangView: View {
                 } else {
                     ScrollView {
                         VStack(spacing: 10) {
+                            if loadFailed {
+                                ThongKeLoadErrorBanner { Task { await load() } }
+                            }
                             if let thanhToan {
                                 StatCard(icon: "creditcard", title: "Thanh toán", value: thanhToan.tongTienMat + thanhToan.tongChuyenKhoan, color: .thongKeBlue, isExpanded: expandedCards.contains(.thanhToan)) {
                                     toggle(.thanhToan)
@@ -132,40 +139,24 @@ struct ThongKeThangView: View {
             }
         }
         .task { await load() }
-        .sheet(item: Binding(
-            get: { selectedChiTieuTen.map { ChiTieuTenSelection(ten: $0) } },
-            set: { selectedChiTieuTen = $0?.ten }
-        )) { selection in
+        .sheetTheoTen($selectedChiTieuTen) { ten in
             ChiTieuThangDetailSheet(
-                ten: selection.ten,
+                ten: ten,
                 items: chiTieuMonthItems.filter {
                     if let id = selectedChiTieuNguyenLieuId { return $0.nguyenLieuId.caseInsensitiveCompare(id) == .orderedSame }
-                    return $0.ten.caseInsensitiveCompare(selection.ten) == .orderedSame
+                    return $0.ten.caseInsensitiveCompare(ten) == .orderedSame
                 }
             )
         }
-        .sheet(item: Binding(
-            get: { selectedHoaDonId.map { IdentifiableId($0) } },
-            set: { selectedHoaDonId = $0?.value }
-        )) { wrapped in
-            HoaDonDetailView(hoaDonId: wrapped.value) {
-                Task { await load() }
-            }
-        }
+        .sheetHoaDon($selectedHoaDonId) { Task { await load() } }
         .sheet(item: $selectedNoKhachHang) { item in
             KhachHangNoDetailSheet(khachHangId: item.khachHangId, tenKhachHang: item.tenKhachHang)
         }
-        .sheet(item: Binding(
-            get: { selectedThanhToanTen.map { ChiTieuTenSelection(ten: $0) } },
-            set: { selectedThanhToanTen = $0?.ten }
-        )) { selection in
-            ThanhToanChiTietSheet(ten: selection.ten, currentDate: currentDate)
+        .sheetTheoTen($selectedThanhToanTen) { ten in
+            ThanhToanChiTietSheet(ten: ten, currentDate: currentDate)
         }
-        .sheet(item: Binding(
-            get: { selectedDoanhThuTen.map { ChiTieuTenSelection(ten: $0) } },
-            set: { selectedDoanhThuTen = $0?.ten }
-        )) { selection in
-            DoanhThuChiTietSheet(ten: selection.ten, currentDate: currentDate)
+        .sheetTheoTen($selectedDoanhThuTen) { ten in
+            DoanhThuChiTietSheet(ten: ten, currentDate: currentDate)
         }
         .sheet(item: $selectedGiamGiaCategory) { selection in
             GiamGiaChiTietSheet(label: selection.label, items: selection.items)
@@ -203,9 +194,21 @@ struct ThongKeThangView: View {
     }
 
     private func load() async {
+        loadGeneration += 1
+        let generation = loadGeneration
         let cal = Calendar.current
         let thang = cal.component(.month, from: currentDate)
         let nam = cal.component(.year, from: currentDate)
+        let key = "\(nam)-\(thang)"
+
+        // Sang tháng khác: số tháng cũ không được ở lại trên màn. Cùng tháng (refresh/thử lại): giữ
+        // số cũ, API nào lỗi thì thẻ đó không bị mất.
+        if key != loadedKey {
+            chiTieu = nil; thanhToan = nil; doanhThu = nil
+            chuaThanhToan = nil; tongNo = nil; giamGia = nil
+            chiTieuMonthItems = []
+            hasLoaded = false
+        }
 
         async let a = APIClient.shared.getThongKeChiTieuThang(thang: thang, nam: nam)
         async let c = APIClient.shared.getThongKeThanhToanThang(thang: thang, nam: nam)
@@ -215,7 +218,18 @@ struct ThongKeThangView: View {
         async let h = APIClient.shared.getChiTieuByMonth(year: nam, month: thang)
         async let i = APIClient.shared.getThongKeGiamGiaThang(thang: thang, nam: nam)
 
-        (chiTieu, thanhToan, doanhThu, chuaThanhToan, tongNo, chiTieuMonthItems, giamGia) = await (a, c, d, f, g, h, i)
+        let r = await (a, c, d, f, g, h, i)
+        guard generation == loadGeneration else { return }   // đã có lượt load mới hơn — bỏ kết quả cũ
+
+        chiTieu = r.0 ?? chiTieu
+        thanhToan = r.1 ?? thanhToan
+        doanhThu = r.2 ?? doanhThu
+        chuaThanhToan = r.3 ?? chuaThanhToan
+        tongNo = r.4 ?? tongNo
+        chiTieuMonthItems = r.5
+        giamGia = r.6 ?? giamGia
+        loadFailed = r.0 == nil || r.1 == nil || r.2 == nil || r.3 == nil || r.4 == nil || r.6 == nil
+        loadedKey = key
         hasLoaded = true
     }
 }
@@ -342,18 +356,13 @@ struct KhachHangNoDetailSheet: View {
             items = await APIClient.shared.getCongNoList()
             hasLoaded = true
         }
-        .sheet(item: Binding(
-            get: { selectedHoaDonId.map { IdentifiableId($0) } },
-            set: { selectedHoaDonId = $0?.value }
-        )) { wrapped in
-            HoaDonDetailView(hoaDonId: wrapped.value) {}
-        }
+        .sheetHoaDon($selectedHoaDonId)
         .presentationDragIndicator(.visible)
     }
 }
 
-/// Không private — ThongKeView (bản ngày) tái dùng, `ngayFilter` lọc thêm về đúng 1 ngày (API chỉ có
-/// bản theo tháng, không có bản theo ngày riêng). `traNoIsShipper` khác nil khi mở từ card "Khách trả
+/// Không private — ThongKeView (bản ngày) tái dùng, `ngayFilter` gửi lên backend (tham số `ngay`) để chỉ
+/// lấy đúng 1 ngày, và vẫn lọc lại phía client phòng backend cũ chưa hỗ trợ `ngay`. `traNoIsShipper` khác nil khi mở từ card "Khách trả
 /// nợ" (`ten` khi đó là TÊN KHÁCH chứ không phải tên phương thức thanh toán) — gọi endpoint
 /// tra-no-chi-tiet-thang thay vì thanh-toan-chi-tiet-thang.
 struct ThanhToanChiTietSheet: View {
@@ -424,13 +433,15 @@ struct ThanhToanChiTietSheet: View {
                     nam: cal.component(.year, from: currentDate),
                     ten: ten,
                     isShipper: traNoIsShipper,
-                    khachHangId: traNoKhachHangId
+                    khachHangId: traNoKhachHangId,
+                    ngay: ngayFilter
                 )
             } else {
                 fetched = await APIClient.shared.getThanhToanChiTietThang(
                     thang: cal.component(.month, from: currentDate),
                     nam: cal.component(.year, from: currentDate),
-                    ten: ten
+                    ten: ten,
+                    ngay: ngayFilter
                 )
             }
             if let ngayFilter {
@@ -442,18 +453,13 @@ struct ThanhToanChiTietSheet: View {
             items = fetched
             hasLoaded = true
         }
-        .sheet(item: Binding(
-            get: { selectedHoaDonId.map { IdentifiableId($0) } },
-            set: { selectedHoaDonId = $0?.value }
-        )) { wrapped in
-            HoaDonDetailView(hoaDonId: wrapped.value) {}
-        }
+        .sheetHoaDon($selectedHoaDonId)
         .presentationDragIndicator(.visible)
     }
 }
 
-/// Không private — ThongKeView (bản ngày) tái dùng, `ngayFilter` lọc thêm về đúng 1 ngày (API chỉ có
-/// bản theo tháng, không có bản theo ngày riêng).
+/// Không private — ThongKeView (bản ngày) tái dùng, `ngayFilter` gửi lên backend (tham số `ngay`) để chỉ
+/// lấy đúng 1 ngày, và vẫn lọc lại phía client phòng backend cũ chưa hỗ trợ `ngay`.
 struct DoanhThuChiTietSheet: View {
     let ten: String
     let currentDate: Date
@@ -517,7 +523,8 @@ struct DoanhThuChiTietSheet: View {
             var fetched = await APIClient.shared.getDoanhThuChiTietThang(
                 thang: cal.component(.month, from: currentDate),
                 nam: cal.component(.year, from: currentDate),
-                ten: ten
+                ten: ten,
+                ngay: ngayFilter
             )
             if let ngayFilter {
                 fetched = fetched.filter {
@@ -528,12 +535,7 @@ struct DoanhThuChiTietSheet: View {
             items = fetched
             hasLoaded = true
         }
-        .sheet(item: Binding(
-            get: { selectedHoaDonId.map { IdentifiableId($0) } },
-            set: { selectedHoaDonId = $0?.value }
-        )) { wrapped in
-            HoaDonDetailView(hoaDonId: wrapped.value) {}
-        }
+        .sheetHoaDon($selectedHoaDonId)
         .presentationDragIndicator(.visible)
     }
 }
@@ -596,12 +598,7 @@ struct GiamGiaChiTietSheet: View {
                 }
             }
         }
-        .sheet(item: Binding(
-            get: { selectedHoaDonId.map { IdentifiableId($0) } },
-            set: { selectedHoaDonId = $0?.value }
-        )) { wrapped in
-            HoaDonDetailView(hoaDonId: wrapped.value) {}
-        }
+        .sheetHoaDon($selectedHoaDonId)
         .presentationDragIndicator(.visible)
     }
 }

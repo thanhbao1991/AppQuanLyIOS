@@ -19,8 +19,15 @@ struct ThongKeView: View {
     @State private var traNo: ThongKeTraNoNgayDto?
     @State private var chuaThanhToan: ThongKeDonChuaThanhToanDto?
     @State private var tongNo: TongNoDto?
-    @State private var loading = false
+    @State private var giamGia: ThongKeGiamGiaDto?
     @State private var hasLoaded = false
+    /// Có ít nhất 1 API lỗi ở lượt tải gần nhất — hiện banner "Thử lại" thay vì im lặng để thẻ biến mất.
+    @State private var loadFailed = false
+    /// Số thứ tự lượt `load()` — lượt cũ về sau lượt mới (đổi ngày nhanh) phải bị bỏ, không được ghi đè.
+    @State private var loadGeneration = 0
+    /// Ngày mà dữ liệu đang giữ trong các @State ở trên thuộc về (yyyy-M-d).
+    @State private var loadedKey = ""
+    @State private var selectedGiamGiaCategory: GiamGiaCategorySelection?
     @State private var expandedCards: Set<ThongKeCard> = []
     @State private var selectedNoKhachHang: TongNoItemDto?
     @State private var selectedChiTieuTen: String?
@@ -69,6 +76,9 @@ struct ThongKeView: View {
                 } else {
                     ScrollView {
                         VStack(spacing: 10) {
+                            if loadFailed {
+                                ThongKeLoadErrorBanner { Task { await load() } }
+                            }
                             // Thứ tự Y HỆT WrapPanel Desktop: Thanh toán, Doanh thu, Công nợ,
                             // Khách trả nợ, Chi tiêu, Chưa thanh toán, Tổng nợ.
                             if let thanhToan {
@@ -180,6 +190,19 @@ struct ThongKeView: View {
                                     }
                                 }
                             }
+                            if let giamGia {
+                                // Giống card "Giảm giá" bên ThongKeThangView: chỉ liệt kê nhóm phân loại,
+                                // bấm vào 1 nhóm mới mở danh sách đơn (dữ liệu đã có sẵn trong response).
+                                StatCard(icon: "tag", title: "Giảm giá", value: giamGia.tongGiamGia, color: .thongKePurple, isExpanded: expandedCards.contains(.giamGia)) {
+                                    toggle(.giamGia)
+                                } content: {
+                                    ForEach(giamGia.nhom ?? [], id: \.ten) { nhom in
+                                        AmountRow(label: nhom.ten, value: nhom.tong)
+                                            .contentShape(Rectangle())
+                                            .onTapGesture { selectedGiamGiaCategory = GiamGiaCategorySelection(label: nhom.ten, items: nhom.danhSach) }
+                                    }
+                                }
+                            }
                         }
                         .padding(12)
                     }
@@ -191,56 +214,37 @@ struct ThongKeView: View {
         .sheet(item: $selectedNoKhachHang) { item in
             KhachHangNoDetailSheet(khachHangId: item.khachHangId, tenKhachHang: item.tenKhachHang)
         }
-        .sheet(item: Binding(
-            get: { selectedChiTieuTen.map { ChiTieuTenSelection(ten: $0) } },
-            set: { selectedChiTieuTen = $0?.ten }
-        )) { selection in
+        .sheetTheoTen($selectedChiTieuTen) { ten in
             ChiTieuThangDetailSheet(
-                ten: selection.ten,
+                ten: ten,
                 items: chiTieuDayItems.filter {
                     if let id = selectedChiTieuNguyenLieuId { return $0.nguyenLieuId.caseInsensitiveCompare(id) == .orderedSame }
-                    return $0.ten.caseInsensitiveCompare(selection.ten) == .orderedSame
+                    return $0.ten.caseInsensitiveCompare(ten) == .orderedSame
                 }
             )
         }
-        .sheet(item: Binding(
-            get: { selectedThanhToanTen.map { ChiTieuTenSelection(ten: $0) } },
-            set: { selectedThanhToanTen = $0?.ten }
-        )) { selection in
-            ThanhToanChiTietSheet(
-                ten: selection.ten,
-                currentDate: currentDate,
-                ngayFilter: Calendar.current.component(.day, from: currentDate)
-            )
+        .sheetTheoTen($selectedThanhToanTen) { ten in
+            ThanhToanChiTietSheet(ten: ten, currentDate: currentDate, ngayFilter: dayOfCurrentDate)
         }
-        .sheet(item: Binding(
-            get: { selectedDoanhThuTen.map { ChiTieuTenSelection(ten: $0) } },
-            set: { selectedDoanhThuTen = $0?.ten }
-        )) { selection in
-            DoanhThuChiTietSheet(
-                ten: selection.ten,
-                currentDate: currentDate,
-                ngayFilter: Calendar.current.component(.day, from: currentDate)
-            )
+        .sheetTheoTen($selectedDoanhThuTen) { ten in
+            DoanhThuChiTietSheet(ten: ten, currentDate: currentDate, ngayFilter: dayOfCurrentDate)
         }
-        .sheet(item: Binding(
-            get: { selectedHoaDonId.map { IdentifiableId($0) } },
-            set: { selectedHoaDonId = $0?.value }
-        )) { wrapped in
-            HoaDonDetailView(hoaDonId: wrapped.value) {
-                Task { await load() }
-            }
-        }
+        .sheetHoaDon($selectedHoaDonId) { Task { await load() } }
         .sheet(item: $selectedTraNoKhach) { selection in
             ThanhToanChiTietSheet(
                 ten: selection.ten,
                 currentDate: currentDate,
-                ngayFilter: Calendar.current.component(.day, from: currentDate),
+                ngayFilter: dayOfCurrentDate,
                 traNoIsShipper: selection.isShipper,
                 traNoKhachHangId: selection.khachHangId
             )
         }
+        .sheet(item: $selectedGiamGiaCategory) { selection in
+            GiamGiaChiTietSheet(label: selection.label, items: selection.items)
+        }
     }
+
+    private var dayOfCurrentDate: Int { Calendar.current.component(.day, from: currentDate) }
 
     private func toggle(_ card: ThongKeCard) {
         withAnimation(.easeInOut(duration: 0.2)) {
@@ -253,11 +257,22 @@ struct ThongKeView: View {
     }
 
     private func load() async {
-        loading = true
+        loadGeneration += 1
+        let generation = loadGeneration
         let cal = Calendar.current
         let ngay = cal.component(.day, from: currentDate)
         let thang = cal.component(.month, from: currentDate)
         let nam = cal.component(.year, from: currentDate)
+        let key = "\(nam)-\(thang)-\(ngay)"
+
+        // Sang ngày khác: số của ngày cũ không được ở lại trên màn (kể cả khi API ngày mới lỗi).
+        // Cùng ngày (kéo refresh/thử lại): giữ số cũ, API nào lỗi thì thẻ đó không bị mất.
+        if key != loadedKey {
+            chiTieu = nil; congNo = nil; thanhToan = nil; doanhThu = nil
+            traNo = nil; chuaThanhToan = nil; tongNo = nil; giamGia = nil
+            chiTieuDayItems = []
+            hasLoaded = false
+        }
 
         async let a = APIClient.shared.getThongKeChiTieu(ngay: ngay, thang: thang, nam: nam)
         async let b = APIClient.shared.getThongKeCongNo(ngay: ngay, thang: thang, nam: nam)
@@ -267,9 +282,23 @@ struct ThongKeView: View {
         async let f = APIClient.shared.getThongKeDonChuaThanhToan(ngay: ngay, thang: thang, nam: nam)
         async let g = APIClient.shared.getTongNo()
         async let h = APIClient.shared.getChiTieuByDay(DateNavFormat.queryDate.string(from: currentDate))
+        async let i = APIClient.shared.getThongKeGiamGiaNgay(ngay: ngay, thang: thang, nam: nam)
 
-        (chiTieu, congNo, thanhToan, doanhThu, traNo, chuaThanhToan, tongNo, chiTieuDayItems) = await (a, b, c, d, e, f, g, h)
-        loading = false
+        let r = await (a, b, c, d, e, f, g, h, i)
+        guard generation == loadGeneration else { return }   // đã có lượt load mới hơn — bỏ kết quả cũ
+
+        chiTieu = r.0 ?? chiTieu
+        congNo = r.1 ?? congNo
+        thanhToan = r.2 ?? thanhToan
+        doanhThu = r.3 ?? doanhThu
+        traNo = r.4 ?? traNo
+        chuaThanhToan = r.5 ?? chuaThanhToan
+        tongNo = r.6 ?? tongNo
+        chiTieuDayItems = r.7
+        giamGia = r.8 ?? giamGia
+        loadFailed = r.0 == nil || r.1 == nil || r.2 == nil || r.3 == nil || r.4 == nil
+            || r.5 == nil || r.6 == nil || r.8 == nil
+        loadedKey = key
         hasLoaded = true
     }
 }
@@ -284,7 +313,7 @@ private struct TraNoKhachSelection: Identifiable {
 }
 
 private enum ThongKeCard: Hashable {
-    case thanhToan, doanhThu, congNo, traNo, chiTieu, chuaThanhToan, tongNo
+    case thanhToan, doanhThu, congNo, traNo, chiTieu, chuaThanhToan, tongNo, giamGia
 }
 
 /// Màu mỗi card lấy Y HỆT hex dùng trong AddRow() của ThongKeTabControl.xaml.cs (Desktop) — không
@@ -402,5 +431,43 @@ struct AmountRow: View {
                 .monospacedDigit()
         }
         .padding(.vertical, 2)
+    }
+}
+
+/// Banner báo lỗi tải — dùng chung 2 màn thống kê. Có nút thử lại thay vì để thẻ biến mất im lặng.
+struct ThongKeLoadErrorBanner: View {
+    let onRetry: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill").foregroundColor(.warningColor)
+            Text("Chưa tải được một số mục").font(.footnote.weight(.medium))
+            Spacer()
+            Button("Thử lại", action: onRetry).font(.footnote.bold())
+        }
+        .padding(10)
+        .background(Color.warningColor.opacity(0.15))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+}
+
+extension View {
+    /// sheet mở theo 1 chuỗi tên (nil = đóng) — thay cho khối `.sheet(item: Binding(get:set:))` lặp
+    /// lại ở mọi card thống kê.
+    func sheetTheoTen<Content: View>(_ ten: Binding<String?>, @ViewBuilder content: @escaping (String) -> Content) -> some View {
+        sheet(item: Binding(
+            get: { ten.wrappedValue.map { ChiTieuTenSelection(ten: $0) } },
+            set: { ten.wrappedValue = $0?.ten }
+        )) { content($0.ten) }
+    }
+
+    /// sheet chi tiết hoá đơn theo id (nil = đóng).
+    func sheetHoaDon(_ id: Binding<String?>, onChanged: @escaping () -> Void = {}) -> some View {
+        sheet(item: Binding(
+            get: { id.wrappedValue.map { IdentifiableId($0) } },
+            set: { id.wrappedValue = $0?.value }
+        )) { wrapped in
+            HoaDonDetailView(hoaDonId: wrapped.value, onChanged: onChanged)
+        }
     }
 }
