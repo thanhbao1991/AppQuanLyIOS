@@ -141,10 +141,12 @@ actor APIClient {
         return env.data ?? []
     }
 
-    func getCongNoList() async -> [HoaDonListDto] {
+    /// nil = tải LỖI, khác với [] = thật sự không còn ai nợ — caller KHÔNG được hiện "hết nợ"/0đ
+    /// khi chỉ là rớt mạng (xem getHoaDonListByDay).
+    func getCongNoList() async -> [HoaDonListDto]? {
         let req = makeRequest("/api/dashboard/cong-no-list")
         let (data, _) = await send(req)
-        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[HoaDonListDto]>.self, from: data), env.isSuccess else { return [] }
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[HoaDonListDto]>.self, from: data), env.isSuccess else { return nil }
         return env.data ?? []
     }
 

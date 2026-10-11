@@ -309,6 +309,7 @@ struct KhachHangNoDetailSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var items: [HoaDonListDto] = []
     @State private var hasLoaded = false
+    @State private var loadFailed = false
     @State private var selectedHoaDonId: String?
 
     private var filtered: [HoaDonListDto] {
@@ -324,6 +325,11 @@ struct KhachHangNoDetailSheet: View {
                 if !hasLoaded {
                     fullScreenLoading()
                 } else {
+                    if loadFailed {
+                        ThongKeLoadErrorBanner(text: "Chưa tải được công nợ") { Task { await load() } }
+                            .padding(.horizontal, 12)
+                            .padding(.top, 8)
+                    }
                     List {
                         ForEach(filtered) { item in
                             CongNoRowView(item: item, onSelect: { selectedHoaDonId = item.id }, showName: false)
@@ -337,7 +343,7 @@ struct KhachHangNoDetailSheet: View {
 
                     Divider()
                     CongNoFooterView(items: filtered, label: tenKhachHang, showName: false, onPaid: {
-                        items = await APIClient.shared.getCongNoList()
+                        if let fresh = await APIClient.shared.getCongNoList() { items = fresh }
                     })
                 }
             }
@@ -352,12 +358,16 @@ struct KhachHangNoDetailSheet: View {
                 }
             }
         }
-        .task {
-            items = await APIClient.shared.getCongNoList()
-            hasLoaded = true
-        }
+        .task { await load() }
         .sheetHoaDon($selectedHoaDonId)
         .presentationDragIndicator(.visible)
+    }
+
+    private func load() async {
+        let fresh = await APIClient.shared.getCongNoList()
+        if let fresh { items = fresh }
+        loadFailed = fresh == nil
+        hasLoaded = true
     }
 }
 

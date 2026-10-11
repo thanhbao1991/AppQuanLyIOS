@@ -7,8 +7,10 @@ import UIKit
 struct CongNoListView: View {
     let notificationBell: AnyView
     @State private var items: [HoaDonListDto] = []
-    @State private var loading = false
     @State private var hasLoaded = false
+    /// Lượt tải gần nhất lỗi — hiện banner "Thử lại" và GIỮ danh sách đang có: tab nợ mà tự trắng +
+    /// tổng 0đ khi rớt mạng thì trông y như khách đã trả hết.
+    @State private var loadFailed = false
     @State private var selectedId: String?
     @State private var searchText = ""
     /// Lọc theo ngày ghi nợ (ngayNo) — nil = "Tất cả" (mặc định, khớp hành vi cũ trước khi có filter
@@ -31,7 +33,10 @@ struct CongNoListView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        // Tính 1 lần cho cả isEmpty/ForEach/footer — sortedItems là computed, mỗi lần đọc chạy lại
+        // search+lọc ngày+sort từ đầu.
+        let rows = sortedItems
+        return NavigationStack {
             VStack(spacing: 0) {
                 HStack(spacing: 8) {
                     CongNoDateFilterBar(date: $selectedDate)
@@ -49,14 +54,19 @@ struct CongNoListView: View {
                 if !hasLoaded {
                     fullScreenLoading()
                 } else {
+                    if loadFailed {
+                        ThongKeLoadErrorBanner(text: "Chưa tải được công nợ") { Task { await load() } }
+                            .padding(.horizontal, 12)
+                            .padding(.top, 8)
+                    }
                     List {
-                        if sortedItems.isEmpty {
+                        if rows.isEmpty {
                             Text("Không có công nợ nào")
                                 .foregroundColor(.textMuted)
                                 .frame(maxWidth: .infinity)
                                 .listRowSeparator(.hidden)
                         } else {
-                            ForEach(sortedItems) { item in
+                            ForEach(rows) { item in
                                 CongNoRowView(
                                     item: item,
                                     onSelect: { selectedId = item.id }
@@ -79,7 +89,7 @@ struct CongNoListView: View {
                 }
 
                 Divider()
-                CongNoFooterView(items: sortedItems, label: searchText, showSendButton: !searchText.isEmpty, onPaid: load)
+                CongNoFooterView(items: rows, label: searchText, showSendButton: !searchText.isEmpty, onPaid: load)
             }
         }
         .task { await load() }
@@ -95,9 +105,9 @@ struct CongNoListView: View {
     }
 
     private func load() async {
-        loading = true
-        items = await APIClient.shared.getCongNoList()
-        loading = false
+        let fresh = await APIClient.shared.getCongNoList()
+        if let fresh { items = fresh }
+        loadFailed = fresh == nil
         hasLoaded = true
     }
 }
@@ -299,10 +309,10 @@ struct CongNoFooterView: View {
                  ? "Thu \(ptText) \(items.count) hoá đơn, tổng \(totalText). Nhập đúng tổng để thu hết, hoặc nhập số khách trả thiếu để hệ thống tự tìm tổ hợp hoá đơn cộng khớp đúng số đó."
                  : "Thu \(ptText) \(totalText) cho hoá đơn này?")
         }
-        .alert("Không thể thu hàng loạt", isPresented: $showMultiCustomerError) {
+        .alert("Danh sách gồm nhiều khách", isPresented: $showMultiCustomerError) {
             Button("OK") {}
         } message: {
-            Text("Danh sách đang hiện gồm nhiều khách khác nhau (\(multiCustomerNames)) — chỉ thu hàng loạt được khi TẤT CẢ hoá đơn cùng 1 khách. Hãy tìm kiếm/lọc lại cho còn đúng 1 người rồi thử lại.")
+            Text("Danh sách đang hiện gồm nhiều khách khác nhau (\(multiCustomerNames)) — chỉ thu hàng loạt/gửi bill được khi TẤT CẢ hoá đơn cùng 1 khách. Hãy tìm kiếm/lọc lại cho còn đúng 1 người rồi thử lại.")
         }
         .alert("Khớp tổ hợp nợ", isPresented: $showMatchConfirm) {
             Button("Xác nhận") { Task { await payMatchedSubset() } }
@@ -444,22 +454,27 @@ struct CongNoFooterView: View {
     /// trong chi tiết đơn) — dùng chung cho cả thu hết (payAll) lẫn thu đúng tổ hợp đã khớp tìm được.
     private func executeThu(_ targets: [HoaDonListDto]) async {
         payingAll = true
-        var failCount = 0
+        // Ghi lại TỪNG đơn lỗi kèm lý do server trả về — "2/5 lỗi" trơn không đủ để biết đơn nào
+        // chưa thu (vd đơn đã được thu ở máy khác, server từ chối vì vượt số còn lại).
+        var failures: [String] = []
         for item in targets {
             let result = await APIClient.shared.thuTien(
                 hoaDonId: item.id, isCash: payAllIsCash, soTien: item.conLai,
                 ten: item.tenKhachHangText ?? "Khách lẻ", khachHangId: item.khachHangId
             )
-            if !result.success { failCount += 1 }
+            if !result.success {
+                let lyDo = result.message?.isEmpty == false ? result.message! : "không rõ lý do"
+                failures.append("• \(HoaDonFormatting.congNoTime(item.ngayNo)), \(HoaDonFormatting.money(item.conLai)): \(lyDo)")
+            }
         }
         payingAll = false
         // Tự reload lại ngay, không chờ SignalR onEntityChanged — tránh list đứng im phía sau alert
         // "Kết quả" làm tưởng chưa thu được dù API đã trả thành công (bẫy thực tế 2026-10-04).
         await onPaid?()
         let ptText = payAllIsCash ? "tiền mặt" : "chuyển khoản"
-        payAllResultMessage = failCount == 0
+        payAllResultMessage = failures.isEmpty
             ? "Đã thu \(ptText) \(targets.count) hoá đơn."
-            : "Thu xong nhưng \(failCount)/\(targets.count) hoá đơn lỗi — kiểm tra lại."
+            : "Đã thu \(ptText) \(targets.count - failures.count)/\(targets.count) hoá đơn. CHƯA thu được \(failures.count) đơn:\n\(failures.joined(separator: "\n"))"
     }
 
     /// Render toàn bộ danh sách (kể cả phần cần cuộn) thành 1 ảnh, copy vào clipboard để dán thẳng
@@ -473,7 +488,16 @@ struct CongNoFooterView: View {
     /// nhất), không liệt kê hết — tránh vượt giới hạn ký tự nội dung CK ngân hàng. `item.maHoaDon`
     /// (Backend tính sẵn) ưu tiên hơn tự cắt chuỗi id.
     private func copyBillImage() async {
+        // Cùng luật với thu hàng loạt: bill gộp nợ của nhiều khách vào 1 tổng + 1 mã QR là sai người.
+        guard isSingleCustomer else {
+            showMultiCustomerError = true
+            return
+        }
         let snapshot = items
+        // Tên trong nội dung CK lấy từ KHÁCH THẬT (đã chắc chắn 1 người), không phải chữ đang gõ tìm
+        // ("lan" → "LAN") — khớp cách bill 1 đơn dựng (HoaDonQueryService → BankQrConfig.BuildAddInfo).
+        // Khách lẻ không có tên thì vẫn dùng `label` như cũ.
+        let label = snapshot.first?.tenKhachHangText.flatMap { $0.isEmpty ? nil : $0 } ?? self.label
         let total = snapshot.reduce(0.0) { $0 + $1.conLai }
         let codes = snapshot.map { $0.maHoaDon?.isEmpty == false ? $0.maHoaDon! : BillTextBuilder.buildMaHoaDon($0.id) }
         let addInfo: String
@@ -485,14 +509,21 @@ struct CongNoFooterView: View {
             addInfo = "SEVQR " + BillTextBuilder.toAsciiNoDiacritics(label, upper: true)
         }
         let qrData = await APIClient.shared.getBillQrImage(amount: total, addInfo: addInfo)
-        let qrImage = qrData.flatMap { UIImage(data: $0) }
+        // Không có QR thì KHÔNG copy + báo rõ — trước đây vẫn copy ảnh thiếu QR và hiện "Đã copy".
+        guard let qrImage = qrData.flatMap({ UIImage(data: $0) }) else {
+            payAllResultMessage = "Không lấy được mã QR nên CHƯA copy bill — kiểm tra mạng rồi bấm Gửi Bill lại."
+            return
+        }
 
         let content = BillSnapshotView(items: snapshot, totalText: totalText, todayText: todayText, qrImage: qrImage, showName: showName)
             .frame(width: UIScreen.main.bounds.width)
 
         let renderer = ImageRenderer(content: content)
         renderer.scale = UIScreen.main.scale
-        guard let uiImage = renderer.uiImage else { return }
+        guard let uiImage = renderer.uiImage else {
+            payAllResultMessage = "Không dựng được ảnh bill nên CHƯA copy — thử lại."
+            return
+        }
         UIPasteboard.general.image = uiImage
 
         copiedFeedback = true
