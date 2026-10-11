@@ -72,7 +72,7 @@ struct ThongKeView: View {
                             // Thứ tự Y HỆT WrapPanel Desktop: Thanh toán, Doanh thu, Công nợ,
                             // Khách trả nợ, Chi tiêu, Chưa thanh toán, Tổng nợ.
                             if let thanhToan {
-                                StatCard(icon: "💳", title: "Thanh toán", value: thanhToan.tongTienMat + thanhToan.tongChuyenKhoan, color: .thongKeBlue, isExpanded: expandedCards.contains(.thanhToan)) {
+                                StatCard(icon: "creditcard", title: "Thanh toán", value: thanhToan.tongTienMat + thanhToan.tongChuyenKhoan, color: .thongKeBlue, isExpanded: expandedCards.contains(.thanhToan)) {
                                     toggle(.thanhToan)
                                 } content: {
                                     ForEach(thanhToan.danhSachTienMat) { item in
@@ -91,7 +91,7 @@ struct ThongKeView: View {
                                 }
                             }
                             if let doanhThu {
-                                StatCard(icon: "📈", title: "Doanh thu", value: doanhThu.tongDoanhThu, color: .thongKeGreen, isExpanded: expandedCards.contains(.doanhThu)) {
+                                StatCard(icon: "chart.line.uptrend.xyaxis", title: "Doanh thu", value: doanhThu.tongDoanhThu, color: .thongKeGreen, isExpanded: expandedCards.contains(.doanhThu)) {
                                     toggle(.doanhThu)
                                 } content: {
                                     ForEach(doanhThu.danhSach) { item in
@@ -102,7 +102,7 @@ struct ThongKeView: View {
                                 }
                             }
                             if let congNo {
-                                StatCard(icon: "⚠️", title: "Công nợ", value: congNo.tongCongNoNgay, color: .thongKeBrown, isExpanded: expandedCards.contains(.congNo)) {
+                                StatCard(icon: "exclamationmark.triangle", title: "Công nợ", value: congNo.tongCongNoNgay, color: .thongKeBrown, isExpanded: expandedCards.contains(.congNo)) {
                                     toggle(.congNo)
                                 } content: {
                                     ForEach(congNo.danhSachCongNoNgay) { item in
@@ -115,7 +115,7 @@ struct ThongKeView: View {
                                 }
                             }
                             if let traNo {
-                                StatCard(icon: "✅", title: "Khách trả nợ", value: traNo.tongTraNoTaiQuan + traNo.tongTraNoShipper, color: .thongKePurple, isExpanded: expandedCards.contains(.traNo)) {
+                                StatCard(icon: "checkmark.circle", title: "Khách trả nợ", value: traNo.tongTraNoTaiQuan + traNo.tongTraNoShipper, color: .thongKePurple, isExpanded: expandedCards.contains(.traNo)) {
                                     toggle(.traNo)
                                 } content: {
                                     SubTotalRow(label: "Trả nợ tại quán", value: traNo.tongTraNoTaiQuan, color: .thongKePurple)
@@ -133,7 +133,7 @@ struct ThongKeView: View {
                                 }
                             }
                             if let chiTieu {
-                                StatCard(icon: "💵", title: "Chi tiêu", value: chiTieu.chiTieuNgay + chiTieu.chiTieuThang, color: .thongKeRed, isExpanded: expandedCards.contains(.chiTieu)) {
+                                StatCard(icon: "banknote", title: "Chi tiêu", value: chiTieu.chiTieuNgay + chiTieu.chiTieuThang, color: .thongKeRed, isExpanded: expandedCards.contains(.chiTieu)) {
                                     toggle(.chiTieu)
                                 } content: {
                                     SubTotalRow(label: "Chi tiêu ngày", value: chiTieu.chiTieuNgay, color: .thongKeRed)
@@ -157,7 +157,7 @@ struct ThongKeView: View {
                                 }
                             }
                             if let chuaThanhToan {
-                                StatCard(icon: "🕐", title: "Chưa thanh toán", value: chuaThanhToan.tongChuaThanhToan, color: .thongKeTeal, isExpanded: expandedCards.contains(.chuaThanhToan)) {
+                                StatCard(icon: "clock", title: "Chưa thanh toán", value: chuaThanhToan.tongChuaThanhToan, color: .thongKeTeal, isExpanded: expandedCards.contains(.chuaThanhToan)) {
                                     toggle(.chuaThanhToan)
                                 } content: {
                                     ForEach(chuaThanhToan.danhSach) { item in
@@ -170,7 +170,7 @@ struct ThongKeView: View {
                                 }
                             }
                             if let tongNo {
-                                StatCard(icon: "📊", title: "Tổng nợ", value: tongNo.tongConLai, color: .thongKeOrange, isExpanded: expandedCards.contains(.tongNo)) {
+                                StatCard(icon: "chart.bar", title: "Tổng nợ", value: tongNo.tongConLai, color: .thongKeOrange, isExpanded: expandedCards.contains(.tongNo)) {
                                     toggle(.tongNo)
                                 } content: {
                                     ForEach(tongNo.danhSach) { item in
@@ -319,10 +319,11 @@ struct StatCard<Content: View>: View {
                 HStack(spacing: 10) {
                     ZStack {
                         Circle().fill(color.opacity(0.15)).frame(width: 30, height: 30)
-                        // Emoji thay SF Symbol (đổi 2026-09-13) — emoji tự có màu riêng, không đổi
-                        // theo .foregroundColor(color) như Image(systemName:) trước đây, nhưng vẫn
-                        // giữ nền tròn màu color.opacity(0.15) phía sau cho nhất quán với thiết kế cũ.
-                        Text(icon).font(.system(size: 15))
+                        // SF Symbol (đổi lại 2026-10-11, trước đó là emoji) — icon `icon` là TÊN SF Symbol,
+                        // tô theo màu card trên nền tròn color.opacity(0.15).
+                        Image(systemName: icon)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(color)
                     }
                     Text(title)
                         .font(.subheadline.weight(.semibold))

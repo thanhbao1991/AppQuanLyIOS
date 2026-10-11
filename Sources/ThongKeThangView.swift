@@ -36,7 +36,7 @@ struct ThongKeThangView: View {
                     ScrollView {
                         VStack(spacing: 10) {
                             if let thanhToan {
-                                StatCard(icon: "💳", title: "Thanh toán", value: thanhToan.tongTienMat + thanhToan.tongChuyenKhoan, color: .thongKeBlue, isExpanded: expandedCards.contains(.thanhToan)) {
+                                StatCard(icon: "creditcard", title: "Thanh toán", value: thanhToan.tongTienMat + thanhToan.tongChuyenKhoan, color: .thongKeBlue, isExpanded: expandedCards.contains(.thanhToan)) {
                                     toggle(.thanhToan)
                                 } content: {
                                     ForEach(thanhToan.danhSachTienMat) { item in
@@ -52,7 +52,7 @@ struct ThongKeThangView: View {
                                 }
                             }
                             if let doanhThu {
-                                StatCard(icon: "📈", title: "Doanh thu", value: doanhThu.tongDoanhThu, color: .thongKeGreen, isExpanded: expandedCards.contains(.doanhThu)) {
+                                StatCard(icon: "chart.line.uptrend.xyaxis", title: "Doanh thu", value: doanhThu.tongDoanhThu, color: .thongKeGreen, isExpanded: expandedCards.contains(.doanhThu)) {
                                     toggle(.doanhThu)
                                 } content: {
                                     ForEach(doanhThu.danhSach) { item in
@@ -63,7 +63,7 @@ struct ThongKeThangView: View {
                                 }
                             }
                             if let chiTieu {
-                                StatCard(icon: "💵", title: "Chi tiêu", value: chiTieu.chiTieuNgay + chiTieu.chiTieuThang, color: .thongKeRed, isExpanded: expandedCards.contains(.chiTieu)) {
+                                StatCard(icon: "banknote", title: "Chi tiêu", value: chiTieu.chiTieuNgay + chiTieu.chiTieuThang, color: .thongKeRed, isExpanded: expandedCards.contains(.chiTieu)) {
                                     toggle(.chiTieu)
                                 } content: {
                                     ForEach(mergedChiTieu(chiTieu)) { item in
@@ -77,7 +77,7 @@ struct ThongKeThangView: View {
                                 }
                             }
                             if let chuaThanhToan {
-                                StatCard(icon: "🕐", title: "Chưa thanh toán", value: chuaThanhToan.tongChuaThanhToan, color: .thongKeTeal, isExpanded: expandedCards.contains(.chuaThanhToan)) {
+                                StatCard(icon: "clock", title: "Chưa thanh toán", value: chuaThanhToan.tongChuaThanhToan, color: .thongKeTeal, isExpanded: expandedCards.contains(.chuaThanhToan)) {
                                     toggle(.chuaThanhToan)
                                 } content: {
                                     ForEach(chuaThanhToan.danhSach) { item in
@@ -90,7 +90,7 @@ struct ThongKeThangView: View {
                                 }
                             }
                             if let tongNo {
-                                StatCard(icon: "📊", title: "Tổng nợ hiện tại", value: tongNo.tongConLai, color: .thongKeOrange, isExpanded: expandedCards.contains(.tongNo)) {
+                                StatCard(icon: "chart.bar", title: "Tổng nợ hiện tại", value: tongNo.tongConLai, color: .thongKeOrange, isExpanded: expandedCards.contains(.tongNo)) {
                                     toggle(.tongNo)
                                 } content: {
                                     ForEach(tongNo.danhSach) { item in
@@ -105,7 +105,7 @@ struct ThongKeThangView: View {
                                 // liệt kê từng đơn ngay trong card — bấm vào 1 phân loại mới mở sheet ra
                                 // danh sách đơn của phân loại đó (GiamGiaChiTietSheet, dữ liệu đã có sẵn
                                 // trong response nên không cần gọi thêm API).
-                                StatCard(icon: "🏷️", title: "Giảm giá", value: giamGia.tongGiamGia, color: .thongKePurple, isExpanded: expandedCards.contains(.giamGia)) {
+                                StatCard(icon: "tag", title: "Giảm giá", value: giamGia.tongGiamGia, color: .thongKePurple, isExpanded: expandedCards.contains(.giamGia)) {
                                     toggle(.giamGia)
                                 } content: {
                                     ForEach(giamGia.nhom ?? [], id: \.ten) { nhom in
