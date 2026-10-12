@@ -9,12 +9,26 @@ struct ThongBaoNoiBoListView: View {
     @State private var openHoaDonId: String?
     @State private var loadingMore = false
     @State private var hasMore = true
+    @State private var searchText = ""
+    /// Đang tìm thì tự tải thêm trang cũ để tìm sâu hơn, nhưng dừng ở mốc này (bấm "Tìm tiếp" để nới)
+    /// — không thì 1 từ khoá không khớp gì sẽ kéo về toàn bộ lịch sử thông báo.
+    @State private var searchDepth = 500
 
     private let pageSize = 50
 
+    /// Lọc ngay trên các thông báo đã tải (tên khách/nội dung + tên loại như "Ghi nợ", "Tiền mặt").
+    private var filteredItems: [ThongBaoNoiBoDto] {
+        guard !searchText.isEmpty else { return items }
+        return items.filter { anyMatchesSearch(searchText, $0.noiDung, ThongBaoNoiBoFormatting.tieuDe($0.loai)) }
+    }
+
+    private var searchDepthReached: Bool { !searchText.isEmpty && items.count >= searchDepth }
+
     var body: some View {
         NavigationStack {
-            Group {
+            let rows = filteredItems
+            VStack(spacing: 0) {
+                SearchBar(text: $searchText, placeholder: "Tìm khách, nội dung...")
                 if !hasLoaded {
                     fullScreenLoading()
                 } else if items.isEmpty {
@@ -23,7 +37,7 @@ struct ThongBaoNoiBoListView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     List {
-                        ForEach(items) { item in
+                        ForEach(rows) { item in
                             ThongBaoNoiBoRowView(item: item)
                                 .contentShape(Rectangle())
                                 .onTapGesture {
@@ -31,12 +45,22 @@ struct ThongBaoNoiBoListView: View {
                                 }
                                 .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
                                 .listRowSeparator(.hidden)
-                                .onAppear {
-                                    if item.id == items.last?.id { Task { await loadMore() } }
-                                }
                         }
-                        if loadingMore {
+                        if hasMore && searchDepthReached {
+                            Button("Đã tìm trong \(items.count) thông báo gần nhất — Tìm tiếp") { searchDepth += 500 }
+                                .font(.footnote)
+                                .frame(maxWidth: .infinity)
+                                .listRowSeparator(.hidden)
+                        } else if hasMore {
+                            // Dòng cuối: hiện ra là tải trang cũ hơn; còn nằm trên màn hình (kết quả tìm
+                            // chưa đầy màn) thì tải tiếp sau mỗi trang.
                             ProgressView()
+                                .frame(maxWidth: .infinity)
+                                .listRowSeparator(.hidden)
+                                .task(id: items.count) { await loadMore() }
+                        } else if rows.isEmpty {
+                            Text("Không tìm thấy thông báo nào")
+                                .foregroundColor(.textMuted)
                                 .frame(maxWidth: .infinity)
                                 .listRowSeparator(.hidden)
                         }
