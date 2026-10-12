@@ -249,6 +249,7 @@ struct ReceiptParseLineDto: Decodable, Identifiable {
 
 struct ReceiptParseResultDto: Decodable {
     let lines: [ReceiptParseLineDto]
+    let tongTrenPhieu: Double?
 }
 
 // ---- "Bắt đơn từ ảnh" — đọc chat khách đặt món qua AI (xem OrderFromImageService, Backend) ----

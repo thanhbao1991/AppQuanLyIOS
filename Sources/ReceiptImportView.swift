@@ -180,6 +180,11 @@ private struct ReceiptReviewSheet: View {
     private var totalText: String {
         HoaDonFormatting.money(includedLines.reduce(0) { $0 + $1.thanhTien })
     }
+    private var lechTong: Double? {
+        guard let tong = result.tongTrenPhieu, tong > 0 else { return nil }
+        let sum = includedLines.reduce(0) { $0 + $1.thanhTien }
+        return abs(sum - tong) > 1 ? tong : nil
+    }
     private var canSave: Bool {
         !includedLines.isEmpty && includedLines.allSatisfy { $0.nguyenLieuId != nil && $0.donGia > 0 }
     }
@@ -193,6 +198,14 @@ private struct ReceiptReviewSheet: View {
                     Toggle("Bill tháng", isOn: $billThang)
                 } footer: {
                     Text("Áp dụng chung cho tất cả dòng bên dưới.")
+                }
+
+                if let tong = lechTong {
+                    Section {
+                        Text("Tổng các dòng (\(totalText)) lệch với tổng trên phiếu (\(HoaDonFormatting.money(tong))). AI có thể đọc sai dòng hoặc giá — kiểm tra lại từng dòng trước khi lưu.")
+                            .font(.footnote)
+                            .foregroundColor(.dangerColor)
+                    }
                 }
 
                 ForEach($lines) { $line in
