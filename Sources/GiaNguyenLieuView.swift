@@ -28,6 +28,9 @@ struct GiaNguyenLieuView: View {
     @State private var canMua: [MuaHangDeXuatDto] = []
     @State private var canMuaLoaded = false
     @State private var loadFailed = false
+    /// Nguyên liệu đang chờ xác nhận "Ngừng dùng" — chạm nhầm 1 lần là dòng biến khỏi danh sách,
+    /// muốn lấy lại phải gõ tìm đúng tên.
+    @State private var ngungDungPending: NguyenLieuDto?
 
     /// Không chọn nhóm nào (Tất cả) thì lấy hết; chọn nhóm thì lọc đúng nhóm đó (nhóm Nguyên liệu
     /// nhận thêm cả phanLoai == nil).
@@ -171,6 +174,12 @@ struct GiaNguyenLieuView: View {
             if let selected { GiaNguyenLieuDetailView(nguyenLieu: selected) }
         }
         .task { await load() }
+        .confirmDelete(
+            $ngungDungPending, title: "Ngừng dùng nguyên liệu", confirmLabel: "Ngừng dùng",
+            name: { $0.ten },
+            note: "Nguyên liệu sẽ ẩn khỏi danh sách; muốn dùng lại thì gõ tìm đúng tên rồi bấm nút hoàn tác.",
+            perform: { await ngungSuDung($0) },
+            onDone: {})
     }
 
     private func load() async {
@@ -216,7 +225,7 @@ struct GiaNguyenLieuView: View {
             // Nút "Ngừng dùng" cạnh ⭐: loại nguyên liệu không còn mua khỏi danh sách (đặt NgungSuDung).
             if !nl.ngungSuDung {
                 Button {
-                    Task { await ngungSuDung(nl) }
+                    ngungDungPending = nl
                 } label: {
                     Image(systemName: "nosign").foregroundColor(.textMuted)
                 }
@@ -237,13 +246,18 @@ struct GiaNguyenLieuView: View {
     }
 
     /// Đánh dấu ngừng sử dụng — ẩn dòng ngay (goiYList lọc theo ngungSuDung), lỗi thì hoàn lại.
-    private func ngungSuDung(_ nl: NguyenLieuDto) async {
-        guard let i = allNguyenLieu.firstIndex(where: { $0.id == nl.id }) else { return }
-        allNguyenLieu[i].ngungSuDung = true
-        if !(await APIClient.shared.setNguyenLieuNgungSuDung(id: nl.id, value: true)),
-           let j = allNguyenLieu.firstIndex(where: { $0.id == nl.id }) {
-            allNguyenLieu[j].ngungSuDung = false
+    private func ngungSuDung(_ nl: NguyenLieuDto) async -> ActionResult {
+        guard let i = allNguyenLieu.firstIndex(where: { $0.id == nl.id }) else {
+            return ActionResult(success: true, message: nil)
         }
+        allNguyenLieu[i].ngungSuDung = true
+        if !(await APIClient.shared.setNguyenLieuNgungSuDung(id: nl.id, value: true)) {
+            if let j = allNguyenLieu.firstIndex(where: { $0.id == nl.id }) {
+                allNguyenLieu[j].ngungSuDung = false
+            }
+            return ActionResult(success: false, message: "Chưa đánh dấu ngừng dùng được \"\(nl.ten)\" — thử lại.")
+        }
+        return ActionResult(success: true, message: nil)
     }
 
     /// Bỏ đánh dấu ngừng sử dụng — chỉ gọi được từ kết quả tìm kiếm (mục đã ngừng dùng mới hiện ở đó).

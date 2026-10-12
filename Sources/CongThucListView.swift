@@ -129,25 +129,12 @@ struct CongThucListView: View {
         hasLoaded = true
     }
 
-    /// FK DinhLuongBanHang→CongThucBanHang là Restrict (không cascade) — phải xoá hết dòng nguyên
-    /// liệu con trước, xoá thẳng công thức trước sẽ bị SQL chặn (lỗi chung chung "Có lỗi hệ thống").
-    /// Dừng ngay ở bước lỗi đầu tiên và nói rõ đang dở ở đâu — trước đây bỏ qua mọi kết quả, lỗi
-    /// giữa chừng thì công thức nằm lại với 0 nguyên liệu (ngừng trừ tồn kho) mà không ai biết.
+    /// 1 lệnh gọi duy nhất: backend (CongThucService.DeleteAsync) xoá công thức KÈM mọi dòng nguyên
+    /// liệu con trong cùng 1 transaction — hoặc xoá hết, hoặc không xoá gì. Trước đây app phải tự xoá
+    /// từng dòng rồi mới xoá công thức (FK Restrict), rớt mạng giữa chừng là công thức nằm lại với
+    /// một phần nguyên liệu.
     private func delete(_ dto: CongThucDto) async -> ActionResult {
-        let lines = dinhLuongAll.filter { $0.congThucId == dto.id }
-        var daXoa = 0
-        for line in lines {
-            let r = await APIClient.shared.deleteSuDungNguyenLieu(id: line.id)
-            guard r.success else {
-                return ActionResult(success: false, message: "Mới xoá được \(daXoa)/\(lines.count) dòng nguyên liệu, công thức CHƯA xoá (\(r.message ?? "lỗi không rõ")). Mở lại công thức để kiểm tra.")
-            }
-            daXoa += 1
-        }
-        let r = await APIClient.shared.deleteCongThuc(id: dto.id)
-        guard r.success else {
-            return ActionResult(success: false, message: "Đã xoá hết \(lines.count) dòng nguyên liệu nhưng CHƯA xoá được công thức (\(r.message ?? "lỗi không rõ")). Công thức đang trống — xoá lại, hoặc mở ra thêm lại nguyên liệu.")
-        }
-        return r
+        await APIClient.shared.deleteCongThuc(id: dto.id)
     }
 }
 

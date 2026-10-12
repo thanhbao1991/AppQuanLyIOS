@@ -251,6 +251,9 @@ private struct SanPhamEditSheet: View {
     @State private var errorMessage: String?
     @State private var storeActionMessage: String?
     @State private var storeActionRunning = false
+    /// Thao tác store đang chờ xác nhận — mấy nút này chạy thẳng lên store THẬT (khách đang thấy),
+    /// chạm nhầm "Ngừng bán trên store" là món biến khỏi store ngay.
+    @State private var pendingStoreAction: PendingStoreAction?
 
     init(existing: SanPhamAdminDto?, allItems: [SanPhamAdminDto], nhoms: [NhomSanPhamDto], onSaved: @escaping () -> Void) {
         self.existing = existing
@@ -306,7 +309,7 @@ private struct SanPhamEditSheet: View {
                         }
                         storeActionButton("Đẩy lên store", icon: "icloud.and.arrow.up") { await pushToStore() }
                         storeActionButton("Đổi tên trên store", icon: "pencil") { await renameOnStore() }
-                        storeActionButton("Ngừng bán trên store", icon: "storefront") { await toggleStoreVisibility(ngungBan: true) }
+                        storeActionButton("Ngừng bán trên store", icon: "storefront", destructive: true) { await toggleStoreVisibility(ngungBan: true) }
                         storeActionButton("Bán lại trên store", icon: "storefront.fill") { await toggleStoreVisibility(ngungBan: false) }
                         storeActionButton("Đẩy topping lên store", icon: "plus.circle") { await pushToppingToStore() }
                         if bienThe.contains(where: { $0.tenBienThe == "Size XL" }) {
@@ -354,6 +357,19 @@ private struct SanPhamEditSheet: View {
                 } message: {
                     Text(storeActionMessage ?? "")
                 }
+                .confirmationDialog(
+                    pendingStoreAction?.title ?? "",
+                    isPresented: Binding(get: { pendingStoreAction != nil }, set: { if !$0 { pendingStoreAction = nil } }),
+                    titleVisibility: .visible,
+                    presenting: pendingStoreAction
+                ) { pending in
+                    Button(pending.title, role: pending.destructive ? .destructive : nil) {
+                        Task { await pending.run() }
+                    }
+                    Button("Huỷ", role: .cancel) {}
+                } message: { _ in
+                    Text("Thao tác chạy ngay trên store thật cho \"\(existing?.ten ?? "")\".")
+                }
             }
         }
     }
@@ -383,9 +399,9 @@ private struct SanPhamEditSheet: View {
         .padding(.vertical, 2)
     }
 
-    private func storeActionButton(_ title: String, icon: String, action: @escaping () async -> Void) -> some View {
+    private func storeActionButton(_ title: String, icon: String, destructive: Bool = false, action: @escaping () async -> Void) -> some View {
         Button {
-            Task { await action() }
+            pendingStoreAction = PendingStoreAction(title: title, destructive: destructive, run: action)
         } label: {
             Label(title, systemImage: icon)
         }
@@ -450,6 +466,12 @@ private struct SanPhamEditSheet: View {
     }
 
     // ── Store ────────────────────────────────────────
+
+    private struct PendingStoreAction {
+        let title: String
+        let destructive: Bool
+        let run: () async -> Void
+    }
 
     private func runStoreAction(_ action: () async -> ActionResult) async {
         guard let existing else { return }
