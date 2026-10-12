@@ -614,13 +614,17 @@ private struct HoaDonRowView: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Text(HoaDonFormatting.time(item.ngayGio)).font(.caption).foregroundColor(.textMuted)
+                        .lineLimit(1).fixedSize()
+                    // Dòng chật (cột phải "Chuyển khoản" rộng, cỡ chữ lớn): nhãn co chữ lại chứ không
+                    // xuống dòng thành "App / Đenn".
                     Text(HoaDonFormatting.phanLoaiLabel(item.phanLoai))
                         .font(.caption.bold())
                         .foregroundColor(HoaDonFormatting.phanLoaiColor(item.phanLoai))
+                        .lineLimit(1).minimumScaleFactor(0.7)
                     if (item.phanLoai == "Ship" || item.phanLoai == "AppDatHang"), let nguoiShip = item.nguoiShip, !nguoiShip.isEmpty {
                         ShipperAvatarView(name: nguoiShip, size: 16)
                     }
-                    Spacer()
+                    Spacer(minLength: 0)
                     if let waitingMinutes {
                         HStack(spacing: 3) {
                             Text("🕐").font(.caption2)
