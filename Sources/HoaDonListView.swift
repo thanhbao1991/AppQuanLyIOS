@@ -181,7 +181,7 @@ struct HoaDonListView: View {
                                 .listRowSeparator(.hidden)
                         } else {
                             ForEach(cachedSorted) { item in
-                                HoaDonRowView(item: item, now: now)
+                                HoaDonRowView(item: item, now: now, showMon: !searchText.isEmpty)
                                     .contentShape(Rectangle())
                                     .onTapGesture { selectedId = item.id }
                                     .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
@@ -553,6 +553,9 @@ private struct PendingCreate: Identifiable {
 private struct HoaDonRowView: View {
     let item: HoaDonListDto
     let now: Date
+    /// Chỉ hiện dòng tên món khi đang tìm kiếm (để thấy đơn khớp vì món nào) — bình thường thẻ đơn
+    /// giữ gọn như cũ.
+    var showMon = false
 
     /// Chỉ 3 trạng thái đã-xử-lý — "Chưa thu" bị bỏ hẳn (không mang thông tin gì mới, phần lớn đơn
     /// đang ở trạng thái này nên hiện lên toàn màn hình đầy badge xám vô nghĩa).
@@ -632,10 +635,8 @@ private struct HoaDonRowView: View {
                         }
                         .lineLimit(1)
                         .fixedSize()   // dòng tiêu đề chật (đơn App Đenn) từng bẻ badge thành "0 / phút"
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 6).padding(.vertical, 2)
-                        .background(waitingColor)
-                        .clipShape(Capsule())
+                        // Không nền — chỉ chữ đổi màu theo mức chờ (xám / vàng ≥15p / đỏ ≥30p).
+                        .foregroundColor(waitingColor)
                     }
                 }
                 Text(item.tenKhachHangText?.isEmpty == false ? item.tenKhachHangText! : (item.tenBan.map { "Bàn \($0)" } ?? "Khách lẻ"))
@@ -646,7 +647,7 @@ private struct HoaDonRowView: View {
                         Text(diaChi).font(.footnote).foregroundColor(.textMuted).lineLimit(1)
                     }
                 }
-                if let mon = item.tenMonSummary, !mon.isEmpty {
+                if showMon, let mon = item.tenMonSummary, !mon.isEmpty {
                     Text(mon).font(.footnote).foregroundColor(.textMuted).lineLimit(1)
                 }
             }
