@@ -161,6 +161,14 @@ actor APIClient {
         return env.data
     }
 
+    /// Số dư Zalo OTP (ZBS Account) sau lần gửi OTP gần nhất — tab Menu, dưới số dư AI.
+    func getZaloBalance() async -> ZaloBalanceDto? {
+        let req = makeRequest("/api/dashboard/zalo-balance")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<ZaloBalanceDto>.self, from: data), env.isSuccess else { return nil }
+        return env.data
+    }
+
     /// nil = tải LỖI, khác với [] = ngày đó không có thanh toán nào (xem getHoaDonListByDay).
     func getThanhToanByDay(_ dateIso: String) async -> [ChiTietHoaDonThanhToanDto]? {
         let req = makeRequest("/api/ChiTietHoaDonThanhToan?ngay=\(dateIso)")

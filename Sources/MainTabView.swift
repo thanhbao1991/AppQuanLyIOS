@@ -184,6 +184,7 @@ private struct MoreMenuView: View {
     @State private var syncResultMessage: String?
     @State private var showAccessDeniedAlert = false
     @State private var aiBalance: AiBalanceDto?
+    @State private var zaloBalance: ZaloBalanceDto?
     @State private var showLogoutConfirm = false
 
     var body: some View {
@@ -297,6 +298,15 @@ private struct MoreMenuView: View {
                                 .foregroundStyle(balance.remaining < 1 ? .red : .secondary)
                         }
                     }
+
+                    if let zalo = zaloBalance {
+                        HStack {
+                            EmojiLabel("Số dư Zalo OTP", "💬")
+                            Spacer()
+                            Text("\(zalo.soDu.formatted(.number.locale(Locale(identifier: "vi_VN")))) đ")
+                                .foregroundStyle(zalo.soDu < 10_000 ? .red : .secondary)
+                        }
+                    }
                 }
 
                 Section {
@@ -363,6 +373,7 @@ private struct MoreMenuView: View {
             }
             .task {
                 aiBalance = await APIClient.shared.getAiBalance()
+                zaloBalance = await APIClient.shared.getZaloBalance()
             }
         }
     }

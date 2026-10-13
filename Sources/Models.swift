@@ -1046,6 +1046,11 @@ struct AiModelUsageDto: Decodable, Identifiable {
     var id: String { tinhNang }
 }
 
+struct ZaloBalanceDto: Decodable {
+    let soDu: Int64
+    let capNhatLucUtc: String
+}
+
 struct AiBalanceDto: Decodable {
     let totalCredits: Double
     let totalUsage: Double
