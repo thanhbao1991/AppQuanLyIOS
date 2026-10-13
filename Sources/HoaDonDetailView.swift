@@ -53,7 +53,7 @@ struct HoaDonDetailView: View {
                         HStack(spacing: 6) {
                             Text(HoaDonFormatting.phanLoaiLabel(detail.phanLoai))
                                 .font(.caption.bold())
-                                .foregroundColor(HoaDonFormatting.phanLoaiColor(detail.phanLoai))
+                                .foregroundColor(.white)
                             if (detail.phanLoai == "Ship" || detail.phanLoai == "AppDatHang"),
                                let nguoiShip = detail.nguoiShip, !nguoiShip.isEmpty {
                                 ShipperAvatarView(name: nguoiShip, size: 20)

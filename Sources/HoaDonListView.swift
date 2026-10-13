@@ -594,12 +594,7 @@ private struct HoaDonRowView: View {
         HoaDonFormatting.minutesSince(item.ngayGio, now: HoaDonFormatting.waitingEndDate(item, now: now))
     }
 
-    private var waitingColor: Color {
-        guard let waitingMinutes else { return .textMuted }
-        if waitingMinutes >= 30 { return .dangerColor }
-        if waitingMinutes >= 15 { return .warningColor }
-        return .textMuted
-    }
+    private var waitingColor: Color { .textMuted }
 
     /// Shipper đánh dấu "Tí nữa chuyển khoản" (GhiChuShipper == chuỗi cố định, xem
     /// ShipperActionService.TiNuaChuyenKhoanAsync) — set được cho Ship/AppDatHang (ShipperQueryService
@@ -622,7 +617,7 @@ private struct HoaDonRowView: View {
                     // xuống dòng thành "App / Đenn".
                     Text(HoaDonFormatting.phanLoaiLabel(item.phanLoai))
                         .font(.caption.bold())
-                        .foregroundColor(HoaDonFormatting.phanLoaiColor(item.phanLoai))
+                        .foregroundColor(HoaDonFormatting.phanLoaiTextColor(item.phanLoai))
                         .lineLimit(1).minimumScaleFactor(0.7)
                     if (item.phanLoai == "Ship" || item.phanLoai == "AppDatHang"), let nguoiShip = item.nguoiShip, !nguoiShip.isEmpty {
                         ShipperAvatarView(name: nguoiShip, size: 16)

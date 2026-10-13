@@ -169,6 +169,13 @@ enum HoaDonFormatting {
         }
     }
 
+    /// Màu CHỮ trên nền card pastel: vàng cảnh báo nhạt chìm trên nền vàng nhạt nên đậm lại thành hổ phách.
+    static let amberText = Color(red: 0.60, green: 0.38, blue: 0.0)
+
+    static func phanLoaiTextColor(_ phanLoai: String?) -> Color {
+        phanLoai == "Mv" ? amberText : phanLoaiColor(phanLoai)
+    }
+
     /// Nền tint card theo PhanLoai — dùng chính màu accent/border đã có sẵn trên card (phanLoaiColor),
     /// pha nhạt để làm nền cả card thay vì chỉ 1 thanh 4px bên trái.
     static func phanLoaiBgColor(_ phanLoai: String?) -> Color {
