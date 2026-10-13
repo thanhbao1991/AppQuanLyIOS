@@ -170,7 +170,7 @@ private struct CongThucRowView: View {
         .listRowSeparator(.hidden)
         .swipeActions(edge: .trailing) {
             Button(action: onDelete) {
-                EmojiLabel("Xoá", "🗑️")
+                Label("Xoá", systemImage: "trash")
             }
             .tint(.dangerColor)
         }
@@ -270,7 +270,7 @@ private struct CongThucEditSheet: View {
                     Button {
                         lines.append(DinhLuongRow())
                     } label: {
-                        EmojiLabel("Thêm nguyên liệu", "➕")
+                        Label("Thêm nguyên liệu", systemImage: "plus")
                     }
                 } header: {
                     Text("Nguyên liệu / định lượng")

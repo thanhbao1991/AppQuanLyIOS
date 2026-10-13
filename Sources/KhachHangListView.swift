@@ -199,7 +199,7 @@ private struct KhachHangRowView: View {
         .swipeActions(edge: .trailing) {
             if !isMergeMode {
                 Button(action: onDelete) {
-                    EmojiLabel("Xoá", "🗑️")
+                    Label("Xoá", systemImage: "trash")
                 }
                 .tint(.dangerColor)
             }
@@ -292,7 +292,7 @@ private struct KhachHangEditSheet: View {
                     Button {
                         phoneRows.append(EditContactRow(id: UUID().uuidString, value: "", isDefault: phoneRows.isEmpty))
                     } label: {
-                        EmojiLabel("Thêm SĐT", "➕")
+                        Label("Thêm SĐT", systemImage: "plus")
                     }
                 }
 
@@ -301,7 +301,7 @@ private struct KhachHangEditSheet: View {
                     Button {
                         addressRows.append(EditContactRow(id: UUID().uuidString, value: "", isDefault: addressRows.isEmpty))
                     } label: {
-                        EmojiLabel("Thêm địa chỉ", "➕")
+                        Label("Thêm địa chỉ", systemImage: "plus")
                     }
                 }
 

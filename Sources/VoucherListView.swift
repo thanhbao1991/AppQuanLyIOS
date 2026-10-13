@@ -172,7 +172,7 @@ private struct VoucherRowView: View {
                     Text("Chỉ hạng \(hangToiThieu) trở lên").font(.caption2).foregroundColor(.dangerColor)
                 }
                 if let ngayHieuLuc = nhanNgayHieuLuc(item) {
-                    Text(ngayHieuLuc).font(.caption2).foregroundColor(.dangerColor)
+                    Label(ngayHieuLuc, systemImage: "calendar").font(.caption2).foregroundColor(.dangerColor)
                 }
                 if item.yeuCauSizeL {
                     Text("Chỉ áp dụng khi đơn có Size L").font(.caption2).foregroundColor(.dangerColor)
@@ -190,7 +190,7 @@ private struct VoucherRowView: View {
         .buttonStyle(.plain)
         .swipeActions(edge: .trailing) {
             Button(action: onDelete) {
-                EmojiLabel("Xoá", "🗑️")
+                Label("Xoá", systemImage: "trash")
             }
             .tint(.dangerColor)
             Button(action: onToggle) {
@@ -211,7 +211,7 @@ private struct VoucherRowView: View {
     private func nhanNgayHieuLuc(_ item: VoucherDto) -> String? {
         guard let batDau = item.ngayBatDau, let date = DateNavFormat.queryDate.date(from: batDau) else { return nil }
         let formatter = item.lapLaiHangNam ? DateNavFormat.dayTitle : DateNavFormat.queryDate
-        var text = "📅 Từ \(formatter.string(from: date))"
+        var text = "Từ \(formatter.string(from: date))"
         if let ketThucStr = item.ngayKetThuc, let ketThuc = DateNavFormat.queryDate.date(from: ketThucStr) {
             text += " đến \(formatter.string(from: ketThuc))"
         }

@@ -41,7 +41,7 @@ struct DeviceSessionsView: View {
                                         Button {
                                             revoking = session
                                         } label: {
-                                            EmojiLabel("Gỡ", "🗑️")
+                                            Label("Gỡ", systemImage: "trash")
                                         }
                                         .tint(.dangerColor)
                                     }
@@ -162,8 +162,8 @@ private struct SessionRowView: View {
                 }
 
                 HStack(spacing: 14) {
-                    EmojiLabel(DeviceSessionsView.formatUtc(session.ngayTao), "➡️")
-                    EmojiLabel(DeviceSessionsView.formatUtc(session.hetHan), "🕐")
+                    Label(DeviceSessionsView.formatUtc(session.ngayTao), systemImage: "arrow.right.circle")
+                    Label(DeviceSessionsView.formatUtc(session.hetHan), systemImage: "clock")
                 }
                 .font(.caption2)
                 .foregroundColor(.textMuted)

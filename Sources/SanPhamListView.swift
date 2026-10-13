@@ -214,7 +214,7 @@ private struct SanPhamRowView: View {
         .buttonStyle(.plain)
         .swipeActions(edge: .trailing) {
             Button(action: onDelete) {
-                EmojiLabel("Xoá", "🗑️")
+                Label("Xoá", systemImage: "trash")
             }
             .tint(.dangerColor)
         }
@@ -298,7 +298,7 @@ private struct SanPhamEditSheet: View {
                     Button {
                         bienThe.append(BienTheEditRow(tenBienThe: "Size", giaBan: 0, macDinh: bienThe.isEmpty))
                     } label: {
-                        EmojiLabel("Thêm biến thể", "➕")
+                        Label("Thêm biến thể", systemImage: "plus")
                     }
                 }
 

@@ -194,62 +194,62 @@ private struct MoreMenuView: View {
                     NavigationLink {
                         NguyenLieuListView()
                     } label: {
-                        EmojiLabel("Nguyên liệu", "🧂")
+                        Label("Nguyên liệu", systemImage: "leaf")
                     }
                     NavigationLink {
                         TonKhoListView()
                     } label: {
-                        EmojiLabel("Tồn kho", "📦")
+                        Label("Tồn kho", systemImage: "shippingbox")
                     }
                     NavigationLink {
                         SanPhamListView()
                     } label: {
-                        EmojiLabel("Sản phẩm", "🍹")
+                        Label("Sản phẩm", systemImage: "cup.and.saucer")
                     }
                     NavigationLink {
                         ToppingListView()
                     } label: {
-                        EmojiLabel("Topping", "🧁")
+                        Label("Topping", systemImage: "birthday.cake")
                     }
                     NavigationLink {
                         CongThucListView()
                     } label: {
-                        EmojiLabel("Công thức", "📋")
+                        Label("Công thức", systemImage: "list.clipboard")
                     }
                     NavigationLink {
                         TenDuongListView()
                     } label: {
-                        EmojiLabel("Tên đường", "🛣️")
+                        Label("Tên đường", systemImage: "signpost.right")
                     }
                     NavigationLink {
                         GiaRiengListView()
                     } label: {
-                        EmojiLabel("Giá riêng", "🏷️")
+                        Label("Giá riêng", systemImage: "tag")
                     }
                     NavigationLink {
                         KhachHangListView()
                     } label: {
-                        EmojiLabel("Khách hàng", "👥")
+                        Label("Khách hàng", systemImage: "person.2")
                     }
                     NavigationLink {
                         SanPhamHinhAnhListView()
                     } label: {
-                        EmojiLabel("Ảnh menu", "🖼️")
+                        Label("Ảnh menu", systemImage: "photo")
                     }
                     NavigationLink {
                         ThongBaoQuanListView()
                     } label: {
-                        EmojiLabel("Thông báo/Khuyến mãi", "📣")
+                        Label("Thông báo/Khuyến mãi", systemImage: "megaphone")
                     }
                     NavigationLink {
                         GamificationConfigView()
                     } label: {
-                        EmojiLabel("Cấu hình App khách", "🎁")
+                        Label("Cấu hình App khách", systemImage: "gift")
                     }
                     NavigationLink {
                         VoucherListView()
                     } label: {
-                        EmojiLabel("Voucher", "🎟️")
+                        Label("Voucher", systemImage: "ticket")
                     }
                 }
 
@@ -257,42 +257,42 @@ private struct MoreMenuView: View {
                     NavigationLink {
                         BanDoKhachHangView()
                     } label: {
-                        EmojiLabel("Bản đồ khách hàng", "🗺️")
+                        Label("Bản đồ khách hàng", systemImage: "map")
                     }
                     NavigationLink {
                         BaoHoaView()
                     } label: {
-                        EmojiLabel("Phân tích bão hoà", "📈")
+                        Label("Phân tích bão hoà", systemImage: "chart.line.uptrend.xyaxis")
                     }
                     NavigationLink {
                         TinhLuongView(shipperTen: "Khánh")
                     } label: {
-                        EmojiLabel("Tính lương Khánh", "⛽")
+                        Label("Tính lương Khánh", systemImage: "fuelpump")
                     }
                     NavigationLink {
                         TinhLuongView(shipperTen: "Nhã")
                     } label: {
-                        EmojiLabel("Tính lương Nhã", "⛽")
+                        Label("Tính lương Nhã", systemImage: "fuelpump")
                     }
                     NavigationLink {
                         GiaNguyenLieuView()
                     } label: {
-                        EmojiLabel("Giá cả", "🏷️")
+                        Label("Giá cả", systemImage: "dollarsign.circle")
                     }
                     NavigationLink {
                         GioThapDiemView()
                     } label: {
-                        EmojiLabel("Giờ vắng khách", "🕑")
+                        Label("Giờ vắng khách", systemImage: "clock")
                     }
                     NavigationLink {
                         TtsSoundsView()
                     } label: {
-                        EmojiLabel("Âm báo đã tải", "🔊")
+                        Label("Âm báo đã tải", systemImage: "speaker.wave.2")
                     }
 
                     if let balance = aiBalance {
                         HStack {
-                            EmojiLabel("Số dư AI (OpenRouter)", "🤖")
+                            Label("Số dư AI (OpenRouter)", systemImage: "cpu")
                             Spacer()
                             Text("$\(balance.remaining, specifier: "%.2f")")
                                 .foregroundStyle(balance.remaining < 1 ? .red : .secondary)
@@ -301,7 +301,7 @@ private struct MoreMenuView: View {
 
                     if let zalo = zaloBalance {
                         HStack {
-                            EmojiLabel("Số dư Zalo OTP", "💬")
+                            Label("Số dư Zalo OTP", systemImage: "message")
                             Spacer()
                             Text("\(zalo.soDu.formatted(.number.locale(Locale(identifier: "vi_VN")))) đ")
                                 .foregroundStyle(zalo.soDu < 10_000 ? .red : .secondary)
@@ -311,18 +311,18 @@ private struct MoreMenuView: View {
 
                 Section {
                     if let name = Prefs.displayName, !name.isEmpty {
-                        EmojiLabel(name, "👤")
+                        Label(name, systemImage: "person.circle")
                     }
                     NavigationLink {
                         DeviceSessionsView()
                     } label: {
-                        EmojiLabel("Thiết bị đăng nhập", "📱")
+                        Label("Thiết bị đăng nhập", systemImage: "iphone")
                     }
                     Button {
                         Task { await syncContacts() }
                     } label: {
                         HStack {
-                            EmojiLabel("Đồng bộ danh bạ", "📇")
+                            Label("Đồng bộ danh bạ", systemImage: "person.crop.rectangle.stack")
                             Spacer()
                             if isSyncingContacts {
                                 ProgressView()
@@ -333,7 +333,7 @@ private struct MoreMenuView: View {
                     Button(role: .destructive) {
                         showLogoutConfirm = true
                     } label: {
-                        EmojiLabel("Đăng xuất", "🚪")
+                        Label("Đăng xuất", systemImage: "rectangle.portrait.and.arrow.right")
                     }
                 } footer: {
                     Text("Đồng bộ danh bạ: đưa tên khách hàng vào Danh bạ iPhone theo số điện thoại, để hiện tên khi khách gọi đến.\nPhiên bản \(appVersionString)")

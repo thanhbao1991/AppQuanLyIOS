@@ -118,7 +118,7 @@ private struct ThongBaoQuanRowView: View {
         .buttonStyle(.plain)
         .swipeActions(edge: .trailing) {
             Button(action: onDelete) {
-                EmojiLabel("Xoá", "🗑️")
+                Label("Xoá", systemImage: "trash")
             }
             .tint(.dangerColor)
             Button(action: onToggle) {

@@ -80,7 +80,7 @@ private struct GamificationConfigForm: View {
                 Stepper("Mở cửa: \(config.gioMoCua)h", value: $config.gioMoCua, in: 0...23)
                 Stepper("Đóng cửa: \(config.gioDongCua)h", value: $config.gioDongCua, in: (config.gioMoCua + 1)...24)
             } header: {
-                Text("Giờ mở bán 🕑")
+                Label("Giờ mở bán", systemImage: "clock")
             } footer: {
                 Text("App khách chặn đặt hàng ngoài khung giờ này (server chặn thật, không chỉ ẩn UI). Cũng dùng để tính gợi ý khung giờ vắng khách ở Công cụ > Giờ vắng khách.")
             }
@@ -94,7 +94,7 @@ private struct GamificationConfigForm: View {
                         .multilineTextAlignment(.trailing)
                 }
             } header: {
-                Text("Hotline quán 📞")
+                Label("Hotline quán", systemImage: "phone")
             } footer: {
                 Text("App khách hiện số này ở nút \"Liên hệ nhân viên để huỷ đơn\" (khách không tự huỷ đơn được nữa) — bấm vào sẽ tự gọi điện.")
             }
@@ -106,7 +106,7 @@ private struct GamificationConfigForm: View {
                 kmRow("Km thưởng hạng Kim Cương", value: $config.shipKmThuongKimCuong)
                 moneyRow("Phí mỗi km vượt", value: $config.shipPhiMoiKm)
             } header: {
-                Text("Phí ship 🛵")
+                Label("Phí ship", systemImage: "bicycle")
             } footer: {
                 Text("Bán kính miễn phí = (SỐ LY trong đơn × 0,5km, không tính topping, không giới hạn trên) CỘNG THẲNG km thưởng theo hạng THÁNG TRƯỚC của khách. Vượt bán kính miễn phí mới tính thêm theo km vượt, làm tròn lên 1.000đ.")
             }
@@ -115,7 +115,7 @@ private struct GamificationConfigForm: View {
                 moneyRow("Thưởng ngày 1-6", value: $config.diemDanhThuongThuong)
                 moneyRow("Thưởng ngày 7", value: $config.diemDanhThuongNgay7)
             } header: {
-                Text("Điểm danh nhận Xu 🗓️")
+                Label("Điểm danh nhận Xu", systemImage: "calendar")
             } footer: {
                 Text("Điểm danh liên tiếp mỗi ngày để nhận Xu (cộng thẳng, không random). Bỏ lỡ 1 ngày là tính lại từ đầu.")
             }
@@ -131,10 +131,10 @@ private struct GamificationConfigForm: View {
                 Button {
                     config.vongQuayPhanThuong.append(VongQuayPhanThuongDto(label: "Ô thưởng mới", trongSo: 10, thuong: 0))
                 } label: {
-                    EmojiLabel("Thêm ô thưởng", "➕")
+                    Label("Thêm ô thưởng", systemImage: "plus")
                 }
             } header: {
-                Text("Vòng quay may mắn 🎡")
+                Label("Vòng quay may mắn", systemImage: "target")
             } footer: {
                 Text("Trọng số càng cao thì % trúng càng lớn. Tiền thưởng = 0 nghĩa là \"không trúng\".")
             }
