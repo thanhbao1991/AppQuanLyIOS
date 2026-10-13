@@ -146,6 +146,12 @@ private struct GiaRiengEditSheet: View {
         _giaBan = State(initialValue: existing?.giaBan ?? 0)
     }
 
+    /// Giá riêng chỉ được bằng hoặc cao hơn giá hệ thống (backend cũng từ chối nếu thấp hơn).
+    private var thapHonGiaHeThong: Bool {
+        guard let giaHeThong, giaBan > 0 else { return false }
+        return giaBan < giaHeThong
+    }
+
     private var matchingSanPham: [SanPhamDto] {
         guard !spSearchText.isEmpty else { return [] }
         return allSanPham.filter { $0.ten.matchesSearch(spSearchText) }
@@ -216,6 +222,10 @@ private struct GiaRiengEditSheet: View {
                 Section("Giá riêng") {
                     TextField("0", value: $giaBan, format: .number)
                         .keyboardType(.numberPad)
+                    if thapHonGiaHeThong {
+                        Text("Giá riêng không được thấp hơn giá hệ thống.")
+                            .font(.caption).foregroundColor(.dangerColor)
+                    }
                 }
 
                 if let errorMessage {
@@ -243,7 +253,7 @@ private struct GiaRiengEditSheet: View {
                 .buttonStyle(.borderedProminent)
                 .tint(.brandPrimary)
                 .controlSize(.large)
-                .disabled(khachHangId == nil || sanPhamBienTheId == nil || giaBan <= 0 || saving)
+                .disabled(khachHangId == nil || sanPhamBienTheId == nil || giaBan <= 0 || thapHonGiaHeThong || saving)
                 .padding(.horizontal, 16)
                 .padding(.top, 10)
                 .padding(.bottom, 8)
