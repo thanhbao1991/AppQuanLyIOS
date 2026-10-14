@@ -877,6 +877,11 @@ struct HoaDonEditFormView: View {
             errorMessage = "Đơn tại chỗ phải chọn bàn trước khi lưu."
             return
         }
+        // Khớp HoaDonCrudService (backend chặn từ 14/10): Mua hộ phải biết shipper nào lấy hàng.
+        if phanLoai == "Mh" && selectedKhach == nil {
+            errorMessage = "Đơn Mua hộ phải chọn shipper trước khi lưu."
+            return
+        }
         saving = true
         errorMessage = nil
 

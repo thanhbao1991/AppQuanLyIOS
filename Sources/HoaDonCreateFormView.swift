@@ -942,6 +942,12 @@ struct HoaDonCreateFormView: View {
             errorMessage = "Đơn tại chỗ phải chọn bàn trước khi lưu."
             return
         }
+        // Khớp HoaDonCrudService (backend chặn từ 14/10): Mua hộ phải biết shipper nào lấy hàng.
+        if phanLoai == "Mh" && selectedKhach == nil {
+            errorMessage = "Đơn Mua hộ phải chọn shipper trước khi lưu."
+            khachSearchFocused = true
+            return
+        }
         if phanLoai == "Ship", diaChi.trimmingCharacters(in: .whitespaces).isEmpty,
            let kh = selectedKhach, kh.addresses.count > 1 {
             showAddressPicker = true
