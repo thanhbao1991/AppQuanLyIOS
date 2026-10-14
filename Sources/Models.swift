@@ -860,6 +860,10 @@ struct AppOrderDetailDto: Decodable {
     /// server chưa nhận diện được shipper. Thiếu field này khiến đơn bắt qua iOS trống shipper so
     /// với Desktop (vốn đọc thẳng cả HoaDonDto nên có sẵn).
     let khachHangId: String?
+    /// Mã đơn store (= AppOrderSummaryDto.code) — PHẢI gửi lại khi tạo HoaDon, vì
+    /// AppOrderService.MarkImportedAsync dò "Đã bắt đơn" bằng HoaDons.MaHoaDon. Thiếu field này
+    /// làm mọi đơn bắt qua iOS lưu MaHoaDon=NULL, không bao giờ hiện badge (lỗi tới 14/10).
+    let maHoaDon: String?
 }
 
 /// Khớp KhachHangInfoDto (Backend) — thông tin điểm/nợ/ví/voucher/món yêu thích khi chọn khách
@@ -1022,6 +1026,8 @@ struct ChiTietHoaDonCreateDto: Encodable {
 
 struct HoaDonFullCreateRequest: Encodable {
     let phanLoai: String
+    /// Chỉ có khi bắt đơn App — mã đơn store, xem AppOrderDetailDto.maHoaDon.
+    var maHoaDon: String? = nil
     let tenBan: String?
     let khachHangId: String?
     let tenKhachHangText: String?

@@ -19,6 +19,8 @@ struct HoaDonCreateFormView: View {
     var presetItems: [DraftChiTiet] = []
     var presetGhiChu: String? = nil
     var presetWarnings: [String] = []
+    /// Mã đơn store khi bắt đơn App — gửi kèm lúc tạo để backend đánh dấu "Đã bắt đơn".
+    var presetMaHoaDon: String? = nil
     /// Preset từ "Bắt đơn từ ảnh" (xem HoaDonListView.ImageOrderPickerSheet) — điền sẵn Ô NHẬP TAY
     /// (khác presetKhachHangId là 1 KhachHang có sẵn), vì AI chỉ đọc text thô từ ảnh chat, không tự
     /// khớp/tạo KhachHang — HoaDonKhachHangService tự lo khớp SĐT/tạo mới lúc lưu đơn. Riêng
@@ -967,6 +969,7 @@ struct HoaDonCreateFormView: View {
         }
         let body = HoaDonFullCreateRequest(
             phanLoai: phanLoai,
+            maHoaDon: presetMaHoaDon?.isEmpty == false ? presetMaHoaDon : nil,
             tenBan: phanLoai == "Tại Chỗ" ? tenBan.trimmingCharacters(in: .whitespaces) : nil,
             khachHangId: selectedKhach?.id,
             tenKhachHangText: tenKhach.trimmingCharacters(in: .whitespaces).isEmpty ? nil : tenKhach,
