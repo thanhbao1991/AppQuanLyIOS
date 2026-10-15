@@ -197,20 +197,35 @@ private final class ShopeeVoucherWebModel: NSObject, ObservableObject, WKNavigat
         const label = e => { const parts = []; const w = document.createTreeWalker(e, NodeFilter.SHOW_TEXT);
           for (let n = w.nextNode(); n; n = w.nextNode()) { const x = n.textContent.replace(/\\s+/g, ' ').trim(); if (x && n.parentElement && visible(n.parentElement)) parts.push(x); }
           return parts.join(' · '); };
+        // Bỏ voucher Shopee Mart / Bách hoá chính hãng (user không dùng). Nhãn nhóm nằm ở nửa trái thẻ,
+        // ngoài phần chữ % — phải leo lên khung thẻ (cha gần nhất vẫn chỉ chứa 1 voucher) mới thấy.
+        const skipRe = /shopee mart|bach hoa chinh hang/i;
+        const strip = s => s.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/đ/gi, 'd');
+        const pctCount = t => (t.replace(usedRe, '').match(/\\d{1,3}\\s*%/g) || []).length;
         document.querySelectorAll('[data-dc-voucher]').forEach(x => x.removeAttribute('data-dc-voucher'));
-        const out = []; const seen = new Set();
+        const out = []; const seen = new Set(); let pos = 0;
         for (const e of document.querySelectorAll('div,li,a,section,article')) {
           const t = norm(e);
           if (!isCard(t)) continue;
           if (!visible(e)) continue;
           if ([...e.children].some(c => isCard(norm(c)))) continue;
-          if (seen.has(t)) continue;
-          seen.add(t);
+          let card = e;
+          for (let i = 0; i < 5; i++) {
+            const p = card.parentElement; if (!p) break;
+            const pt = norm(p); if (pt.length > 400 || pctCount(pt) > pctCount(t)) break;
+            card = p;
+          }
+          const ct = norm(card);
+          if (seen.has(ct)) continue;
+          seen.add(ct);
+          pos++;
+          if (pos > max) break;
+          if (skipRe.test(strip(ct))) continue;
           const nums = [...t.replace(usedRe, '').matchAll(/(\\d{1,3})\\s*%/g)].map(m => +m[1]).filter(n => n > 0 && n <= 100);
           if (!nums.length) continue;
-          e.setAttribute('data-dc-voucher', out.length);
-          out.push({ id: out.length, pct: Math.max(...nums), text: label(e) || t });
-          if (out.length >= max) break;
+          // id = thứ tự thẻ trên trang (đếm cả thẻ bị bỏ) — hiện "Thẻ thứ N" cho khớp khi cuộn tìm.
+          card.setAttribute('data-dc-voucher', pos - 1);
+          out.push({ id: pos - 1, pct: Math.max(...nums), text: label(card) || ct });
         }
         const body = (document.body && document.body.innerText || '').replace(/\\s+/g, ' ').trim();
         return JSON.stringify({ items: out, info: location.pathname + ' · ' + body.length + ' ký tự · ' + body.slice(0, 100) });
