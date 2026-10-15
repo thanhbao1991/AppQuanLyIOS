@@ -83,6 +83,10 @@ struct ChiTieuListView: View {
                     // liệu, mở form duyệt trước khi lưu thật. Xem ReceiptImportView.swift.
                     ReceiptImportButton(date: currentDate) { Task { await load() } }
 
+                    // "Nhập từ Shopee" — đọc đơn giao thành công ngay trong trang Shopee (tự đăng
+                    // nhập 1 lần), chọn đơn của quán rồi duyệt như ảnh hoá đơn. Xem ShopeeImportView.swift.
+                    ShopeeImportButton { Task { await load() } }
+
                     VStack(alignment: .trailing, spacing: 2) {
                         HStack(spacing: 8) {
                             Text("Ngày: \(HoaDonFormatting.money(tongNgay))")

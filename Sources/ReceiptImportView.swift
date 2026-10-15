@@ -125,7 +125,7 @@ extension ReceiptParseResultDto: Identifiable {
     var id: Int { lines.count }
 }
 
-private struct ReceiptDraftLine: Identifiable {
+struct ReceiptDraftLine: Identifiable {
     let id = UUID()
     let rawText: String
     var nguyenLieuId: String?
@@ -135,6 +135,12 @@ private struct ReceiptDraftLine: Identifiable {
     var donGia: Double
     var searchText: String = ""
     var included: Bool = true
+    /// Chỉ luồng "Nhập từ Shopee" dùng: mỗi đơn có ngày giao + ghi chú "Shopee #<mã đơn>" riêng (để
+    /// đánh dấu đã nhập), và tiêu đề nhóm hiện phía trên dòng đầu của mỗi đơn. Ảnh hoá đơn để nil —
+    /// dùng ngày chung chọn ở đầu form.
+    var ngay: Date? = nil
+    var ghiChu: String? = nil
+    var nhom: String? = nil
 
     var thanhTien: Double { soLuong * donGia }
 }
@@ -142,8 +148,11 @@ private struct ReceiptDraftLine: Identifiable {
 /// Form duyệt/sửa các dòng Gemini đọc được trước khi lưu thật — mỗi dòng bắt buộc chọn NguyenLieu
 /// (kể cả khi Gemini đã gợi ý sẵn, người dùng vẫn đổi được), có thể bỏ dòng không muốn lưu. Lưu qua
 /// POST /api/ChiTieuHangNgay/bulk kèm rawText từng dòng để Backend tự học mapping cho lần đọc ảnh sau.
-private struct ReceiptReviewSheet: View {
+/// Dùng chung cho "Nhập từ Shopee" (ShopeeImportView) — khi đó mỗi dòng mang ngày/ghi chú riêng của
+/// đơn, lưu tách 1 lần bulk mỗi ngày.
+struct ReceiptReviewSheet: View {
     let result: ReceiptParseResultDto
+    var title = "Duyệt hoá đơn"
     let onSaved: () -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -176,6 +185,19 @@ private struct ReceiptReviewSheet: View {
         })
     }
 
+    /// Luồng Shopee: dòng dựng sẵn (đã có ngày/ghi chú/nhóm theo từng đơn), Bill tháng mặc định tắt.
+    init(title: String, lines: [ReceiptDraftLine], onSaved: @escaping () -> Void) {
+        _selectedDate = State(initialValue: Date())
+        self.result = ReceiptParseResultDto(lines: [], tongTrenPhieu: nil)
+        self.title = title
+        self.onSaved = onSaved
+        _lines = State(initialValue: lines)
+        _billThang = State(initialValue: false)
+    }
+
+    /// Mọi dòng tự mang ngày riêng (luồng Shopee) — ẩn ô chọn ngày chung.
+    private var perLineDate: Bool { !lines.isEmpty && lines.allSatisfy { $0.ngay != nil } }
+
     private var includedLines: [ReceiptDraftLine] { lines.filter(\.included) }
     private var totalText: String {
         HoaDonFormatting.money(includedLines.reduce(0) { $0 + $1.thanhTien })
@@ -193,11 +215,15 @@ private struct ReceiptReviewSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    DatePicker("Ngày", selection: $selectedDate, displayedComponents: .date)
-                        .environment(\.locale, Locale(identifier: "vi_VN"))
+                    if !perLineDate {
+                        DatePicker("Ngày", selection: $selectedDate, displayedComponents: .date)
+                            .environment(\.locale, Locale(identifier: "vi_VN"))
+                    }
                     Toggle("Bill tháng", isOn: $billThang)
                 } footer: {
-                    Text("Áp dụng chung cho tất cả dòng bên dưới.")
+                    Text(perLineDate
+                         ? "Mỗi đơn lưu theo ngày giao hàng của đơn đó. Bill tháng áp dụng chung."
+                         : "Áp dụng chung cho tất cả dòng bên dưới.")
                 }
 
                 if let tong = lechTong {
@@ -208,9 +234,13 @@ private struct ReceiptReviewSheet: View {
                     }
                 }
 
-                ForEach($lines) { $line in
+                ForEach(Array(lines.enumerated()), id: \.element.id) { index, line in
                     Section {
-                        lineRow($line)
+                        lineRow(binding(for: line))
+                    } header: {
+                        if let nhom = line.nhom, index == 0 || lines[index - 1].nhom != nhom {
+                            Text(nhom)
+                        }
                     }
                 }
 
@@ -218,7 +248,7 @@ private struct ReceiptReviewSheet: View {
                     Text(errorMessage).foregroundColor(.dangerColor)
                 }
             }
-            .navigationTitle("Duyệt hoá đơn")
+            .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Color.brandPrimary, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
@@ -261,6 +291,17 @@ private struct ReceiptReviewSheet: View {
                 Text(warningAlertText ?? "")
             }
         }
+    }
+
+    /// Binding theo id thay vì theo vị trí — lưu xong từng nhóm (Shopee) thì dòng bị gỡ khỏi `lines`,
+    /// binding theo index cũ sẽ trỏ lệch/văng.
+    private func binding(for line: ReceiptDraftLine) -> Binding<ReceiptDraftLine> {
+        Binding(
+            get: { lines.first { $0.id == line.id } ?? line },
+            set: { newValue in
+                if let i = lines.firstIndex(where: { $0.id == line.id }) { lines[i] = newValue }
+            }
+        )
     }
 
     @ViewBuilder
@@ -344,33 +385,47 @@ private struct ReceiptReviewSheet: View {
     private func save() async {
         saving = true
         errorMessage = nil
-        let dateIso = DateNavFormat.queryDate.string(from: selectedDate) + "T00:00:00"
-        let items = includedLines.compactMap { line -> ChiTieuHangNgayBulkItemRequest? in
-            guard let nguyenLieuId = line.nguyenLieuId else { return nil }
-            return ChiTieuHangNgayBulkItemRequest(
-                nguyenLieuId: nguyenLieuId,
-                ten: line.nguyenLieuTen,
-                soLuong: line.soLuong,
-                donGia: line.donGia,
-                thanhTien: line.thanhTien,
-                ghiChu: nil,
-                billThang: billThang,
-                rawText: line.rawText
-            )
-        }
-        // NgayGio do server quyết định (VietnamTime.Now) — không gửi, để Backend tự set.
-        let body = ChiTieuHangNgayBulkCreateRequest(ngay: dateIso, ngayGio: nil, billThang: billThang, items: items)
-        let result = await APIClient.shared.bulkCreateChiTieu(body)
-        saving = false
-        if result.success {
-            if !result.warnings.isEmpty {
-                warningAlertText = result.warnings.joined(separator: "\n\n")
-            } else {
-                onSaved()
-                dismiss()
+        // Ảnh hoá đơn: 1 nhóm theo ngày chung. Shopee: tách theo ngày giao của từng đơn (bulk chỉ nhận
+        // 1 ngày/lần). Nhóm nào lưu xong thì gỡ khỏi form ngay — nhóm sau lỗi thì bấm Lưu lại không
+        // bị nhập trùng nhóm trước.
+        let groups = Dictionary(grouping: includedLines) { DateNavFormat.queryDate.string(from: $0.ngay ?? selectedDate) }
+        var warnings: [String] = []
+        var savedAny = false
+        for key in groups.keys.sorted() {
+            let groupLines = groups[key] ?? []
+            let items = groupLines.compactMap { line -> ChiTieuHangNgayBulkItemRequest? in
+                guard let nguyenLieuId = line.nguyenLieuId else { return nil }
+                return ChiTieuHangNgayBulkItemRequest(
+                    nguyenLieuId: nguyenLieuId,
+                    ten: line.nguyenLieuTen,
+                    soLuong: line.soLuong,
+                    donGia: line.donGia,
+                    thanhTien: line.thanhTien,
+                    ghiChu: line.ghiChu,
+                    billThang: billThang,
+                    rawText: line.rawText
+                )
             }
+            // NgayGio do server quyết định (VietnamTime.Now) — không gửi, để Backend tự set.
+            let body = ChiTieuHangNgayBulkCreateRequest(ngay: key + "T00:00:00", ngayGio: nil, billThang: billThang, items: items)
+            let result = await APIClient.shared.bulkCreateChiTieu(body)
+            guard result.success else {
+                saving = false
+                errorMessage = result.message ?? "Không lưu được."
+                if savedAny { onSaved() }
+                return
+            }
+            savedAny = true
+            warnings += result.warnings
+            let savedIds = Set(groupLines.map(\.id))
+            lines.removeAll { savedIds.contains($0.id) }
+        }
+        saving = false
+        if !warnings.isEmpty {
+            warningAlertText = warnings.joined(separator: "\n\n")
         } else {
-            errorMessage = result.message ?? "Không lưu được."
+            onSaved()
+            dismiss()
         }
     }
 }

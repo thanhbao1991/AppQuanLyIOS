@@ -252,6 +252,22 @@ struct ReceiptParseResultDto: Decodable {
     let tongTrenPhieu: Double?
 }
 
+// ---- Nhập chi tiêu từ đơn Shopee (ShopeeImportView) ----
+
+struct ReceiptMatchLineRequest: Encodable {
+    let ten: String
+    let soLuong: Double
+    let donGia: Double
+}
+
+struct ReceiptMatchRequest: Encodable {
+    let lines: [ReceiptMatchLineRequest]
+}
+
+struct GhiChuTonTaiRequest: Encodable {
+    let ghiChus: [String]
+}
+
 // ---- "Bắt đơn từ ảnh" — đọc chat khách đặt món qua AI (xem OrderFromImageService, Backend) ----
 
 struct OrderFromImageLineDto: Decodable {

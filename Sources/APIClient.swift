@@ -273,6 +273,25 @@ actor APIClient {
         return (env.data, env.isSuccess ? nil : (env.message ?? "Đọc ảnh thất bại."))
     }
 
+    /// Khớp nguyên liệu cho dòng hàng đã có chữ sẵn (đơn Shopee) — cùng thuật toán parseReceipt, không qua AI.
+    func matchReceiptLines(_ lines: [ReceiptMatchLineRequest]) async -> (result: ReceiptParseResultDto?, message: String?) {
+        let req = makeRequest("/api/ChiTieuHangNgay/match-lines", method: "POST", body: jsonBody(ReceiptMatchRequest(lines: lines)))
+        let (data, _) = await send(req)
+        guard let data else { return (nil, "Không có phản hồi từ server.") }
+        guard let env = try? JSONDecoder().decode(ApiEnvelope<ReceiptParseResultDto>.self, from: data) else {
+            return (nil, "Không đọc được phản hồi từ server.")
+        }
+        return (env.data, env.isSuccess ? nil : (env.message ?? "Không khớp được nguyên liệu."))
+    }
+
+    /// GhiChu nào đã có trong chi tiêu — dùng đánh dấu đơn Shopee đã nhập ("Shopee #<mã đơn>").
+    func ghiChuTonTai(_ ghiChus: [String]) async -> Set<String> {
+        let req = makeRequest("/api/ChiTieuHangNgay/ghi-chu-ton-tai", method: "POST", body: jsonBody(GhiChuTonTaiRequest(ghiChus: ghiChus)))
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[String]>.self, from: data) else { return [] }
+        return Set(env.data ?? [])
+    }
+
     /// "Bắt đơn từ ảnh" — multipart/form-data nhiều field "images" (1-nhiều ảnh cùng 1 cuộc hội thoại,
     /// vd chụp cuộn màn hình). Cùng cách dựng body với parseReceipt(), chỉ khác nhiều field ảnh.
     func parseOrderImages(images: [Data]) async -> (result: OrderFromImageResultDto?, message: String?) {
