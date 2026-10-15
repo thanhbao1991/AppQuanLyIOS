@@ -1,10 +1,10 @@
 import SwiftUI
 import WebKit
 
-/// Menu → "Voucher Shopee ≥25%". Mở Ví voucher của tài khoản Shopee trong WebView (dùng chung cookie đăng
+/// Menu → "Voucher Shopee ≥20%". Mở Ví voucher của tài khoản Shopee trong WebView (dùng chung cookie đăng
 /// nhập với "Nhập từ Shopee"), đợi trang tự tải xong rồi đọc chữ trên các thẻ voucher ĐANG HIỆN SẴN —
 /// không gọi API, không cuộn để tải thêm, không bấm gì. Ví có hơn 2000 voucher nhưng Shopee xếp voucher
-/// ngon lên đầu nên lần tải đầu (~50 thẻ) là đủ. Có mã từ 25% trở lên thì bật popup; bấm vào mã thì cuộn
+/// ngon lên đầu nên lần tải đầu (~50 thẻ) là đủ. Có mã từ 20% trở lên thì bật popup; bấm vào mã thì cuộn
 /// tới thẻ đó.
 /// Đọc theo chữ ("25%", "HSD", "Lưu"…) chứ không theo class CSS — Shopee đổi giao diện vẫn chạy được,
 /// chỉ hỏng nếu thẻ voucher thành ảnh.
@@ -14,7 +14,7 @@ struct ShopeeVoucherView: View {
     @State private var found: [ShopeeVoucher] = []
     @State private var showPopup = false
 
-    private static let nguong = 25
+    private static let nguong = 20
 
     var body: some View {
         ShopeeVoucherWebView(webView: web.webView)
@@ -147,8 +147,10 @@ private final class ShopeeVoucherWebModel: NSObject, ObservableObject, WKNavigat
     override init() {
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .default()
-        // UA giống Safari iPhone — tránh Shopee coi là WebView lạ, ép mở app Shopee.
-        config.applicationNameForUserAgent = "Version/17.0 Mobile/15E148 Safari/604.1"
+        // Ví voucher chỉ có trên web desktop — web mobile chuyển sang /me bắt "Tải ứng dụng Shopee".
+        // Xin bản desktop như nút "Yêu cầu trang web cho máy tính" của Safari (UA Mac Safari thật).
+        config.defaultWebpagePreferences.preferredContentMode = .desktop
+        config.applicationNameForUserAgent = "Version/17.0 Safari/605.1.15"
         webView = WKWebView(frame: .zero, configuration: config)
         super.init()
         webView.navigationDelegate = self
