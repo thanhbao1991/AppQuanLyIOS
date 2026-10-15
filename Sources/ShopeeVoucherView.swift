@@ -1,10 +1,11 @@
 import SwiftUI
 import WebKit
 
-/// Menu → "Voucher Shopee ≥25%". Mở trang Mã giảm giá của Shopee trong WebView (dùng chung cookie đăng
+/// Menu → "Voucher Shopee ≥25%". Mở Ví voucher của tài khoản Shopee trong WebView (dùng chung cookie đăng
 /// nhập với "Nhập từ Shopee"), đợi trang tự tải xong rồi đọc chữ trên các thẻ voucher ĐANG HIỆN SẴN —
-/// không gọi API, không cuộn để tải thêm, không bấm Lưu. Shopee xếp voucher ngon lên đầu nên vài chục thẻ
-/// đầu là đủ. Có mã từ 25% trở lên thì bật popup; bấm vào mã thì cuộn tới thẻ đó để tự bấm Lưu.
+/// không gọi API, không cuộn để tải thêm, không bấm gì. Ví có hơn 2000 voucher nhưng Shopee xếp voucher
+/// ngon lên đầu nên lần tải đầu (~50 thẻ) là đủ. Có mã từ 25% trở lên thì bật popup; bấm vào mã thì cuộn
+/// tới thẻ đó.
 /// Đọc theo chữ ("25%", "HSD", "Lưu"…) chứ không theo class CSS — Shopee đổi giao diện vẫn chạy được,
 /// chỉ hỏng nếu thẻ voucher thành ảnh.
 struct ShopeeVoucherView: View {
@@ -116,7 +117,7 @@ private final class ShopeeVoucherWebModel: NSObject, ObservableObject, WKNavigat
         super.init()
         webView.navigationDelegate = self
         webView.allowsBackForwardNavigationGestures = true
-        webView.load(URLRequest(url: URL(string: "https://shopee.vn/m/ma-giam-gia")!))
+        webView.load(URLRequest(url: URL(string: "https://shopee.vn/user/voucher-wallet?type=0")!))
     }
 
     nonisolated func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
