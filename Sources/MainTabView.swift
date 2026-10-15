@@ -192,9 +192,9 @@ private struct MoreMenuView: View {
             List {
                 Section("Cấu hình") {
                     NavigationLink {
-                        NguyenLieuListView()
+                        GiaNguyenLieuView()
                     } label: {
-                        Label("Nguyên liệu", systemImage: "leaf")
+                        Label("Nguyên liệu & giá", systemImage: "leaf")
                     }
                     NavigationLink {
                         TonKhoListView()
@@ -273,11 +273,6 @@ private struct MoreMenuView: View {
                         TinhLuongView(shipperTen: "Nhã")
                     } label: {
                         Label("Tính lương Nhã", systemImage: "fuelpump")
-                    }
-                    NavigationLink {
-                        GiaNguyenLieuView()
-                    } label: {
-                        Label("Giá cả", systemImage: "dollarsign.circle")
                     }
                     NavigationLink {
                         GioThapDiemView()

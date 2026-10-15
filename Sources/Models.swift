@@ -346,7 +346,7 @@ struct NguyenLieuDto: Decodable, Identifiable {
     let giaNhap: Double
     var ngungSuDung: Bool
     let thuTu: Int
-    /// Liên kết tồn kho bán hàng — màn "Cập nhật nguyên liệu" (NguyenLieuListView) KHÔNG cho sửa 2
+    /// Liên kết tồn kho bán hàng — màn sửa nguyên liệu (NguyenLieuEditSheet) KHÔNG cho sửa 2
     /// field này, chỉ đọc rồi gửi lại y nguyên khi Update, tránh vô tình xoá mất liên kết tồn kho
     /// (UpdateAsync bên Backend ghi đè toàn bộ field, thiếu 2 field này sẽ set về null/0).
     let nguyenLieuBanHangId: String?
@@ -361,7 +361,7 @@ struct NguyenLieuCreateRequest: Encodable {
     let ten: String
 }
 
-/// Dùng cho Create/Update đầy đủ field (NguyenLieuListView) — khác NguyenLieuCreateRequest (chỉ có
+/// Dùng cho Create/Update đầy đủ field (NguyenLieuEditSheet) — khác NguyenLieuCreateRequest (chỉ có
 /// Ten, dùng cho flow thêm nhanh trong AddExpenseSheet).
 struct NguyenLieuUpdateRequest: Encodable {
     let ten: String

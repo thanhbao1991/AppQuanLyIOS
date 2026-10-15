@@ -3,7 +3,7 @@ import SwiftUI
 /// Quản trị danh mục sản phẩm (Menu > Sản phẩm) — thêm/sửa/xoá + đẩy/đồng bộ store, thay cho phải
 /// mở Desktop (SanPhamWindow) mỗi khi cần chỉnh sửa. GET/POST/PUT/DELETE /api/SanPham +
 /// /api/AppOrder/{sync-store-status,push-san-pham,rename-san-pham,store-visibility,push-topping,push-size-xl},
-/// bố cục list + sheet sửa giống NguyenLieuListView/VoucherListView.
+/// bố cục list + sheet sửa giống VoucherListView.
 struct SanPhamListView: View {
     @State private var items: [SanPhamAdminDto] = []
     @State private var nhoms: [NhomSanPhamDto] = []

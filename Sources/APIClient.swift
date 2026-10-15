@@ -458,7 +458,7 @@ actor APIClient {
         return (env.isSuccess, env.message, env.data)
     }
 
-    /// Cập nhật nguyên liệu (NguyenLieuListView) — chỉnh Ten/DonViTinh/GiaNhap/NgungSuDung/Nhóm chi
+    /// Cập nhật nguyên liệu (NguyenLieuEditSheet) — chỉnh Ten/DonViTinh/GiaNhap/NgungSuDung/Nhóm chi
     /// tiêu đầy đủ (khác createNguyenLieu(ten:) chỉ thêm nhanh 1 field).
     func createNguyenLieuFull(_ body: NguyenLieuUpdateRequest) async -> ActionResult {
         let req = makeRequest("/api/NguyenLieu", method: "POST", body: jsonBody(body))

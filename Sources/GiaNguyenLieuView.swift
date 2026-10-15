@@ -10,6 +10,9 @@ import SwiftUI
 /// tính năng giống hệt nhau, chỉ khác bộ lọc theo NguyenLieuDto.phanLoai. Mặc định hiện "Tất cả";
 /// đổi nhóm qua menu lọc trên toolbar. `phanLoai == nil` (chưa phân loại) luôn được tính vào nhóm
 /// "Nguyên liệu" để không mất các dòng cũ trước khi có cột PhanLoai/chưa kịp phân loại.
+///
+/// Đã gộp luôn màn danh mục "Nguyên liệu" (Menu > Cấu hình) vào đây: nút + để thêm, màn chi tiết có
+/// nút "Sửa" (sửa/xoá qua NguyenLieuEditSheet) — 1 mục menu "Nguyên liệu & giá" thay cho 2 mục.
 struct GiaNguyenLieuView: View {
     /// nil = Tất cả. Truyền sẵn 1 nhóm khi cần mở thẳng vào nhóm đó.
     @State private var phanLoai: PhanLoaiNguyenLieu?
@@ -18,12 +21,13 @@ struct GiaNguyenLieuView: View {
         _phanLoai = State(initialValue: phanLoai)
     }
 
-    private var title: String { phanLoai?.giaScreenTitle ?? "Giá cả" }
+    private var title: String { phanLoai?.giaScreenTitle ?? "Nguyên liệu & giá" }
 
     @State private var allNguyenLieu: [NguyenLieuDto] = []
     @State private var searchText = ""
     @State private var selected: NguyenLieuDto?
     @State private var showDetail = false
+    @State private var showAdd = false
     /// Nguyên liệu cần mua sắp tới (đến hạn/trễ hạn) — hiện dưới ô tìm khi chưa gõ, gấp nhất trước.
     @State private var canMua: [MuaHangDeXuatDto] = []
     @State private var canMuaLoaded = false
@@ -142,6 +146,11 @@ struct GiaNguyenLieuView: View {
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
+                Button { showAdd = true } label: {
+                    Image(systemName: "plus").foregroundColor(.white)
+                }
+            }
+            ToolbarItem(placement: .navigationBarTrailing) {
                 Menu {
                     Button {
                         phanLoai = nil
@@ -171,7 +180,10 @@ struct GiaNguyenLieuView: View {
         }
         // Chạm tên → sang màn riêng xem giá (thay vì kéo xuống cuối danh sách).
         .navigationDestination(isPresented: $showDetail) {
-            if let selected { GiaNguyenLieuDetailView(nguyenLieu: selected) }
+            if let selected { GiaNguyenLieuDetailView(nguyenLieu: selected) { await load() } }
+        }
+        .sheet(isPresented: $showAdd) {
+            NguyenLieuEditSheet(existing: nil) { Task { await load() } }
         }
         .task { await load() }
         .confirmDelete(
@@ -281,9 +293,19 @@ struct GiaNguyenLieuView: View {
     }
 }
 
-/// Màn xem giá 1 nguyên liệu: biểu đồ + 3 lần mua gần nhất.
+/// Màn xem giá 1 nguyên liệu: thông tin (sửa/xoá qua nút "Sửa") + biểu đồ + 3 lần mua gần nhất.
 private struct GiaNguyenLieuDetailView: View {
-    let nguyenLieu: NguyenLieuDto
+    @State private var nguyenLieu: NguyenLieuDto
+    /// Báo màn danh sách tải lại sau khi sửa/xoá.
+    let onChanged: () async -> Void
+
+    init(nguyenLieu: NguyenLieuDto, onChanged: @escaping () async -> Void) {
+        _nguyenLieu = State(initialValue: nguyenLieu)
+        self.onChanged = onChanged
+    }
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var showEdit = false
     @State private var items: [ChiTieuHangNgayDto] = []
     @State private var loading = true
     /// Tải riêng, không chặn danh sách giá — AI trả chậm hơn, xong lúc nào hiện lúc đó.
@@ -292,6 +314,7 @@ private struct GiaNguyenLieuDetailView: View {
 
     var body: some View {
         List {
+            Section("Thông tin") { thongTin }
             if deXuatLoading || deXuat != nil {
                 Section("Đề xuất mua tiếp") { deXuatCard }
             }
@@ -335,6 +358,14 @@ private struct GiaNguyenLieuDetailView: View {
         .toolbarBackground(Color.brandPrimary, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("Sửa") { showEdit = true }.foregroundColor(.white)
+            }
+        }
+        .sheet(isPresented: $showEdit) {
+            NguyenLieuEditSheet(existing: nguyenLieu) { Task { await refresh() } }
+        }
         .task {
             async let giaTask = APIClient.shared.getGiaNguyenLieuGanDay(nguyenLieuId: nguyenLieu.id)
             async let deXuatTask = APIClient.shared.getDeXuatMua(nguyenLieuId: nguyenLieu.id)
@@ -342,6 +373,46 @@ private struct GiaNguyenLieuDetailView: View {
             loading = false
             deXuat = await deXuatTask
             deXuatLoading = false
+        }
+    }
+
+    /// Lấy lại bản mới sau khi sửa; không còn trong danh sách (đã xoá) thì quay về màn trước.
+    private func refresh() async {
+        if let fresh = await APIClient.shared.getNguyenLieuOrNil() {
+            if let nl = fresh.first(where: { $0.id == nguyenLieu.id }) {
+                nguyenLieu = nl
+            } else {
+                dismiss()
+            }
+        }
+        await onChanged()
+    }
+
+    @ViewBuilder
+    private var thongTin: some View {
+        HStack {
+            Text("Giá nhập")
+            Spacer()
+            Text(HoaDonFormatting.money(nguyenLieu.giaNhap) + (nguyenLieu.donViTinh.map { $0.isEmpty ? "" : " / \($0)" } ?? ""))
+                .fontWeight(.semibold)
+                .foregroundColor(.brandPrimary)
+        }
+        HStack {
+            Text("Phân loại")
+            Spacer()
+            if let pl = nguyenLieu.phanLoai, let label = PhanLoaiNguyenLieu.label(for: pl) {
+                Text(label)
+                    .font(.caption).fontWeight(.semibold)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 8).padding(.vertical, 2)
+                    .background(PhanLoaiNguyenLieu.color(for: pl))
+                    .clipShape(Capsule())
+            } else {
+                Text("Chưa phân loại").foregroundColor(.textMuted)
+            }
+        }
+        if nguyenLieu.ngungSuDung {
+            Text("Đã ngừng dùng").foregroundColor(.textMuted)
         }
     }
 

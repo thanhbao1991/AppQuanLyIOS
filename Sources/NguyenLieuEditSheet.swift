@@ -46,132 +46,13 @@ enum PhanLoaiNguyenLieu: Int, CaseIterable, Identifiable {
     }
 }
 
-/// Quản trị danh mục nguyên liệu (Menu > Công cụ) — thêm/sửa/xoá, thay cho phải mở
-/// Desktop mỗi khi cần chỉnh sửa nhỏ. GET/POST/PUT/DELETE /api/NguyenLieu, giống hệt VoucherListView
-/// về mặt bố cục (list + sheet sửa).
-struct NguyenLieuListView: View {
-    @State private var items: [NguyenLieuDto] = []
-    @State private var hasLoaded = false
-    @State private var searchText = ""
-    @State private var showAdd = false
-    @State private var editing: NguyenLieuDto?
-    @State private var deleting: NguyenLieuDto?
-    @State private var loadFailed = false
-    private var filteredItems: [NguyenLieuDto] {
-        let sorted = items.sorted { $0.ten.localizedStandardCompare($1.ten) == .orderedAscending }
-        guard !searchText.isEmpty else { return sorted }
-        return sorted.filter { $0.ten.matchesSearch(searchText) }
-    }
-
-    var body: some View {
-        VStack(spacing: 0) {
-            SearchBar(text: $searchText, placeholder: "Tìm nguyên liệu...")
-
-            if !hasLoaded {
-                fullScreenLoading()
-            } else {
-                if loadFailed {
-                    ThongKeLoadErrorBanner(text: "Chưa tải được danh sách nguyên liệu") { Task { await load() } }
-                        .padding(.horizontal, 12)
-                        .padding(.top, 8)
-                }
-                List {
-                    ForEach(filteredItems) { item in
-                        NguyenLieuRowView(item: item) {
-                            editing = item
-                        } onDelete: {
-                            deleting = item
-                        }
-                    }
-                }
-                .listStyle(.plain)
-                .softScrollEdgeTop()
-                .refreshable { await load() }
-            }
-        }
-        .navigationTitle("Nguyên liệu")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Color.brandPrimary, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
-        .toolbarColorScheme(.dark, for: .navigationBar)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button { showAdd = true } label: { Image(systemName: "plus") }
-            }
-        }
-        .task { await load() }
-        .confirmDelete($deleting, name: { $0.ten }, perform: { await APIClient.shared.deleteNguyenLieu(id: $0.id) }, onDone: load)
-        .sheet(isPresented: $showAdd) {
-            NguyenLieuEditSheet(existing: nil) { Task { await load() } }
-        }
-        .sheet(item: $editing) { item in
-            NguyenLieuEditSheet(existing: item) { Task { await load() } }
-        }
-    }
-
-    private func load() async {
-        let fresh = await APIClient.shared.getNguyenLieuOrNil()
-        if let fresh { items = fresh }
-        loadFailed = fresh == nil
-        hasLoaded = true
-    }
-
-}
-
-private struct NguyenLieuRowView: View {
-    let item: NguyenLieuDto
-    let onEdit: () -> Void
-    let onDelete: () -> Void
-
-    var body: some View {
-        Button(action: onEdit) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(item.ten)
-                        .font(.subheadline).fontWeight(.semibold)
-                        .foregroundColor(.primary)
-                        .strikethrough(item.ngungSuDung)
-                    if item.ngungSuDung {
-                        Text("Ngưng dùng")
-                            .font(.caption2).fontWeight(.semibold)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 6).padding(.vertical, 2)
-                            .background(Color.textMuted)
-                            .clipShape(Capsule())
-                    }
-                    Spacer()
-                    Text(HoaDonFormatting.money(item.giaNhap))
-                        .font(.caption).fontWeight(.bold)
-                        .foregroundColor(.brandPrimary)
-                }
-                HStack {
-                    if let donViTinh = item.donViTinh, !donViTinh.isEmpty {
-                        Text(donViTinh).font(.caption2).foregroundColor(.textMuted)
-                    }
-                    if let phanLoai = item.phanLoai, let label = PhanLoaiNguyenLieu.label(for: phanLoai) {
-                        Text(label)
-                            .font(.caption2).fontWeight(.semibold)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 6).padding(.vertical, 2)
-                            .background(PhanLoaiNguyenLieu.color(for: phanLoai))
-                            .clipShape(Capsule())
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .buttonStyle(.plain)
-        .swipeActions(edge: .trailing) {
-            Button(action: onDelete) {
-                Label("Xoá", systemImage: "trash")
-            }
-            .tint(.dangerColor)
-        }
-    }
-}
-
-private struct NguyenLieuEditSheet: View {
+/// Sheet thêm/sửa/xoá nguyên liệu — mở từ màn "Nguyên liệu & giá" (GiaNguyenLieuView): nút + trên
+/// toolbar để thêm, nút "Sửa" ở màn chi tiết giá để sửa/xoá. Trước đây có màn danh mục riêng
+/// (NguyenLieuListView), đã gộp vào GiaNguyenLieuView cho khỏi 2 mục menu cùng 1 danh sách.
+/// GET/POST/PUT/DELETE /api/NguyenLieu.
+struct NguyenLieuEditSheet: View {
     let existing: NguyenLieuDto?
+    /// Gọi sau khi lưu HOẶC xoá thành công.
     let onSaved: () -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -182,6 +63,7 @@ private struct NguyenLieuEditSheet: View {
     @State private var phanLoai: Int?
     @State private var saving = false
     @State private var errorMessage: String?
+    @State private var deleting: NguyenLieuDto?
 
     init(existing: NguyenLieuDto?, onSaved: @escaping () -> Void) {
         self.existing = existing
@@ -221,6 +103,16 @@ private struct NguyenLieuEditSheet: View {
                     Toggle("Ngưng sử dụng", isOn: $ngungSuDung)
                 }
 
+                if let existing {
+                    Section {
+                        Button(role: .destructive) {
+                            deleting = existing
+                        } label: {
+                            Label("Xoá nguyên liệu", systemImage: "trash")
+                        }
+                    }
+                }
+
                 if let errorMessage {
                     Text(errorMessage).foregroundColor(.dangerColor)
                 }
@@ -253,6 +145,14 @@ private struct NguyenLieuEditSheet: View {
                 .background(Color(.systemBackground))
                 .overlay(Divider(), alignment: .top)
             }
+            .confirmDelete($deleting, name: { $0.ten }, perform: { nl in
+                let result = await APIClient.shared.deleteNguyenLieu(id: nl.id)
+                if result.success {
+                    onSaved()
+                    dismiss()
+                }
+                return result
+            }, onDone: {})
         }
     }
 

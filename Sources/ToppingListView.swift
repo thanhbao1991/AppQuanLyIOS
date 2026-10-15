@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Quản trị danh mục Topping (Menu > Topping) — thêm/sửa/xoá, thay cho phải mở Desktop
-/// (ToppingWindow). GET/POST/PUT/DELETE /api/Topping, bố cục giống NguyenLieuListView.
+/// (ToppingWindow). GET/POST/PUT/DELETE /api/Topping, bố cục list + sheet sửa.
 struct ToppingListView: View {
     @State private var items: [ToppingDto] = []
     @State private var hasLoaded = false
