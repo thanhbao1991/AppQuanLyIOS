@@ -10,6 +10,7 @@ import WebKit
 /// chỉ hỏng nếu thẻ voucher thành ảnh.
 struct ShopeeVoucherView: View {
     @StateObject private var web = ShopeeVoucherWebModel()
+    @State private var all: [ShopeeVoucher] = []
     @State private var found: [ShopeeVoucher] = []
     @State private var showPopup = false
 
@@ -49,25 +50,26 @@ struct ShopeeVoucherView: View {
 
     private var popup: some View {
         NavigationStack {
-            List(found) { v in
-                Button {
-                    showPopup = false
-                    web.reveal(v)
-                } label: {
-                    HStack(alignment: .top, spacing: 12) {
-                        Text("\(v.pct)%")
-                            .font(.title3.bold())
-                            .foregroundColor(.white)
-                            .frame(width: 64, height: 44)
-                            .background(Color.orange, in: RoundedRectangle(cornerRadius: 8))
-                        Text(v.text)
-                            .font(.footnote)
-                            .foregroundColor(.primary)
-                            .lineLimit(4)
+            List {
+                if !found.isEmpty {
+                    Section {
+                        ForEach(found) { voucherRow($0, hot: true) }
+                    }
+                } else {
+                    Section {
+                        Text(web.status ?? "Không có mã từ \(Self.nguong)% trở lên.")
+                            .font(.subheadline)
+                    }
+                    // Không có mã đạt ngưỡng thì vẫn cho xem mấy mã % cao nhất đã đọc được — biết là app
+                    // có đọc trang chứ không phải bấm không ăn.
+                    if !all.isEmpty {
+                        Section("Mã % cao nhất trong \(all.count) voucher đầu") {
+                            ForEach(all.sorted { $0.pct > $1.pct }.prefix(8)) { voucherRow($0, hot: false) }
+                        }
                     }
                 }
             }
-            .navigationTitle("Có \(found.count) mã ≥\(Self.nguong)%")
+            .navigationTitle(found.isEmpty ? "Không có mã ≥\(Self.nguong)%" : "Có \(found.count) mã ≥\(Self.nguong)%")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -78,17 +80,43 @@ struct ShopeeVoucherView: View {
         .presentationDetents([.medium, .large])
     }
 
+    private func voucherRow(_ v: ShopeeVoucher, hot: Bool) -> some View {
+        Button {
+            showPopup = false
+            web.reveal(v)
+        } label: {
+            HStack(alignment: .top, spacing: 12) {
+                Text("\(v.pct)%")
+                    .font(.title3.bold())
+                    .foregroundColor(.white)
+                    .frame(width: 64, height: 44)
+                    .background(hot ? Color.orange : Color.gray, in: RoundedRectangle(cornerRadius: 8))
+                Text(v.text)
+                    .font(.footnote)
+                    .foregroundColor(.primary)
+                    .lineLimit(4)
+            }
+        }
+    }
+
+    /// Lần quét nào cũng bật popup (kể cả không có mã / lỗi) — trước đây chỉ có mã ≥25% mới bật, còn lại
+    /// chỉ hiện dòng chữ nhỏ dưới đáy nên bấm "Quét" tưởng như không có gì xảy ra.
     private func scan() async {
-        guard let all = await web.scan() else { return }
+        let result = await web.scan()
+        // nil mà không có lý do = đang có lượt quét khác chạy, để lượt đó bật popup.
+        if result == nil && web.status == nil { return }
+        all = result ?? []
         found = all.filter { $0.pct >= Self.nguong }.sorted { $0.pct > $1.pct }
-        if all.isEmpty {
-            web.status = "Chưa thấy thẻ voucher nào — đợi trang tải xong (hoặc đăng nhập) rồi bấm \"Quét\"."
+        if result == nil {
+            // web.status đã ghi lý do lỗi.
+        } else if all.isEmpty {
+            web.status = "Chưa thấy thẻ voucher nào trên trang (\(web.pageInfo)). Đợi trang tải xong / đăng nhập Shopee ngay trên trang rồi bấm \"Quét\" lại."
         } else if found.isEmpty {
             web.status = "Đã xem \(all.count) voucher đầu, không có mã từ \(Self.nguong)% trở lên."
         } else {
             web.status = "Có \(found.count) mã ≥\(Self.nguong)% trong \(all.count) voucher đầu."
-            showPopup = true
         }
+        showPopup = true
     }
 }
 
@@ -104,6 +132,14 @@ private final class ShopeeVoucherWebModel: NSObject, ObservableObject, WKNavigat
     @Published var scanning = false
     @Published var status: String?
     var onPageReady: (() -> Void)?
+    /// Đường dẫn + đoạn đầu chữ của trang lúc quét — hiện khi không thấy voucher nào để biết trang đang
+    /// ở đâu (chưa đăng nhập, Shopee đẩy sang trang khác…).
+    private(set) var pageInfo = ""
+
+    private struct ScanResult: Decodable {
+        let items: [ShopeeVoucher]
+        let info: String
+    }
 
     /// Chỉ đọc tối đa ngần này thẻ đầu trang.
     private static let soTheToiDa = 60
@@ -136,6 +172,7 @@ private final class ShopeeVoucherWebModel: NSObject, ObservableObject, WKNavigat
     func scan() async -> [ShopeeVoucher]? {
         guard !scanning else { return nil }
         scanning = true
+        status = nil
         defer { scanning = false }
         let script = """
         const usedRe = /\\d{1,3}\\s*%\\s*(đã dùng|đã sử dụng|đã lưu|used|claimed)|(đã dùng|đã sử dụng|đã lưu|used|claimed)\\s*:?\\s*\\d{1,3}\\s*%/gi;
@@ -157,12 +194,18 @@ private final class ShopeeVoucherWebModel: NSObject, ObservableObject, WKNavigat
           out.push({ id: out.length, pct: Math.max(...nums), text: t });
           if (out.length >= max) break;
         }
-        return JSON.stringify(out);
+        const body = (document.body && document.body.innerText || '').replace(/\\s+/g, ' ').trim();
+        return JSON.stringify({ items: out, info: location.pathname + ' · ' + body.length + ' ký tự · ' + body.slice(0, 100) });
         """
         do {
             let value = try await webView.callAsyncJavaScript(script, arguments: ["max": Self.soTheToiDa], contentWorld: .page)
-            guard let text = value as? String, let data = text.data(using: .utf8) else { return [] }
-            return try JSONDecoder().decode([ShopeeVoucher].self, from: data)
+            guard let text = value as? String, let data = text.data(using: .utf8) else {
+                pageInfo = "trang không trả kết quả"
+                return []
+            }
+            let result = try JSONDecoder().decode(ScanResult.self, from: data)
+            pageInfo = result.info
+            return result.items
         } catch {
             status = "Không đọc được trang Shopee: \(error.localizedDescription)"
             return nil
