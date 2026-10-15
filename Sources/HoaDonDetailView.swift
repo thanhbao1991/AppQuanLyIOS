@@ -290,6 +290,9 @@ struct HoaDonDetailView: View {
                 .foregroundColor(.white)
                 .frame(width: 22, height: 22)
                 .background(Circle().fill(Color.brandPrimary))
+            Text("x \(HoaDonFormatting.money(ct.donGia))")
+                .font(.caption2).foregroundColor(.textMuted)
+                .lineLimit(1).fixedSize()
             VStack(alignment: .leading, spacing: 2) {
                 Text("\(ct.tenSanPham)\(bienTheSuffix(ct.tenBienThe))").font(.subheadline.bold())
                 if !toppings.isEmpty {
