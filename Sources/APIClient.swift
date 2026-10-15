@@ -169,6 +169,14 @@ actor APIClient {
         return env.data
     }
 
+    /// Đặt lại số dư Zalo OTP theo số trên trang Zalo (Zalo không có API hỏi số dư).
+    func setZaloBalance(_ soDu: Int64) async -> ZaloBalanceDto? {
+        let req = makeRequest("/api/dashboard/zalo-balance", method: "PUT", body: jsonBody(["soDu": soDu]))
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<ZaloBalanceDto>.self, from: data), env.isSuccess else { return nil }
+        return env.data
+    }
+
     /// nil = tải LỖI, khác với [] = ngày đó không có thanh toán nào (xem getHoaDonListByDay).
     func getThanhToanByDay(_ dateIso: String) async -> [ChiTietHoaDonThanhToanDto]? {
         let req = makeRequest("/api/ChiTietHoaDonThanhToan?ngay=\(dateIso)")

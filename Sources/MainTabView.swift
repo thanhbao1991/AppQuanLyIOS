@@ -185,6 +185,9 @@ private struct MoreMenuView: View {
     @State private var showAccessDeniedAlert = false
     @State private var aiBalance: AiBalanceDto?
     @State private var zaloBalance: ZaloBalanceDto?
+    @State private var showZaloEdit = false
+    @State private var zaloEditText = ""
+    @State private var zaloEditFailed = false
     @State private var showLogoutConfirm = false
 
     var body: some View {
@@ -294,13 +297,42 @@ private struct MoreMenuView: View {
                         }
                     }
 
-                    if let zalo = zaloBalance {
+                    Button {
+                        zaloEditText = zaloBalance.map { String($0.soDu) } ?? ""
+                        showZaloEdit = true
+                    } label: {
                         HStack {
                             Label("Số dư Zalo OTP", systemImage: "message")
+                                .foregroundStyle(.primary)
                             Spacer()
-                            Text("\(zalo.soDu.formatted(.number.locale(Locale(identifier: "vi_VN")))) đ")
-                                .foregroundStyle(zalo.soDu < 10_000 ? .red : .secondary)
+                            if let zalo = zaloBalance {
+                                Text("\(zalo.soDu.formatted(.number.locale(Locale(identifier: "vi_VN")))) đ")
+                                    .foregroundStyle(zalo.soDu < 10_000 ? .red : .secondary)
+                            } else {
+                                Text("Nhập số dư").foregroundStyle(.secondary)
+                            }
                         }
+                    }
+                    .alert("Số dư Zalo OTP", isPresented: $showZaloEdit) {
+                        TextField("Số dư (đ)", text: $zaloEditText)
+                            .keyboardType(.numberPad)
+                        Button("Lưu") {
+                            let digits = zaloEditText.filter(\.isNumber)
+                            guard let value = Int64(digits) else { return }
+                            Task {
+                                if let updated = await APIClient.shared.setZaloBalance(value) {
+                                    zaloBalance = updated
+                                } else {
+                                    zaloEditFailed = true
+                                }
+                            }
+                        }
+                        Button("Huỷ", role: .cancel) {}
+                    } message: {
+                        Text("Nhập số dư đang hiện trên trang Zalo (sau khi nạp tiền). App tự trừ 440 đ mỗi OTP gửi đi.")
+                    }
+                    .alert("Không lưu được số dư", isPresented: $zaloEditFailed) {
+                        Button("Đóng", role: .cancel) {}
                     }
                 }
 
