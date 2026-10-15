@@ -258,6 +258,9 @@ struct ReceiptParseResultDto: Decodable {
 
 struct ReceiptMatchLineRequest: Encodable {
     let ten: String
+    /// Phân loại Shopee đã chọn (vd "Vải") — Backend ưu tiên khớp theo đây vì tên sản phẩm Shopee hay
+    /// liệt kê đủ các vị bán.
+    let phanLoai: String?
     let soLuong: Double
     let donGia: Double
 }

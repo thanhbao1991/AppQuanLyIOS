@@ -141,6 +141,8 @@ struct ReceiptDraftLine: Identifiable {
     var ngay: Date? = nil
     var shopeeOrderId: String? = nil
     var nhom: String? = nil
+    /// Phân loại Shopee đã chọn — hiện nổi bật vì tên sản phẩm Shopee liệt kê đủ các vị bán.
+    var phanLoai: String? = nil
 
     var thanhTien: Double { soLuong * donGia }
 }
@@ -309,6 +311,9 @@ struct ReceiptReviewSheet: View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(line.wrappedValue.rawText).font(.subheadline)
+                if let phanLoai = line.wrappedValue.phanLoai, !phanLoai.isEmpty {
+                    Text("Phân loại: \(phanLoai)").font(.subheadline.bold()).foregroundColor(.brandPrimary)
+                }
                 if line.wrappedValue.nguyenLieuId == nil {
                     Text("Chưa khớp — chọn nguyên liệu").font(.caption).foregroundColor(.warningColor)
                 } else if line.wrappedValue.fromLearnedAlias {

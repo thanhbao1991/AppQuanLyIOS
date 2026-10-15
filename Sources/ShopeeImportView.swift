@@ -212,9 +212,14 @@ private struct ShopeeImportSheet: View {
                         Text(HoaDonFormatting.money(order.total)).font(.subheadline.bold())
                     }
                     ForEach(Array(order.paidItems.enumerated()), id: \.offset) { _, item in
-                        Text("\(item.name)\(item.model.isEmpty ? "" : " — \(item.model)") ×\(item.amount.formatted())")
-                            .font(.footnote)
-                            .lineLimit(2)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(item.name).font(.footnote).lineLimit(1)
+                            // Phân loại tách dòng riêng — tên sản phẩm Shopee dài, ghép chung thì phân
+                            // loại (món thật sự mua) bị cắt mất.
+                            Text("\(item.model.isEmpty ? "" : "\(item.model) ")×\(item.amount.formatted())")
+                                .font(.footnote.bold())
+                                .foregroundColor(.brandPrimary)
+                        }
                     }
                     if daNhap {
                         Text("Đã nhập chi tiêu").font(.caption).foregroundColor(.successColor)
@@ -271,7 +276,8 @@ private struct ShopeeImportSheet: View {
                 drafts.append(ReceiptDraftLine(
                     rawText: raw, nguyenLieuId: nil, nguyenLieuTen: nil, fromLearnedAlias: false,
                     soLuong: soLuong, donGia: (share / soLuong).rounded(),
-                    ngay: order.date, shopeeOrderId: order.id, nhom: nhom
+                    ngay: order.date, shopeeOrderId: order.id, nhom: nhom,
+                    phanLoai: item.model.isEmpty ? nil : item.model
                 ))
             }
         }
@@ -280,7 +286,7 @@ private struct ShopeeImportSheet: View {
         loading = true
         defer { loading = false }
         let (result, message) = await APIClient.shared.matchReceiptLines(
-            drafts.map { ReceiptMatchLineRequest(ten: $0.rawText, soLuong: $0.soLuong, donGia: $0.donGia) }
+            drafts.map { ReceiptMatchLineRequest(ten: $0.rawText, phanLoai: $0.phanLoai, soLuong: $0.soLuong, donGia: $0.donGia) }
         )
         guard let result, result.lines.count == drafts.count else {
             errorText = message ?? "Không khớp được nguyên liệu."
