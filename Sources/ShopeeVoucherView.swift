@@ -91,10 +91,17 @@ struct ShopeeVoucherView: View {
                     .foregroundColor(.white)
                     .frame(width: 64, height: 44)
                     .background(hot ? Color.orange : Color.gray, in: RoundedRectangle(cornerRadius: 8))
-                Text(v.text)
-                    .font(.footnote)
-                    .foregroundColor(.primary)
-                    .lineLimit(4)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(v.text)
+                        .font(.footnote)
+                        .foregroundColor(.primary)
+                        .lineLimit(4)
+                    // Popup xếp theo % nhưng trên trang Shopee xếp kiểu khác — mã 30% có thể nằm tận thẻ
+                    // thứ 30, nhìn đầu trang không thấy. Ghi rõ vị trí, bấm để cuộn tới.
+                    Text("Thẻ thứ \(v.id + 1) trên trang · bấm để cuộn tới")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
             }
         }
     }
@@ -183,17 +190,26 @@ private final class ShopeeVoucherWebModel: NSObject, ObservableObject, WKNavigat
         const productRe = /(đã bán|\\bsold\\b|\\d{1,3}(\\.\\d{3})+\\s*₫)/i;
         const norm = e => (e.textContent || '').replace(/\\s+/g, ' ').trim();
         const isCard = t => t.length > 0 && t.length < 260 && keyRe.test(t) && !productRe.test(t) && /\\d\\s*%/.test(t.replace(usedRe, ''));
+        // textContent gồm cả chữ của phần tử đang ẨN (tab khác, bản dựng sẵn chưa hiện) — từng hiện mã 30%
+        // trong popup mà trên trang không có. Chỉ lấy thẻ đang thật sự hiển thị (có kích thước).
+        const visible = e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden'; };
+        // Chữ hiển thị của thẻ: nối từng mẩu chữ bằng " · " (textContent dính liền "100kđĐơn Tối Thiểu").
+        const label = e => { const parts = []; const w = document.createTreeWalker(e, NodeFilter.SHOW_TEXT);
+          for (let n = w.nextNode(); n; n = w.nextNode()) { const x = n.textContent.replace(/\\s+/g, ' ').trim(); if (x && n.parentElement && visible(n.parentElement)) parts.push(x); }
+          return parts.join(' · '); };
+        document.querySelectorAll('[data-dc-voucher]').forEach(x => x.removeAttribute('data-dc-voucher'));
         const out = []; const seen = new Set();
         for (const e of document.querySelectorAll('div,li,a,section,article')) {
           const t = norm(e);
           if (!isCard(t)) continue;
+          if (!visible(e)) continue;
           if ([...e.children].some(c => isCard(norm(c)))) continue;
           if (seen.has(t)) continue;
           seen.add(t);
           const nums = [...t.replace(usedRe, '').matchAll(/(\\d{1,3})\\s*%/g)].map(m => +m[1]).filter(n => n > 0 && n <= 100);
           if (!nums.length) continue;
           e.setAttribute('data-dc-voucher', out.length);
-          out.push({ id: out.length, pct: Math.max(...nums), text: t });
+          out.push({ id: out.length, pct: Math.max(...nums), text: label(e) || t });
           if (out.length >= max) break;
         }
         const body = (document.body && document.body.innerText || '').replace(/\\s+/g, ' ').trim();
@@ -215,14 +231,24 @@ private final class ShopeeVoucherWebModel: NSObject, ObservableObject, WKNavigat
     }
 
     /// Cuộn tới thẻ voucher (để người dùng tự bấm Lưu) và nháy viền cam cho dễ thấy.
+    /// Đợi popup đóng hẳn rồi mới cuộn (cuộn lúc sheet còn đang trượt xuống thì WebView chưa nhận).
+    /// Trang Shopee vẽ lại danh sách thì mất dấu thẻ — báo để bấm "Quét" lại.
     func reveal(_ v: ShopeeVoucher) {
         let js = """
-        (() => { const e = document.querySelector('[data-dc-voucher="\(v.id)"]'); if (!e) return;
-          e.scrollIntoView({ block: 'center', behavior: 'smooth' });
-          const old = e.style.outline; e.style.outline = '3px solid #ff6a00';
-          setTimeout(() => { e.style.outline = old; }, 2500); })();
+        const e = document.querySelector('[data-dc-voucher="' + id + '"]');
+        if (!e) return false;
+        e.scrollIntoView({ block: 'center' });
+        const old = e.style.outline; e.style.outline = '4px solid #ff6a00';
+        setTimeout(() => { e.style.outline = old; }, 4000);
+        return true;
         """
-        webView.evaluateJavaScript(js)
+        Task {
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            let ok = (try? await webView.callAsyncJavaScript(js, arguments: ["id": v.id], contentWorld: .page)) as? Bool
+            if ok != true {
+                status = "Không tìm thấy thẻ \(v.pct)% trên trang nữa (trang đã vẽ lại) — bấm \"Quét\" lại."
+            }
+        }
     }
 }
 
