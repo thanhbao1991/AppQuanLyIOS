@@ -292,13 +292,12 @@ actor APIClient {
         return Set(env.data ?? [])
     }
 
-    /// Ngày giao của đơn Shopee nhập gần nhất (0h giờ máy) — nil nếu chưa nhập đơn nào hoặc lỗi mạng
-    /// (khi đó ShopeeImportView đọc đủ 45 ngày).
-    func shopeeNgayGanNhat() async -> Date? {
-        let (data, _) = await send(makeRequest("/api/ChiTieuHangNgay/shopee-ngay-gan-nhat"))
-        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<String>.self, from: data),
-              let text = env.data, text.count >= 10 else { return nil }
-        return DateNavFormat.queryDate.date(from: String(text.prefix(10)))
+    /// Mã các đơn Shopee nhập gần đây nhất (mới nhất trước) — ShopeeImportView đọc đơn Shopee tới khi
+    /// gặp 1 mã trong đây thì dừng. Rỗng nếu chưa nhập đơn nào hoặc lỗi mạng (khi đó đọc 30 ngày).
+    func shopeeDonGanDay() async -> [String] {
+        let (data, _) = await send(makeRequest("/api/ChiTieuHangNgay/shopee-don-gan-day"))
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[String]>.self, from: data) else { return [] }
+        return env.data ?? []
     }
 
     /// "Bắt đơn từ ảnh" — multipart/form-data nhiều field "images" (1-nhiều ảnh cùng 1 cuộc hội thoại,

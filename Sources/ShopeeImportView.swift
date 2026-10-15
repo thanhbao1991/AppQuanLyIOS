@@ -66,19 +66,22 @@ private final class ShopeeWebModel: ObservableObject {
         webView.load(URLRequest(url: URL(string: "https://shopee.vn/user/purchase/?type=3")!))
     }
 
-    /// Đọc đơn "Giao thành công" (list_type=3) có ngày giao từ `since` (epoch giây) trở đi. Shopee trả
-    /// đơn mới trước, 20 đơn/lần gọi — gặp 3 đơn cũ hơn mốc là dừng (thứ tự theo ngày đặt nên ngày giao
-    /// có thể lệch nhẹ), gọi Shopee càng ít càng tốt để không giống bot.
-    func fetchOrders(since: TimeInterval) async throws -> ShopeeFetchResult {
+    /// Đọc đơn "Giao thành công" (list_type=3) từ mới về cũ, 20 đơn/lần gọi Shopee. Dừng ngay khi gặp
+    /// 1 đơn trong `stopIds` (đơn đã nhập gần đây — mốc chính xác, không tính theo ngày), hoặc khi gặp
+    /// 3 đơn giao trước `since` (chặn dưới: 30 ngày khi chưa nhập đơn nào). Gọi Shopee càng ít càng tốt
+    /// để không giống bot.
+    func fetchOrders(since: TimeInterval, stopIds: [String]) async throws -> ShopeeFetchResult {
         let script = """
-        const out = []; let older = 0;
-        for (let offset = 0; offset < 400 && older < 3; offset += 20) {
+        const stop = new Set(stopIds);
+        const out = []; let older = 0; let done = false;
+        for (let offset = 0; !done && offset < 400 && older < 3; offset += 20) {
           const r = await fetch('/api/v4/order/get_order_list?list_type=3&offset=' + offset + '&limit=20', { credentials: 'include' });
           const j = await r.json();
           if (j.error) return JSON.stringify({ error: j.error, message: j.error_msg || '' });
           const list = (j.data && j.data.details_list) || [];
           if (!list.length) break;
           for (const o of list) {
+            if (stop.has(String(o.info_card.order_id))) { done = true; break; }
             const t = (o.shipping && o.shipping.tracking_info && o.shipping.tracking_info.ctime) || 0;
             if (t < since) { older++; continue; }
             const cards = (o.info_card && o.info_card.order_list_cards) || [];
@@ -91,7 +94,7 @@ private final class ShopeeWebModel: ObservableObject {
         }
         return JSON.stringify({ orders: out });
         """
-        let value = try await webView.callAsyncJavaScript(script, arguments: ["since": since], contentWorld: .page)
+        let value = try await webView.callAsyncJavaScript(script, arguments: ["since": since, "stopIds": stopIds], contentWorld: .page)
         guard let text = value as? String, let data = text.data(using: .utf8) else {
             throw NSError(domain: "Shopee", code: 0, userInfo: [NSLocalizedDescriptionKey: "Trang Shopee không trả dữ liệu."])
         }
@@ -116,11 +119,10 @@ private struct ShopeeImportSheet: View {
     @State private var loading = false
     @State private var errorText: String?
     @State private var reviewLines: ReviewPayload?
-    /// Mốc đã đọc tới — ngày đơn Shopee nhập gần nhất (nếu trong 45 ngày), còn không thì 45 ngày trước.
-    @State private var fromDate: Date?
-    @State private var daLayDu = false
+    /// true = đọc tới đơn đã nhập gần nhất thì dừng; false = đọc đủ `soNgay` ngày.
+    @State private var dungODonDaNhap = false
 
-    private static let soNgay = 45
+    private static let soNgay = 30
 
     struct ReviewPayload: Identifiable {
         let id = UUID()
@@ -192,11 +194,11 @@ private struct ShopeeImportSheet: View {
                     orderRow(order)
                 }
             } footer: {
-                Text("Đơn giao thành công từ \(fromDate.map { Self.dayFormatter.string(from: $0) } ?? "") — \(daLayDu ? "\(Self.soNgay) ngày gần nhất" : "ngày đơn Shopee nhập gần nhất"). Chỉ tick đơn mua cho quán — đơn cá nhân bỏ qua. Số tiền là tiền thực trả (đã trừ voucher).")
+                Text("\(dungODonDaNhap ? "Đơn giao thành công mới hơn đơn Shopee nhập gần nhất" : "Đơn giao thành công \(Self.soNgay) ngày gần nhất"). Chỉ tick đơn mua cho quán — đơn cá nhân bỏ qua. Số tiền là tiền thực trả (đã trừ voucher).")
             }
-            if !daLayDu {
+            if dungODonDaNhap {
                 Section {
-                    Button("Lấy đủ \(Self.soNgay) ngày") { Task { await fetch(full: true) } }
+                    Button("Xem lại \(Self.soNgay) ngày gần nhất") { Task { await fetch(full: true) } }
                         .disabled(loading)
                 }
             }
@@ -249,24 +251,21 @@ private struct ShopeeImportSheet: View {
         return f
     }()
 
-    /// Mặc định chỉ đọc từ ngày đơn Shopee nhập gần nhất (đơn trước đó đã xử lý rồi) — ít ngày hơn,
-    /// ít lần gọi Shopee hơn. `full` = đọc đủ 45 ngày (khi cần nhập lại đơn cũ đã bỏ qua).
+    /// Đã có đơn Shopee trong chi tiêu: chỉ đọc các đơn mới hơn đơn nhập gần nhất (gặp là dừng).
+    /// Chưa có đơn nào (hoặc `full`): đọc tối đa 30 ngày. Khi có mốc thì chặn dưới nới ra 90 ngày phòng
+    /// đơn mốc bị Shopee ẩn khỏi danh sách, khỏi đọc vô hạn.
     private func fetch(full: Bool = false) async {
         loading = true
         defer { loading = false }
-        let cal = Calendar.current
-        let maxBack = cal.startOfDay(for: cal.date(byAdding: .day, value: -Self.soNgay, to: Date()) ?? Date())
-        var since = maxBack
-        if !full, let last = await APIClient.shared.shopeeNgayGanNhat(), last > maxBack {
-            since = last
-        }
+        let stopIds = full ? [] : await APIClient.shared.shopeeDonGanDay()
+        let soNgay = stopIds.isEmpty ? Self.soNgay : 90
+        let since = Calendar.current.startOfDay(for: Calendar.current.date(byAdding: .day, value: -soNgay, to: Date()) ?? Date())
         do {
-            let result = try await web.fetchOrders(since: since.timeIntervalSince1970)
+            let result = try await web.fetchOrders(since: since.timeIntervalSince1970, stopIds: stopIds)
             if let list = result.orders {
                 imported = await APIClient.shared.shopeeDaNhap(list.map(\.id))
                 selected = []
-                fromDate = since
-                daLayDu = since == maxBack
+                dungODonDaNhap = !stopIds.isEmpty
                 orders = list.sorted { $0.time > $1.time }
             } else {
                 errorText = "Chưa đăng nhập Shopee (hoặc Shopee từ chối, mã \(result.error ?? 0)). Đăng nhập ngay trên trang này rồi bấm \"Lấy đơn\" lại."
