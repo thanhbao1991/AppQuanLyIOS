@@ -6,8 +6,8 @@ import WebKit
 /// đăng nhập lần đầu), bấm "Lấy đơn" thì app chạy JS ngay trong trang gọi API danh sách đơn "Giao thành
 /// công" của chính Shopee — CHỈ ĐỌC, không bấm/đổi gì trên tài khoản. Chọn đơn của quán → khớp nguyên
 /// liệu (POST /api/ChiTieuHangNgay/match-lines, cùng thuật toán + alias đã học như ảnh hoá đơn) → form
-/// duyệt dùng chung ReceiptReviewSheet. Mỗi dòng ghi chú "Shopee #<mã đơn>" để lần sau biết đơn nào đã
-/// nhập (kể cả nhập từ máy khác).
+/// duyệt dùng chung ReceiptReviewSheet. Mỗi dòng lưu mã đơn vào cột NguonShopeeOrderId để lần sau biết
+/// đơn nào đã nhập (kể cả nhập từ máy khác), hiện nhãn "Shopee" ở danh sách chi tiêu.
 /// Phụ thuộc API nội bộ của web Shopee (/api/v4/order/get_order_list) — Shopee đổi là hỏng, lúc đó báo
 /// lỗi rõ ràng chứ không lưu sai.
 struct ShopeeImportButton: View {
@@ -42,7 +42,6 @@ struct ShopeeOrder: Decodable, Identifiable {
     }
 
     var date: Date { Date(timeIntervalSince1970: time) }
-    var ghiChu: String { "Shopee #\(id)" }
     var paidItems: [Item] { items.filter { $0.price > 0 } }
 }
 
@@ -196,7 +195,7 @@ private struct ShopeeImportSheet: View {
 
     @ViewBuilder
     private func orderRow(_ order: ShopeeOrder) -> some View {
-        let daNhap = imported.contains(order.ghiChu)
+        let daNhap = imported.contains(order.id)
         let isOn = selected.contains(order.id)
         Button {
             if isOn { selected.remove(order.id) } else { selected.insert(order.id) }
@@ -241,7 +240,7 @@ private struct ShopeeImportSheet: View {
         do {
             let result = try await web.fetchOrders(days: Self.soNgay)
             if let list = result.orders {
-                imported = await APIClient.shared.ghiChuTonTai(list.map(\.ghiChu))
+                imported = await APIClient.shared.shopeeDaNhap(list.map(\.id))
                 selected = []
                 orders = list.sorted { $0.time > $1.time }
             } else {
@@ -272,7 +271,7 @@ private struct ShopeeImportSheet: View {
                 drafts.append(ReceiptDraftLine(
                     rawText: raw, nguyenLieuId: nil, nguyenLieuTen: nil, fromLearnedAlias: false,
                     soLuong: soLuong, donGia: (share / soLuong).rounded(),
-                    ngay: order.date, ghiChu: order.ghiChu, nhom: nhom
+                    ngay: order.date, shopeeOrderId: order.id, nhom: nhom
                 ))
             }
         }

@@ -173,6 +173,14 @@ private struct ChiTieuRowView: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Text(item.ten).font(.subheadline.bold())
+                    if item.nguonShopeeOrderId != nil {
+                        Text("Shopee")
+                            .font(.caption2.bold())
+                            .padding(.horizontal, 6).padding(.vertical, 1)
+                            .background(Color.orange.opacity(0.15))
+                            .foregroundColor(.orange)
+                            .clipShape(Capsule())
+                    }
                     if let ghiChu = item.ghiChu, !ghiChu.isEmpty {
                         Text(ghiChu).font(.footnote).foregroundColor(.textMuted).lineLimit(1)
                     }
@@ -229,6 +237,9 @@ private struct ChiTieuDetailSheet: View {
                     infoRow("Đơn giá", HoaDonFormatting.money(item.donGia))
                     infoRow("Thành tiền", HoaDonFormatting.money(item.thanhTien))
                     infoRow("Loại", item.billThang ? "Bill tháng" : "Chi ngày")
+                    if let orderId = item.nguonShopeeOrderId {
+                        infoRow("Nguồn", "Shopee #\(orderId)")
+                    }
                     if let tk = item.tenTaiKhoan, !tk.isEmpty {
                         infoRow("Người thêm", tk)
                     }

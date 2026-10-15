@@ -284,9 +284,9 @@ actor APIClient {
         return (env.data, env.isSuccess ? nil : (env.message ?? "Không khớp được nguyên liệu."))
     }
 
-    /// GhiChu nào đã có trong chi tiêu — dùng đánh dấu đơn Shopee đã nhập ("Shopee #<mã đơn>").
-    func ghiChuTonTai(_ ghiChus: [String]) async -> Set<String> {
-        let req = makeRequest("/api/ChiTieuHangNgay/ghi-chu-ton-tai", method: "POST", body: jsonBody(GhiChuTonTaiRequest(ghiChus: ghiChus)))
+    /// Mã đơn Shopee nào đã nhập chi tiêu (cột NguonShopeeOrderId) — đánh dấu "Đã nhập" ở ShopeeImportView.
+    func shopeeDaNhap(_ orderIds: [String]) async -> Set<String> {
+        let req = makeRequest("/api/ChiTieuHangNgay/shopee-da-nhap", method: "POST", body: jsonBody(ShopeeDaNhapRequest(orderIds: orderIds)))
         let (data, _) = await send(req)
         guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[String]>.self, from: data) else { return [] }
         return Set(env.data ?? [])

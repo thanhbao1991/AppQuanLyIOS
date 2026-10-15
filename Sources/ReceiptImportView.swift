@@ -135,11 +135,11 @@ struct ReceiptDraftLine: Identifiable {
     var donGia: Double
     var searchText: String = ""
     var included: Bool = true
-    /// Chỉ luồng "Nhập từ Shopee" dùng: mỗi đơn có ngày giao + ghi chú "Shopee #<mã đơn>" riêng (để
-    /// đánh dấu đã nhập), và tiêu đề nhóm hiện phía trên dòng đầu của mỗi đơn. Ảnh hoá đơn để nil —
-    /// dùng ngày chung chọn ở đầu form.
+    /// Chỉ luồng "Nhập từ Shopee" dùng: mỗi đơn có ngày giao + mã đơn riêng (lưu cột
+    /// NguonShopeeOrderId, đánh dấu đã nhập), và tiêu đề nhóm hiện phía trên dòng đầu của mỗi đơn.
+    /// Ảnh hoá đơn để nil — dùng ngày chung chọn ở đầu form.
     var ngay: Date? = nil
-    var ghiChu: String? = nil
+    var shopeeOrderId: String? = nil
     var nhom: String? = nil
 
     var thanhTien: Double { soLuong * donGia }
@@ -401,9 +401,10 @@ struct ReceiptReviewSheet: View {
                     soLuong: line.soLuong,
                     donGia: line.donGia,
                     thanhTien: line.thanhTien,
-                    ghiChu: line.ghiChu,
+                    ghiChu: nil,
                     billThang: billThang,
-                    rawText: line.rawText
+                    rawText: line.rawText,
+                    nguonShopeeOrderId: line.shopeeOrderId
                 )
             }
             // NgayGio do server quyết định (VietnamTime.Now) — không gửi, để Backend tự set.

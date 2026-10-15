@@ -194,6 +194,8 @@ struct ChiTieuHangNgayDto: Decodable, Identifiable {
     let billThang: Bool
     /// Tài khoản đã thêm dòng chi tiêu này — nil ở dữ liệu cũ trước khi có field.
     let tenTaiKhoan: String?
+    /// Mã đơn Shopee nếu nhập qua "Nhập từ Shopee" (ShopeeImportView) — nil với chi tiêu thường.
+    let nguonShopeeOrderId: String?
 }
 
 /// Đề xuất ngày mua tiếp theo của 1 nguyên liệu (GET /api/ChiTieuHangNgay/de-xuat-mua) — nguonAI=false
@@ -264,8 +266,8 @@ struct ReceiptMatchRequest: Encodable {
     let lines: [ReceiptMatchLineRequest]
 }
 
-struct GhiChuTonTaiRequest: Encodable {
-    let ghiChus: [String]
+struct ShopeeDaNhapRequest: Encodable {
+    let orderIds: [String]
 }
 
 // ---- "Bắt đơn từ ảnh" — đọc chat khách đặt món qua AI (xem OrderFromImageService, Backend) ----
@@ -303,6 +305,8 @@ struct ChiTieuHangNgayBulkItemRequest: Encodable {
     /// Có giá trị thì Backend tự học/ghi đè alias RawText → nguyenLieuId cho lần đọc ảnh sau —
     /// xem ChiTieuHangNgayBulkItemDto.RawText (Backend).
     let rawText: String?
+    /// Chỉ luồng "Nhập từ Shopee" set — Backend lưu vào cột ChiTieuHangNgays.NguonShopeeOrderId.
+    var nguonShopeeOrderId: String? = nil
 }
 
 struct ChiTieuHangNgayBulkCreateRequest: Encodable {
