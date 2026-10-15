@@ -285,14 +285,16 @@ struct HoaDonDetailView: View {
         let hinhAnh = ct.sanPhamId.flatMap { hinhAnhMap[$0] }
         return HStack(alignment: .center, spacing: 10) {
             itemThumbnail(hinhAnh, ten: ct.tenSanPham, sanPhamId: ct.sanPhamId)
-            Text("\(ct.soLuong)")
-                .font(.caption.bold())
-                .foregroundColor(.white)
-                .frame(width: 22, height: 22)
-                .background(Circle().fill(Color.brandPrimary))
-            Text("x \(HoaDonFormatting.money(ct.donGia))")
-                .font(.caption2).foregroundColor(.textMuted)
-                .lineLimit(1).fixedSize()
+            VStack(spacing: 1) {
+                Text("\(ct.soLuong)")
+                    .font(.caption.bold())
+                    .foregroundColor(.white)
+                    .frame(width: 22, height: 22)
+                    .background(Circle().fill(Color.brandPrimary))
+                Text("x\(HoaDonFormatting.money(ct.donGia).replacingOccurrences(of: "đ", with: ""))")
+                    .font(.system(size: 10)).foregroundColor(.textMuted)
+                    .lineLimit(1).fixedSize()
+            }
             VStack(alignment: .leading, spacing: 2) {
                 Text("\(ct.tenSanPham)\(bienTheSuffix(ct.tenBienThe))").font(.subheadline.bold())
                 if !toppings.isEmpty {
