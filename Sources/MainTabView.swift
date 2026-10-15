@@ -334,6 +334,12 @@ private struct MoreMenuView: View {
                     .alert("Không lưu được số dư", isPresented: $zaloEditFailed) {
                         Button("Đóng", role: .cancel) {}
                     }
+
+                    NavigationLink {
+                        ShopeeVoucherView()
+                    } label: {
+                        Label("Voucher Shopee ≥25%", systemImage: "ticket")
+                    }
                 }
 
                 Section {

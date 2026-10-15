@@ -1,0 +1,187 @@
+import SwiftUI
+import WebKit
+
+/// Menu → "Voucher Shopee ≥25%". Mở trang Mã giảm giá của Shopee trong WebView (dùng chung cookie đăng
+/// nhập với "Nhập từ Shopee"), đợi trang tự tải xong rồi đọc chữ trên các thẻ voucher ĐANG HIỆN SẴN —
+/// không gọi API, không cuộn để tải thêm, không bấm Lưu. Shopee xếp voucher ngon lên đầu nên vài chục thẻ
+/// đầu là đủ. Có mã từ 25% trở lên thì bật popup; bấm vào mã thì cuộn tới thẻ đó để tự bấm Lưu.
+/// Đọc theo chữ ("25%", "HSD", "Lưu"…) chứ không theo class CSS — Shopee đổi giao diện vẫn chạy được,
+/// chỉ hỏng nếu thẻ voucher thành ảnh.
+struct ShopeeVoucherView: View {
+    @StateObject private var web = ShopeeVoucherWebModel()
+    @State private var found: [ShopeeVoucher] = []
+    @State private var showPopup = false
+
+    private static let nguong = 25
+
+    var body: some View {
+        ShopeeVoucherWebView(webView: web.webView)
+            .ignoresSafeArea(edges: .bottom)
+            .navigationTitle("Voucher Shopee ≥\(Self.nguong)%")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    if web.scanning {
+                        ProgressView()
+                    } else {
+                        Button("Quét") { Task { await scan() } }.fontWeight(.bold)
+                    }
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                if let status = web.status {
+                    Text(status)
+                        .font(.footnote)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .frame(maxWidth: .infinity)
+                        .background(Color(.secondarySystemBackground))
+                }
+            }
+            .onAppear {
+                web.onPageReady = { Task { await scan() } }
+            }
+            .sheet(isPresented: $showPopup) {
+                popup
+            }
+    }
+
+    private var popup: some View {
+        NavigationStack {
+            List(found) { v in
+                Button {
+                    showPopup = false
+                    web.reveal(v)
+                } label: {
+                    HStack(alignment: .top, spacing: 12) {
+                        Text("\(v.pct)%")
+                            .font(.title3.bold())
+                            .foregroundColor(.white)
+                            .frame(width: 64, height: 44)
+                            .background(Color.orange, in: RoundedRectangle(cornerRadius: 8))
+                        Text(v.text)
+                            .font(.footnote)
+                            .foregroundColor(.primary)
+                            .lineLimit(4)
+                    }
+                }
+            }
+            .navigationTitle("Có \(found.count) mã ≥\(Self.nguong)%")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Đóng") { showPopup = false }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func scan() async {
+        guard let all = await web.scan() else { return }
+        found = all.filter { $0.pct >= Self.nguong }.sorted { $0.pct > $1.pct }
+        if all.isEmpty {
+            web.status = "Chưa thấy thẻ voucher nào — đợi trang tải xong (hoặc đăng nhập) rồi bấm \"Quét\"."
+        } else if found.isEmpty {
+            web.status = "Đã xem \(all.count) voucher đầu, không có mã từ \(Self.nguong)% trở lên."
+        } else {
+            web.status = "Có \(found.count) mã ≥\(Self.nguong)% trong \(all.count) voucher đầu."
+            showPopup = true
+        }
+    }
+}
+
+struct ShopeeVoucher: Decodable, Identifiable {
+    let id: Int
+    let pct: Int
+    let text: String
+}
+
+@MainActor
+private final class ShopeeVoucherWebModel: NSObject, ObservableObject, WKNavigationDelegate {
+    let webView: WKWebView
+    @Published var scanning = false
+    @Published var status: String?
+    var onPageReady: (() -> Void)?
+
+    /// Chỉ đọc tối đa ngần này thẻ đầu trang.
+    private static let soTheToiDa = 60
+
+    override init() {
+        let config = WKWebViewConfiguration()
+        config.websiteDataStore = .default()
+        // UA giống Safari iPhone — tránh Shopee coi là WebView lạ, ép mở app Shopee.
+        config.applicationNameForUserAgent = "Version/17.0 Mobile/15E148 Safari/604.1"
+        webView = WKWebView(frame: .zero, configuration: config)
+        super.init()
+        webView.navigationDelegate = self
+        webView.allowsBackForwardNavigationGestures = true
+        webView.load(URLRequest(url: URL(string: "https://shopee.vn/m/ma-giam-gia")!))
+    }
+
+    nonisolated func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        Task { @MainActor in
+            // Thẻ voucher do JS của trang vẽ sau khi tải HTML xong — đợi thêm cho kịp hiện.
+            // Chỉ tự quét lần tải đầu; bấm sang trang khác trong WebView thì thôi, muốn thì bấm "Quét".
+            guard let ready = self.onPageReady else { return }
+            self.onPageReady = nil
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            ready()
+        }
+    }
+
+    /// Đọc chữ các thẻ voucher đang có trong trang. Thẻ = phần tử nhỏ nhất có "x%" kèm chữ đặc trưng
+    /// của voucher (HSD/Lưu/Đơn tối thiểu…); bỏ "% đã dùng" (thanh tiến độ) khỏi phép tính.
+    func scan() async -> [ShopeeVoucher]? {
+        guard !scanning else { return nil }
+        scanning = true
+        defer { scanning = false }
+        let script = """
+        const usedRe = /\\d{1,3}\\s*%\\s*(đã dùng|đã sử dụng|đã lưu|used|claimed)|(đã dùng|đã sử dụng|đã lưu|used|claimed)\\s*:?\\s*\\d{1,3}\\s*%/gi;
+        const keyRe = /(HSD|Hiệu lực|Hết hạn|Sắp hết hạn|Đơn tối thiểu|Dùng ngay|Dùng sau|Lưu|Valid|Min\\. Spend|Claim|\\bUse\\b)/i;
+        // Thẻ sản phẩm gợi ý cuối trang cũng có "-2%" — loại bằng chữ "Đã bán"/"sold" và giá dạng 225.400₫.
+        const productRe = /(đã bán|\\bsold\\b|\\d{1,3}(\\.\\d{3})+\\s*₫)/i;
+        const norm = e => (e.textContent || '').replace(/\\s+/g, ' ').trim();
+        const isCard = t => t.length > 0 && t.length < 260 && keyRe.test(t) && !productRe.test(t) && /\\d\\s*%/.test(t.replace(usedRe, ''));
+        const out = []; const seen = new Set();
+        for (const e of document.querySelectorAll('div,li,a,section,article')) {
+          const t = norm(e);
+          if (!isCard(t)) continue;
+          if ([...e.children].some(c => isCard(norm(c)))) continue;
+          if (seen.has(t)) continue;
+          seen.add(t);
+          const nums = [...t.replace(usedRe, '').matchAll(/(\\d{1,3})\\s*%/g)].map(m => +m[1]).filter(n => n > 0 && n <= 100);
+          if (!nums.length) continue;
+          e.setAttribute('data-dc-voucher', out.length);
+          out.push({ id: out.length, pct: Math.max(...nums), text: t });
+          if (out.length >= max) break;
+        }
+        return JSON.stringify(out);
+        """
+        do {
+            let value = try await webView.callAsyncJavaScript(script, arguments: ["max": Self.soTheToiDa], contentWorld: .page)
+            guard let text = value as? String, let data = text.data(using: .utf8) else { return [] }
+            return try JSONDecoder().decode([ShopeeVoucher].self, from: data)
+        } catch {
+            status = "Không đọc được trang Shopee: \(error.localizedDescription)"
+            return nil
+        }
+    }
+
+    /// Cuộn tới thẻ voucher (để người dùng tự bấm Lưu) và nháy viền cam cho dễ thấy.
+    func reveal(_ v: ShopeeVoucher) {
+        let js = """
+        (() => { const e = document.querySelector('[data-dc-voucher="\(v.id)"]'); if (!e) return;
+          e.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          const old = e.style.outline; e.style.outline = '3px solid #ff6a00';
+          setTimeout(() => { e.style.outline = old; }, 2500); })();
+        """
+        webView.evaluateJavaScript(js)
+    }
+}
+
+private struct ShopeeVoucherWebView: UIViewRepresentable {
+    let webView: WKWebView
+    func makeUIView(context: Context) -> WKWebView { webView }
+    func updateUIView(_ uiView: WKWebView, context: Context) {}
+}
