@@ -170,6 +170,7 @@ struct ReceiptReviewSheet: View {
     @State private var saving = false
     @State private var errorMessage: String?
     @State private var warningAlertText: String?
+    @State private var addingNguyenLieu = false
 
     init(date: Date, result: ReceiptParseResultDto, onSaved: @escaping () -> Void) {
         _selectedDate = State(initialValue: date)
@@ -209,6 +210,14 @@ struct ReceiptReviewSheet: View {
         let sum = includedLines.reduce(0) { $0 + $1.thanhTien }
         return abs(sum - tong) > 1 ? tong : nil
     }
+    /// Vì sao nút Lưu đang khoá — hiện ngay trên nút, tránh người dùng không hiểu sao không bấm được.
+    private var lyDoKhongLuu: String? {
+        let chuaKhop = includedLines.filter { $0.nguyenLieuId == nil }.count
+        if chuaKhop > 0 { return "Còn \(chuaKhop) dòng chưa chọn nguyên liệu (hoặc bỏ tick dòng đó)" }
+        if includedLines.contains(where: { $0.donGia <= 0 }) { return "Có dòng đơn giá bằng 0" }
+        return nil
+    }
+
     private var canSave: Bool {
         !includedLines.isEmpty && includedLines.allSatisfy { $0.nguyenLieuId != nil && $0.donGia > 0 }
     }
@@ -261,17 +270,22 @@ struct ReceiptReviewSheet: View {
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                Button {
-                    Task { await save() }
-                } label: {
-                    Text(saving ? "Đang lưu..." : "Lưu (\(totalText))")
-                        .fontWeight(.bold)
-                        .frame(maxWidth: .infinity)
+                VStack(spacing: 6) {
+                    if let lyDo = lyDoKhongLuu {
+                        Text(lyDo).font(.caption).foregroundColor(.warningColor)
+                    }
+                    Button {
+                        Task { await save() }
+                    } label: {
+                        Text(saving ? "Đang lưu..." : "Lưu (\(totalText))")
+                            .fontWeight(.bold)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.brandPrimary)
+                    .controlSize(.large)
+                    .disabled(!canSave || saving)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.brandPrimary)
-                .controlSize(.large)
-                .disabled(!canSave || saving)
                 .padding(.horizontal, 16)
                 .padding(.top, 10)
                 .padding(.bottom, 8)
@@ -383,7 +397,33 @@ struct ReceiptReviewSheet: View {
                         Text(nl.ten)
                     }
                 }
+                // Chưa có nguyên liệu này (vd đồ mua lẻ trên Shopee như kích điện) — thêm mới ngay tại
+                // đây, như form Thêm chi tiêu, khỏi phải thoát ra tạo rồi duyệt lại từ đầu.
+                let ten = line.wrappedValue.searchText.trimmingCharacters(in: .whitespaces)
+                if !ten.isEmpty && !nguyenLieuList.contains(where: { $0.ten.caseInsensitiveCompare(ten) == .orderedSame }) {
+                    Button {
+                        Task { await addNguyenLieu(ten, to: line) }
+                    } label: {
+                        Label(addingNguyenLieu ? "Đang thêm..." : "Thêm nguyên liệu \"\(ten)\"", systemImage: "plus.circle")
+                    }
+                    .disabled(addingNguyenLieu)
+                }
             }
+        }
+    }
+
+    private func addNguyenLieu(_ ten: String, to line: Binding<ReceiptDraftLine>) async {
+        addingNguyenLieu = true
+        errorMessage = nil
+        let result = await APIClient.shared.createNguyenLieu(ten: ten)
+        addingNguyenLieu = false
+        if result.success, let nl = result.nguyenLieu {
+            nguyenLieuList.append(nl)
+            line.wrappedValue.nguyenLieuId = nl.id
+            line.wrappedValue.nguyenLieuTen = nl.ten
+            line.wrappedValue.searchText = ""
+        } else {
+            errorMessage = result.message ?? "Không thêm được nguyên liệu."
         }
     }
 
