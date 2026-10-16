@@ -18,6 +18,12 @@ struct ShopeeVoucherView: View {
     @AppStorage("shopeeVoucher.anNhom") private var anNhomRaw = "shopee mart\nbach hoa chinh hang"
     /// Voucher đang ẩn lẻ (ShopeeVoucher.key), mỗi dòng 1 mã.
     @AppStorage("shopeeVoucher.anMa") private var anMaRaw = ""
+    /// Bảng nhập tay "voucher kiểu này dùng được cho nguyên liệu nào" (JSON [VoucherGoiY]). Mã/ID voucher
+    /// Shopee đổi theo từng đợt (vd 191026GIAM100K17) và chi tiết đơn không ghi voucher đã dùng, nên
+    /// khớp theo NHÓM thẻ + mức % gần bằng (±5) thay vì ID.
+    @AppStorage("shopeeVoucher.goiY") private var goiYRaw = "[]"
+    @State private var themGoiYCho: ShopeeVoucher?
+    @State private var deXuat: [String: MuaHangDeXuatDto] = [:]
 
     private static let nguong = 20
 
@@ -32,8 +38,22 @@ struct ShopeeVoucherView: View {
         return anNhom.contains { g == $0 || g.hasSuffix(" " + $0) }
     }
 
+    private var goiY: [VoucherGoiY] {
+        (try? JSONDecoder().decode([VoucherGoiY].self, from: Data(goiYRaw.utf8))) ?? []
+    }
+    private func luuGoiY(_ list: [VoucherGoiY]) {
+        if let data = try? JSONEncoder().encode(list) { goiYRaw = String(decoding: data, as: UTF8.self) }
+    }
+    private func khop(_ v: ShopeeVoucher) -> [VoucherGoiY] {
+        goiY.filter { $0.nhom == v.nhomKey && abs($0.pct - v.pct) <= 5 }
+    }
+
     private var hien: [ShopeeVoucher] { all.filter { !biAn($0) } }
-    private var found: [ShopeeVoucher] { hien.filter { $0.pct >= Self.nguong }.sorted { $0.pct > $1.pct } }
+    /// Voucher khớp bảng gợi ý — hiện dù dưới ngưỡng %, xếp lên đầu popup.
+    private var coGoiY: [ShopeeVoucher] { hien.filter { !khop($0).isEmpty }.sorted { $0.pct > $1.pct } }
+    private var found: [ShopeeVoucher] {
+        hien.filter { $0.pct >= Self.nguong && khop($0).isEmpty }.sorted { $0.pct > $1.pct }
+    }
     private var soAn: Int { all.count - hien.count }
 
     var body: some View {
@@ -72,7 +92,23 @@ struct ShopeeVoucherView: View {
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: 10) {
-                    if found.isEmpty {
+                    if !coGoiY.isEmpty {
+                        Text("🛒 Gợi ý mua nguyên liệu")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        ForEach(coGoiY) { voucherCard($0) }
+                        if !found.isEmpty {
+                            Text("Mã ≥\(Self.nguong)% khác")
+                                .font(.footnote.weight(.semibold))
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.top, 6)
+                        }
+                    }
+                    if found.isEmpty && !coGoiY.isEmpty {
+                        EmptyView()
+                    } else if found.isEmpty {
                         Text(all.isEmpty ? (web.status ?? "Chưa đọc được voucher nào.") : "Không có mã từ \(Self.nguong)% trở lên trong \(hien.count) voucher đầu.")
                             .font(.subheadline)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -91,6 +127,9 @@ struct ShopeeVoucherView: View {
                     } else {
                         ForEach(found) { voucherCard($0) }
                     }
+                    if !goiY.isEmpty {
+                        bangGoiY
+                    }
                     if soAn > 0 || !anNhom.isEmpty || !anMa.isEmpty {
                         boLoc
                     }
@@ -98,7 +137,7 @@ struct ShopeeVoucherView: View {
                 .padding(12)
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle(found.isEmpty ? "Không có mã ≥\(Self.nguong)%" : "Có \(found.count) mã ≥\(Self.nguong)%")
+            .navigationTitle(!coGoiY.isEmpty ? "\(coGoiY.count) mã gợi ý mua" : found.isEmpty ? "Không có mã ≥\(Self.nguong)%" : "Có \(found.count) mã ≥\(Self.nguong)%")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -109,6 +148,7 @@ struct ShopeeVoucherView: View {
                 get: { chon != nil },
                 set: { if !$0 { chon = nil } }
             ), titleVisibility: .visible, presenting: chon) { v in
+                Button("Ghi nhớ: dùng được cho nguyên liệu…") { themGoiYCho = v }
                 Button("Ẩn voucher này", role: .destructive) { anMaRaw = (anMa.union([v.key])).sorted().joined(separator: "\n") }
                 if !v.nhomKey.isEmpty {
                     Button("Ẩn cả nhóm \"\(v.group ?? "")\"", role: .destructive) {
@@ -121,8 +161,55 @@ struct ShopeeVoucherView: View {
                 }
                 Button("Huỷ", role: .cancel) {}
             }
+            .sheet(item: $themGoiYCho) { v in
+                ChonNguyenLieuGoiYSheet(voucher: v) { nl in
+                    var list = goiY
+                    if !list.contains(where: { $0.nhom == v.nhomKey && $0.pct == v.pct && $0.nguyenLieuId == nl.id }) {
+                        list.append(VoucherGoiY(nhom: v.nhomKey, nhomHienThi: v.group ?? "", pct: v.pct,
+                                                nguyenLieuId: nl.id, tenNguyenLieu: nl.ten))
+                        luuGoiY(list)
+                    }
+                }
+            }
+            .task(id: goiYRaw) { await taiDeXuat() }
         }
         .presentationDetents([.medium, .large])
+    }
+
+    /// Đề xuất mua (còn/quá hạn bao nhiêu ngày) cho các nguyên liệu trong bảng gợi ý — gọi backend của
+    /// quán, không đụng Shopee.
+    private func taiDeXuat() async {
+        for id in Set(goiY.map(\.nguyenLieuId)) where deXuat[id] == nil {
+            if let d = await APIClient.shared.getDeXuatMua(nguyenLieuId: id) { deXuat[id] = d }
+        }
+    }
+
+    private func deXuatText(_ nguyenLieuId: String) -> String {
+        guard let d = deXuat[nguyenLieuId] else { return "" }
+        if d.soNgayConLai < 0 { return " · quá hạn \(-d.soNgayConLai) ngày" }
+        if d.soNgayConLai == 0 { return " · nên mua hôm nay" }
+        return " · còn \(d.soNgayConLai) ngày"
+    }
+
+    /// Bảng gợi ý đã ghi nhớ, xoá từng dòng.
+    private var bangGoiY: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Bảng gợi ý voucher → nguyên liệu (cùng nhóm, % ±5)")
+                .font(.footnote.weight(.semibold))
+            ForEach(goiY) { g in
+                HStack {
+                    Text("\(g.nhomHienThi.isEmpty ? "(không nhóm)" : g.nhomHienThi) \(g.pct)% → \(g.tenNguyenLieu)")
+                        .font(.footnote)
+                    Spacer()
+                    Button("Xoá") { luuGoiY(goiY.filter { $0.id != g.id }) }
+                        .font(.footnote)
+                }
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 4))
+        .padding(.top, 8)
     }
 
     /// Khối cuối popup: đang ẩn gì, bấm để hiện lại.
@@ -209,6 +296,11 @@ struct ShopeeVoucherView: View {
                             .padding(.vertical, 1)
                             .overlay(RoundedRectangle(cornerRadius: 2).stroke(Color.shopeeCam, lineWidth: 0.5))
                     }
+                    ForEach(khop(v)) { g in
+                        Text("🛒 \(g.tenNguyenLieu)\(deXuatText(g.nguyenLieuId))")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.brandPrimary)
+                    }
                     if let used = v.used {
                         ProgressView(value: Double(Swift.min(used, 100)), total: 100)
                             .tint(.shopeeCam)
@@ -258,6 +350,8 @@ struct ShopeeVoucherView: View {
             // web.status đã ghi lý do lỗi.
         } else if all.isEmpty {
             web.status = "Chưa thấy thẻ voucher nào trên trang (\(web.pageInfo)). Đợi trang tải xong / đăng nhập Shopee ngay trên trang rồi bấm \"Quét\" lại."
+        } else if !coGoiY.isEmpty {
+            web.status = "Có \(coGoiY.count) mã gợi ý mua nguyên liệu, \(found.count) mã ≥\(Self.nguong)% khác."
         } else if found.isEmpty {
             web.status = "Đã xem \(hien.count) voucher đầu, không có mã từ \(Self.nguong)% trở lên."
         } else {
@@ -300,6 +394,53 @@ struct ShopeeVoucher: Decodable, Identifiable {
         let c = (color ?? "").split(separator: ",").compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
         guard c.count == 3 else { return .shopeeCam }
         return Color(red: c[0] / 255, green: c[1] / 255, blue: c[2] / 255)
+    }
+}
+
+/// 1 dòng bảng gợi ý nhập tay: voucher nhóm `nhom` (ShopeeVoucher.nhomKey) mức ~`pct`% từng dùng được
+/// cho nguyên liệu này.
+struct VoucherGoiY: Codable, Identifiable {
+    var id = UUID().uuidString
+    let nhom: String
+    let nhomHienThi: String
+    let pct: Int
+    let nguyenLieuId: String
+    let tenNguyenLieu: String
+}
+
+/// Chọn nguyên liệu để ghi nhớ cho 1 kiểu voucher — gõ tìm như form Thêm chi tiêu.
+private struct ChonNguyenLieuGoiYSheet: View {
+    let voucher: ShopeeVoucher
+    let onChon: (NguyenLieuDto) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var list: [NguyenLieuDto] = []
+    @State private var tim = ""
+
+    private var loc: [NguyenLieuDto] {
+        let dangDung = list.filter { !$0.ngungSuDung }
+        return tim.isEmpty ? dangDung : dangDung.filter { $0.ten.matchesSearch(tim) }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Text("Voucher \(voucher.group ?? "") \(voucher.pct)% (và mã cùng nhóm ±5%) sẽ gợi ý mua:")
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                }
+                ForEach(loc.prefix(50)) { nl in
+                    Button(nl.ten) { onChon(nl); dismiss() }
+                }
+            }
+            .searchable(text: $tim, prompt: "Tìm nguyên liệu")
+            .navigationTitle("Dùng được cho…")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Huỷ") { dismiss() } }
+            }
+            .task { list = await APIClient.shared.getNguyenLieu() }
+        }
     }
 }
 
