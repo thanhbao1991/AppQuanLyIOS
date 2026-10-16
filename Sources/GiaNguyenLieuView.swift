@@ -338,7 +338,7 @@ private struct GiaNguyenLieuDetailView: View {
                     ForEach(items) { item in
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(HoaDonFormatting.congNoTime(item.ngayGio))
+                                Text(thoiDiemMua(item))
                                     .font(.subheadline)
                                 Text("SL \(item.soLuong.cleanString)")
                                     .font(.caption)
@@ -452,6 +452,19 @@ private struct GiaNguyenLieuDetailView: View {
     }
 }
 
+/// Ngày mua thật là `ngay`; `ngayGio` là giờ bấm lưu. Nhập bù ngày cũ (chọn 5/5 rồi thêm vào 16/10)
+/// thì 2 mốc khác ngày — khi đó chỉ hiện ngày mua, không ghép giờ lưu vào cho khỏi sai.
+private func thoiDiemMua(_ item: ChiTieuHangNgayDto) -> String {
+    guard let ngay = HoaDonFormatting.parseIso(item.ngay) else { return HoaDonFormatting.congNoTime(item.ngayGio) }
+    if let gio = HoaDonFormatting.parseIso(item.ngayGio), Calendar.current.isDate(ngay, inSameDayAs: gio) {
+        return HoaDonFormatting.congNoTime(item.ngayGio)
+    }
+    let f = DateFormatter()
+    f.dateFormat = "dd/MM/yyyy"
+    f.locale = Locale(identifier: "vi_VN")
+    return f.string(from: ngay)
+}
+
 private extension Double {
     var cleanString: String {
         self.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(self)) : String(self)
@@ -459,13 +472,13 @@ private extension Double {
 }
 
 /// Đường xu hướng đơn giá qua các lần mua — khớp phong cách KetQua6ThangChart (TinhLuongView).
-/// `items` từ API xếp mới→cũ (NgayGio desc), đảo lại để trục X chạy trái→phải theo thời gian.
+/// `items` từ API xếp mới→cũ (Ngay desc), đảo lại để trục X chạy trái→phải theo thời gian.
 private struct GiaNguyenLieuChart: View {
     let items: [ChiTieuHangNgayDto]
 
     private var points: [(id: String, date: Date, donGia: Double)] {
         items.reversed().map { item in
-            let date = HoaDonFormatting.parseIso(item.ngayGio) ?? .distantPast
+            let date = HoaDonFormatting.parseIso(item.ngay ?? item.ngayGio) ?? .distantPast
             return (id: item.id, date: date, donGia: item.donGia)
         }
     }
