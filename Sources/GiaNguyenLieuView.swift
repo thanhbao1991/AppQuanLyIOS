@@ -1,7 +1,7 @@
 import Charts
 import SwiftUI
 
-/// Công cụ tra giá nguyên liệu (Menu > Công cụ) — chọn 1 nguyên liệu rồi xem 3 lần mua gần nhất
+/// Công cụ tra giá nguyên liệu (Menu > Công cụ) — chọn 1 nguyên liệu rồi xem 5 lần mua gần nhất
 /// (đơn giá/số lượng/ngày mua) để so giá, tránh phải lật lại từng ngày trong tab Chi tiêu. Đọc
 /// thẳng ChiTieuHangNgay (bản ghi mua hàng), không lưu gì mới — xem
 /// GET /api/ChiTieuHangNgay/gia-gan-day (ChiTieuHangNgayController/Service).
@@ -293,7 +293,7 @@ struct GiaNguyenLieuView: View {
     }
 }
 
-/// Màn xem giá 1 nguyên liệu: thông tin (sửa/xoá qua nút "Sửa") + biểu đồ + 3 lần mua gần nhất.
+/// Màn xem giá 1 nguyên liệu: thông tin (sửa/xoá qua nút "Sửa") + biểu đồ + 5 lần mua gần nhất.
 private struct GiaNguyenLieuDetailView: View {
     @State private var nguyenLieu: NguyenLieuDto
     /// Báo màn danh sách tải lại sau khi sửa/xoá.
@@ -327,14 +327,14 @@ private struct GiaNguyenLieuDetailView: View {
                     }
                 }
             } else if items.isEmpty {
-                Section("3 lần mua gần nhất") {
+                Section("5 lần mua gần nhất") {
                     Text("Chưa có lần mua nào.").foregroundColor(.textMuted)
                 }
             } else {
                 Section("Diễn biến giá") {
                     GiaNguyenLieuChart(items: items)
                 }
-                Section("3 lần mua gần nhất") {
+                Section("5 lần mua gần nhất") {
                     ForEach(items) { item in
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
@@ -367,7 +367,7 @@ private struct GiaNguyenLieuDetailView: View {
             NguyenLieuEditSheet(existing: nguyenLieu) { Task { await refresh() } }
         }
         .task {
-            async let giaTask = APIClient.shared.getGiaNguyenLieuGanDay(nguyenLieuId: nguyenLieu.id)
+            async let giaTask = APIClient.shared.getGiaNguyenLieuGanDay(nguyenLieuId: nguyenLieu.id, soLan: 5)
             async let deXuatTask = APIClient.shared.getDeXuatMua(nguyenLieuId: nguyenLieu.id)
             items = await giaTask
             loading = false
