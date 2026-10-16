@@ -218,7 +218,16 @@ struct HoaDonDetailView: View {
 
                 DetailCard(tint: tongTienTint(d)) {
                     infoRow("Tổng tiền", HoaDonFormatting.money(d.tongTien))
-                    if d.giamGia > 0 { infoRow("Giảm giá", HoaDonFormatting.money(d.giamGia)) }
+                    if d.giamGia > 0 {
+                        VStack(alignment: .leading, spacing: 2) {
+                            infoRow("Giảm giá", HoaDonFormatting.money(d.giamGia))
+                            if let lyDo = d.lyDoGiamGia, !lyDo.isEmpty {
+                                Text("🏷️ \(lyDo)")
+                                    .font(.caption)
+                                    .foregroundColor(.textMuted)
+                            }
+                        }
+                    }
                     infoRow("Thành tiền", HoaDonFormatting.money(d.thanhTien))
                     infoRow("Đã thu", HoaDonFormatting.money(d.daThu))
                     Divider()

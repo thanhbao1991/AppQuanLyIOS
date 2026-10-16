@@ -115,6 +115,8 @@ struct HoaDonDetailDto: Decodable {
     let ngayNo: String?
     let tongTien: Double
     let giamGia: Double
+    /// Nguồn gốc khoản giảm (voucher/5% tự động/nhập tay) — Backend suy ra, null với backend cũ.
+    let lyDoGiamGia: String?
     let thanhTien: Double
     let daThu: Double
     let conLai: Double
