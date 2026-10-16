@@ -4,7 +4,7 @@ import WebKit
 /// Menu → "Voucher Shopee ≥25%". Mở Ví voucher của tài khoản Shopee trong WebView (dùng chung cookie đăng
 /// nhập với "Nhập từ Shopee"), đợi trang tự tải xong rồi đọc chữ trên các thẻ voucher ĐANG HIỆN SẴN —
 /// không gọi API, không cuộn để tải thêm, không bấm gì. Ví có hơn 2000 voucher nhưng Shopee xếp voucher
-/// ngon lên đầu nên lần tải đầu (~50 thẻ) là đủ. Có mã từ 25% trở lên thì bật popup, vẽ thẻ giống Shopee.
+/// ngon lên đầu; đọc tới 50 mã % đầu (tự cuộn cho trang tải thêm nếu lần tải đầu chưa đủ, bỏ voucher vận chuyển). Có mã từ 25% trở lên thì bật popup, vẽ thẻ giống Shopee.
 /// Bấm thẻ → ẩn voucher đó / ẩn cả nhóm (Shopee Mart, Bách hoá chính hãng ẩn sẵn) / xem trên trang.
 /// Đọc theo chữ ("25%", "HSD", "Lưu"…) chứ không theo class CSS — Shopee đổi giao diện vẫn chạy được,
 /// chỉ hỏng nếu thẻ voucher thành ảnh.
@@ -463,8 +463,11 @@ private final class ShopeeVoucherWebModel: NSObject, ObservableObject, WKNavigat
         let info: String
     }
 
-    /// Chỉ đọc tối đa ngần này thẻ đầu trang.
-    private static let soTheToiDa = 60
+    /// Đọc đủ ngần này voucher có % (không tính voucher vận chuyển) — 16/10 user tăng lên 50. Lần tải
+    /// đầu của ví chỉ ~50 thẻ (lẫn freeship + giảm tiền cố định, còn ~25 mã %), nên cuộn xuống cuối để
+    /// trang tự tải thêm 50 thẻ/lần (thử trên Chrome: 50→100→150…), tối đa `soLanCuonToiDa` lần.
+    private static let soTheToiDa = 50
+    private static let soLanCuonToiDa = 4
 
     override init() {
         let config = WKWebViewConfiguration()
@@ -506,6 +509,8 @@ private final class ShopeeVoucherWebModel: NSObject, ObservableObject, WKNavigat
         const productRe = /(đã bán|\\bsold\\b|\\d{1,3}(\\.\\d{3})+\\s*₫)/i;
         const norm = e => (e.textContent || '').replace(/\\s+/g, ' ').trim();
         const isCard = t => t.length > 0 && t.length < 260 && keyRe.test(t) && !productRe.test(t) && /\\d\\s*%/.test(t.replace(usedRe, ''));
+        // Voucher vận chuyển (Free Ship, "Giảm x% phí vận chuyển") không tính.
+        const shipRe = /(vận chuyển|free\\s*ship|shipping)/i;
         const pctCount = t => (t.replace(usedRe, '').match(/\\d{1,3}\\s*%/g) || []).length;
         // textContent gồm cả chữ của phần tử đang ẨN — chỉ lấy thẻ đang thật sự hiển thị (có kích thước).
         const visible = e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden'; };
@@ -565,7 +570,7 @@ private final class ShopeeVoucherWebModel: NSObject, ObservableObject, WKNavigat
             card = p;
           }
           const ct = norm(card);
-          if (seen.has(ct)) continue;
+          if (seen.has(ct) || shipRe.test(ct)) continue;
           seen.add(ct);
           const nums = [...t.replace(usedRe, '').matchAll(/(\\d{1,3})\\s*%/g)].map(m => +m[1]).filter(n => n > 0 && n <= 100);
           if (!nums.length) continue;
@@ -578,18 +583,35 @@ private final class ShopeeVoucherWebModel: NSObject, ObservableObject, WKNavigat
         return JSON.stringify({ items: out, info: location.pathname + ' · ' + body.length + ' ký tự · ' + body.slice(0, 100) });
         """
         do {
-            let value = try await webView.callAsyncJavaScript(script, arguments: ["max": Self.soTheToiDa], contentWorld: .page)
-            guard let text = value as? String, let data = text.data(using: .utf8) else {
-                pageInfo = "trang không trả kết quả"
-                return []
+            var result = try await chay(script)
+            // Chưa đủ → cuộn xuống cuối cho trang tự tải thêm thẻ (như người dùng cuộn), đọc lại. Dừng khi
+            // đủ, hoặc cuộn mà không thêm được mã nào (hết ví / trang không tải thêm).
+            var lan = 0
+            while result.items.count < Self.soTheToiDa && lan < Self.soLanCuonToiDa {
+                lan += 1
+                _ = try? await webView.callAsyncJavaScript("window.scrollTo(0, document.documentElement.scrollHeight); return true;", arguments: [:], contentWorld: .page)
+                try? await Task.sleep(nanoseconds: 1_800_000_000)
+                let them = try await chay(script)
+                if them.items.count <= result.items.count { break }
+                result = them
             }
-            let result = try JSONDecoder().decode(ScanResult.self, from: data)
+            if lan > 0 {
+                _ = try? await webView.callAsyncJavaScript("window.scrollTo(0, 0); return true;", arguments: [:], contentWorld: .page)
+            }
             pageInfo = result.info
             return result.items
         } catch {
             status = "Không đọc được trang Shopee: \(error.localizedDescription)"
             return nil
         }
+    }
+
+    private func chay(_ script: String) async throws -> ScanResult {
+        let value = try await webView.callAsyncJavaScript(script, arguments: ["max": Self.soTheToiDa], contentWorld: .page)
+        guard let text = value as? String, let data = text.data(using: .utf8) else {
+            return ScanResult(items: [], info: "trang không trả kết quả")
+        }
+        return try JSONDecoder().decode(ScanResult.self, from: data)
     }
 
     /// Đợi popup đóng hẳn rồi mới cuộn (cuộn lúc sheet còn đang trượt xuống thì WebView chưa nhận).
