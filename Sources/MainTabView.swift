@@ -338,7 +338,7 @@ private struct MoreMenuView: View {
                     NavigationLink {
                         ShopeeVoucherView()
                     } label: {
-                        Label("Voucher Shopee ≥20%", systemImage: "ticket")
+                        Label("Voucher Shopee ≥25%", systemImage: "ticket")
                     }
                 }
 

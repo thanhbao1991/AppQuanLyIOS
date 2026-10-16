@@ -1,10 +1,10 @@
 import SwiftUI
 import WebKit
 
-/// Menu → "Voucher Shopee ≥20%". Mở Ví voucher của tài khoản Shopee trong WebView (dùng chung cookie đăng
+/// Menu → "Voucher Shopee ≥25%". Mở Ví voucher của tài khoản Shopee trong WebView (dùng chung cookie đăng
 /// nhập với "Nhập từ Shopee"), đợi trang tự tải xong rồi đọc chữ trên các thẻ voucher ĐANG HIỆN SẴN —
 /// không gọi API, không cuộn để tải thêm, không bấm gì. Ví có hơn 2000 voucher nhưng Shopee xếp voucher
-/// ngon lên đầu nên lần tải đầu (~50 thẻ) là đủ. Có mã từ 20% trở lên thì bật popup, vẽ thẻ giống Shopee.
+/// ngon lên đầu nên lần tải đầu (~50 thẻ) là đủ. Có mã từ 25% trở lên thì bật popup, vẽ thẻ giống Shopee.
 /// Bấm thẻ → ẩn voucher đó / ẩn cả nhóm (Shopee Mart, Bách hoá chính hãng ẩn sẵn) / xem trên trang.
 /// Đọc theo chữ ("25%", "HSD", "Lưu"…) chứ không theo class CSS — Shopee đổi giao diện vẫn chạy được,
 /// chỉ hỏng nếu thẻ voucher thành ảnh.
@@ -25,7 +25,7 @@ struct ShopeeVoucherView: View {
     @State private var themGoiYCho: ShopeeVoucher?
     @State private var deXuat: [String: MuaHangDeXuatDto] = [:]
 
-    private static let nguong = 20
+    private static let nguong = 25
 
     private var anNhom: [String] { anNhomRaw.split(separator: "\n").map(String.init) }
     private var anMa: Set<String> { Set(anMaRaw.split(separator: "\n").map(String.init)) }
