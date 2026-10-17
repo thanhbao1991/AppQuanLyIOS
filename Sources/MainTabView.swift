@@ -189,6 +189,18 @@ private struct MoreMenuView: View {
     @State private var zaloEditText = ""
     @State private var zaloEditFailed = false
     @State private var showLogoutConfirm = false
+    @State private var showSwitchConfirm = false
+    @State private var isSwitchingAccount = false
+    @State private var switchError: String?
+
+    // Quán chỉ có 2 tài khoản nhân viên dùng chung mật khẩu mặc định (cùng mật khẩu LoginView tự
+    // điền) — chạm tên tài khoản ở Menu là đổi qua tài khoản còn lại, khỏi đăng xuất rồi gõ lại.
+    private static let taiKhoanChuyenNhanh = ["admin", "ty"]
+    private static let matKhauMacDinh = "123456"
+
+    private var taiKhoanKhac: String {
+        Prefs.lastTaiKhoan.lowercased() == "ty" ? "admin" : "ty"
+    }
 
     var body: some View {
         NavigationStack {
@@ -344,7 +356,22 @@ private struct MoreMenuView: View {
 
                 Section {
                     if let name = Prefs.displayName, !name.isEmpty {
-                        Label(name, systemImage: "person.circle")
+                        Button {
+                            showSwitchConfirm = true
+                        } label: {
+                            HStack {
+                                Label(name, systemImage: "person.circle")
+                                    .foregroundStyle(.primary)
+                                Spacer()
+                                if isSwitchingAccount {
+                                    ProgressView()
+                                } else {
+                                    Image(systemName: "arrow.left.arrow.right")
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        .disabled(isSwitchingAccount)
                     }
                     NavigationLink {
                         DeviceSessionsView()
@@ -393,6 +420,17 @@ private struct MoreMenuView: View {
                         }
                         Button("Huỷ", role: .cancel) {}
                     }
+                    .confirmationDialog("Chuyển sang tài khoản \(taiKhoanKhac)?", isPresented: $showSwitchConfirm, titleVisibility: .visible) {
+                        Button("Chuyển sang \(taiKhoanKhac)") {
+                            Task { await switchAccount() }
+                        }
+                        Button("Huỷ", role: .cancel) {}
+                    }
+                    .alert("Không chuyển được tài khoản", isPresented: Binding(get: { switchError != nil }, set: { if !$0 { switchError = nil } })) {
+                        Button("OK") { switchError = nil }
+                    } message: {
+                        Text(switchError ?? "")
+                    }
                     .alert("Chưa cấp quyền Danh bạ", isPresented: $showAccessDeniedAlert) {
                         Button("Mở Cài đặt") {
                             if let url = URL(string: UIApplication.openSettingsURLString) {
@@ -418,6 +456,38 @@ private struct MoreMenuView: View {
         let sha = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
         let buildTime = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
         return "\(sha) (\(buildTime))"
+    }
+
+    private func switchAccount() async {
+        let target = taiKhoanKhac
+        guard Self.taiKhoanChuyenNhanh.contains(target) else { return }
+        isSwitchingAccount = true
+        defer { isSwitchingAccount = false }
+
+        // Gỡ APNs token khỏi phiên CŨ trước (vẫn đang dùng token cũ) — backend push tới mọi phiên
+        // nhân viên có token, phiên cũ giữ token thì máy này nhận mỗi thông báo 2 lần.
+        _ = await APIClient.shared.registerApnsDeviceToken(nil)
+
+        switch await APIClient.shared.login(taiKhoan: target, matKhau: Self.matKhauMacDinh) {
+        case .success(let resp):
+            guard let token = resp.token else {
+                switchError = "Phản hồi từ server không hợp lệ."
+                PushNotifications.requestAndRegister()
+                return
+            }
+            // clear() trước: saveSession bỏ qua displayName/refreshToken rỗng, không clear thì có
+            // thể giữ nhầm tên/refresh token của tài khoản cũ.
+            Prefs.clear()
+            Prefs.lastTaiKhoan = target
+            Prefs.saveSession(token: token, refreshToken: resp.refreshToken, displayName: resp.tenHienThi ?? target)
+            NotificationCenter.default.post(name: .accountSwitched, object: nil)
+        case .rejected(let message):
+            switchError = message
+            PushNotifications.requestAndRegister()
+        case .networkError:
+            switchError = "Không kết nối được server, thử lại sau."
+            PushNotifications.requestAndRegister()
+        }
     }
 
     private func syncContacts() async {

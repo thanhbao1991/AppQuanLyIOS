@@ -8,12 +8,16 @@ struct ContentView: View {
     @State private var isLoggedIn = Prefs.isLoggedIn
     @Environment(\.scenePhase) private var scenePhase
     @State private var backgroundTaskId: UIBackgroundTaskIdentifier = .invalid
+    @State private var sessionKey = UUID()
 
     var body: some View {
         ZStack(alignment: .top) {
             Group {
                 if isLoggedIn {
                     MainTabView(isLoggedIn: $isLoggedIn)
+                        // Đổi key khi chuyển tài khoản → dựng lại toàn bộ tab, bỏ dữ liệu đã tải
+                        // bằng tài khoản cũ.
+                        .id(sessionKey)
                 } else {
                     LoginView(isLoggedIn: $isLoggedIn)
                 }
@@ -26,6 +30,18 @@ struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .sessionExpired)) { _ in
             isLoggedIn = false
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .accountSwitched)) { _ in
+            sessionKey = UUID()
+            // SignalR giữ kết nối mở bằng token cũ — ngắt rồi nối lại bằng token mới.
+            Task {
+                await SignalRClient.shared.stop()
+                await SignalRClient.shared.start { entity, action, id, voice in
+                    EntityChangeBus.shared.post(entity, action, id, voice: voice)
+                }
+            }
+            PushNotifications.requestAndRegister()
+            Task { await ThongBaoBadge.shared.refresh() }
         }
         .onChange(of: isLoggedIn) { loggedIn in
             if loggedIn {

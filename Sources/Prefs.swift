@@ -4,6 +4,9 @@ import Foundation
 // ContentView lắng nghe để đưa app quay lại LoginView thay vì để request lỗi âm thầm.
 extension Notification.Name {
     static let sessionExpired = Notification.Name("sessionExpired")
+    // Bắn khi đổi nhanh tài khoản ở Menu (Prefs đã chứa token tài khoản mới) — ContentView dựng lại
+    // MainTabView + nối lại SignalR/push bằng token mới.
+    static let accountSwitched = Notification.Name("accountSwitched")
 }
 
 /// Host app THẬT được khởi động khi chạy unit test (bundle test được "inject" vào app để
