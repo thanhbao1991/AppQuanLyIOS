@@ -244,6 +244,12 @@ actor APIClient {
         return await executeAction(req).success
     }
 
+    /// Bật/tắt "đang quản lý số lượng realtime" của nguyên liệu (PATCH riêng).
+    func setNguyenLieuQuanLyTonKho(id: String, value: Bool) async -> Bool {
+        let req = makeRequest("/api/NguyenLieu/\(id)/quan-ly-ton-kho?value=\(value)", method: "PATCH")
+        return await executeAction(req).success
+    }
+
     /// Bật/tắt "Nổi bật" cho món (dải "Món quán đề xuất" đầu tab Thực đơn app khách, thứ tự hiện
     /// random mỗi lần tải) — trả cả message để hiện lỗi nếu server từ chối.
     func setSanPhamNoiBat(id: String, value: Bool) async -> ActionResult {

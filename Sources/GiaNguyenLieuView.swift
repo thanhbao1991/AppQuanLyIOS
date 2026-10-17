@@ -39,9 +39,65 @@ struct GiaNguyenLieuView: View {
     /// Không chọn nhóm nào (Tất cả) thì lấy hết; chọn nhóm thì lọc đúng nhóm đó (nhóm Nguyên liệu
     /// nhận thêm cả phanLoai == nil).
     private var nguyenLieuList: [NguyenLieuDto] {
-        guard let phanLoai else { return allNguyenLieu }
-        return allNguyenLieu.filter {
-            $0.phanLoai == phanLoai.rawValue || (phanLoai == .nguyenLieu && $0.phanLoai == nil)
+        var list = allNguyenLieu
+        if let phanLoai {
+            list = list.filter {
+                $0.phanLoai == phanLoai.rawValue || (phanLoai == .nguyenLieu && $0.phanLoai == nil)
+            }
+        }
+        switch locDanhDau {
+        case .tatCa: return list
+        case .muaShopee: return list.filter { $0.yeuThich == true }
+        case .quanLyTonKho: return list.filter { $0.quanLyTonKho == true }
+        }
+    }
+
+    /// Khi đang lọc theo dấu (không gõ tìm) thì liệt kê đủ các nguyên liệu khớp, không chỉ gợi ý đến hạn.
+    private var locDanhSach: [NguyenLieuDto] {
+        nguyenLieuList.filter { !$0.ngungSuDung }
+            .sorted { $0.ten.localizedCompare($1.ten) == .orderedAscending }
+    }
+
+    private enum LocDanhDau: String, CaseIterable, Identifiable {
+        case tatCa, muaShopee, quanLyTonKho
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .tatCa: return "Tất cả"
+            case .muaShopee: return "Mua Shopee"
+            case .quanLyTonKho: return "Quản lý số lượng"
+            }
+        }
+        var icon: String? {
+            switch self {
+            case .tatCa: return nil
+            case .muaShopee: return "bag.fill"
+            case .quanLyTonKho: return "shippingbox.fill"
+            }
+        }
+    }
+
+    @State private var locDanhDau: LocDanhDau = .tatCa
+
+    private var locBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(LocDanhDau.allCases) { loc in
+                    let on = locDanhDau == loc
+                    Button { locDanhDau = loc } label: {
+                        HStack(spacing: 4) {
+                            if let icon = loc.icon { Image(systemName: icon) }
+                            Text(loc.label)
+                        }
+                        .font(.subheadline)
+                        .padding(.horizontal, 12).padding(.vertical, 6)
+                        .foregroundColor(on ? .white : .primary)
+                        .background(Capsule().fill(on ? Color.brandPrimary : Color.gray.opacity(0.15)))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 12).padding(.vertical, 6)
         }
     }
 
@@ -100,6 +156,7 @@ struct GiaNguyenLieuView: View {
     var body: some View {
         VStack(spacing: 0) {
             SearchBar(text: $searchText, placeholder: "Tìm nguyên liệu...")
+            locBar
 
             List {
                 if loadFailed {
@@ -107,7 +164,13 @@ struct GiaNguyenLieuView: View {
                         .listRowSeparator(.hidden)
                 }
                 // Không tiêu đề nhóm (đồng bộ màn Tồn kho). Tách ⭐ riêng với nhóm còn lại; ⭐ trên từng dòng vẫn bấm để ghim/bỏ ghim.
-                if searchText.isEmpty {
+                if searchText.isEmpty && locDanhDau != .tatCa {
+                    if locDanhSach.isEmpty {
+                        Section { Text("Chưa có nguyên liệu nào được đánh dấu.").foregroundColor(.textMuted) }
+                    } else {
+                        Section { ForEach(locDanhSach) { row($0) } }
+                    }
+                } else if searchText.isEmpty {
                     if !goiYYeuThich.isEmpty {
                         Section {
                             ForEach(goiYYeuThich) { row($0.nl, $0.d) }
@@ -206,12 +269,20 @@ struct GiaNguyenLieuView: View {
     /// Có đề xuất `d` thì hiện thêm số lượng thường mua + mức gấp (trễ/hôm nay/còn N ngày).
     private func row(_ nl: NguyenLieuDto, _ d: MuaHangDeXuatDto? = nil) -> some View {
         HStack(spacing: 12) {
-            // ⭐ bên trái tên — đồng bộ với màn Tồn kho và màn Ảnh menu.
+            // Giỏ xách bên trái tên = mua qua Shopee (field yeuThich).
             Button {
                 Task { await toggleYeuThich(nl) }
             } label: {
-                Image(systemName: nl.yeuThich == true ? "star.fill" : "star")
-                    .foregroundColor(nl.yeuThich == true ? .yellow : .textMuted)
+                Image(systemName: nl.yeuThich == true ? "bag.fill" : "bag")
+                    .foregroundColor(nl.yeuThich == true ? .orange : .textMuted)
+            }
+            .buttonStyle(.borderless)
+            // Hộp = đang quản lý số lượng (tồn kho) realtime.
+            Button {
+                Task { await toggleQuanLyTonKho(nl) }
+            } label: {
+                Image(systemName: nl.quanLyTonKho == true ? "shippingbox.fill" : "shippingbox")
+                    .foregroundColor(nl.quanLyTonKho == true ? .green : .textMuted)
             }
             .buttonStyle(.borderless)
             Button {
@@ -279,6 +350,16 @@ struct GiaNguyenLieuView: View {
         if !(await APIClient.shared.setNguyenLieuNgungSuDung(id: nl.id, value: false)),
            let j = allNguyenLieu.firstIndex(where: { $0.id == nl.id }) {
             allNguyenLieu[j].ngungSuDung = true
+        }
+    }
+
+    private func toggleQuanLyTonKho(_ nl: NguyenLieuDto) async {
+        guard let i = allNguyenLieu.firstIndex(where: { $0.id == nl.id }) else { return }
+        let value = allNguyenLieu[i].quanLyTonKho != true
+        allNguyenLieu[i].quanLyTonKho = value
+        if !(await APIClient.shared.setNguyenLieuQuanLyTonKho(id: nl.id, value: value)),
+           let j = allNguyenLieu.firstIndex(where: { $0.id == nl.id }) {
+            allNguyenLieu[j].quanLyTonKho = !value
         }
     }
 

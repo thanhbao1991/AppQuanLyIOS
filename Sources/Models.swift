@@ -378,6 +378,8 @@ struct NguyenLieuDto: Decodable, Identifiable {
     let heSoQuyDoiBanHang: Double?
     /// ⭐ ghim lên đầu màn Giá nguyên liệu — optional để không vỡ khi backend cũ chưa trả field.
     var yeuThich: Bool?
+    /// Đang quản lý số lượng realtime — optional để không vỡ khi backend cũ chưa trả field.
+    var quanLyTonKho: Bool?
     /// 1 = Nguyên liệu (đồ ăn/uống), 2 = Vật liệu (vật tư/bao bì/máy móc), 3 = Chi phí khác. Nil = chưa phân loại.
     var phanLoai: Int?
 }
