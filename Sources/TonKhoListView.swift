@@ -3,7 +3,7 @@ import SwiftUI
 /// Tồn kho nguyên liệu bán hàng (Menu > Tồn kho) — mỗi dòng 1 MÓN BÁN (Revive, Sting, Soda…), khác màn
 /// "Nguyên liệu & giá" mỗi dòng 1 MÃ NHẬP HÀNG (Revive Thùng, Revive Lốc 6…). Từng gộp 2 màn làm 1 (17/10/2026)
 /// nhưng 1 món bán có nhiều mã nhập nên số tồn bị lặp/khó nhìn → tách lại, có nút qua lại giữa 2 màn.
-/// Quy ước: tồn ≥ 0 = đang theo dõi thật (đã kiểm kê), −1 = chưa theo dõi. Nhóm đang theo dõi xếp theo số ly
+/// Quy ước: tồn ≥ 0 = đang theo dõi thật (đã kiểm kê), −9999 = chưa theo dõi. Nhóm đang theo dõi xếp theo số ly
 /// size chuẩn còn bán được tăng dần (sắp hết lên đầu).
 /// GET /api/NguyenLieuBanHang (TonKho + SoLyConLai), PUT /api/NguyenLieuBanHang/{id}/adjust.
 struct TonKhoListView: View {
@@ -174,7 +174,7 @@ struct TonKhoChiTietView: View {
                         Label("Kiểm kê (nhập số đếm thực tế)", systemImage: "checklist")
                     }
                 } footer: {
-                    Text("Bán theo công thức tự trừ, nhập Chi tiêu tự cộng. Tồn đang âm mà nhập hàng thì tính lại từ 0.")
+                    Text("Bán theo công thức tự trừ, nhập Chi tiêu tự cộng. Món chưa theo dõi để −9999 — kiểm kê để bắt đầu theo dõi.")
                 }
 
                 Section("Mã nhập hàng") {
@@ -253,7 +253,7 @@ private struct AdjustTonKhoSheet: View {
     init(item: NguyenLieuBanHangDto, onSaved: @escaping () -> Void) {
         self.item = item
         self.onSaved = onSaved
-        // Chưa theo dõi (−1) thì để trống cho nhập số đếm, khỏi phải xoá "-1".
+        // Chưa theo dõi (âm) thì để trống cho nhập số đếm, khỏi phải xoá "-9999".
         _soLuongText = State(initialValue: (item.tonKho ?? -1) >= 0 ? TonKhoFormatting.soLuong(item) : "")
     }
 

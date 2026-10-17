@@ -330,7 +330,7 @@ struct NguyenLieuBanHangDto: Decodable, Identifiable {
     let dangSuDung: Bool?
     /// ⭐ ghim lên đầu màn Tồn kho — optional để không vỡ khi backend cũ chưa trả field.
     let yeuThich: Bool?
-    /// Còn bán được bao nhiêu ly size chuẩn (backend tính) — nil khi tồn < 0 (−1 = chưa theo dõi).
+    /// Còn bán được bao nhiêu ly size chuẩn (backend tính) — nil khi tồn < 0 (−9999 = chưa theo dõi).
     let soLyConLai: Int?
 }
 
@@ -385,7 +385,7 @@ struct NguyenLieuDto: Decodable, Identifiable {
     /// Tồn kho của nguyên liệu bán hàng đã nối, theo ĐƠN VỊ BÁN (vd 48 lon) — chỉ đọc, nil khi chưa nối.
     var tonKhoBanHang: Double?
     let donViTinhBanHang: String?
-    /// Còn bán được bao nhiêu ly size chuẩn (backend tính) — nil khi tồn < 0 (−1 = chưa theo dõi).
+    /// Còn bán được bao nhiêu ly size chuẩn (backend tính) — nil khi tồn < 0 (−9999 = chưa theo dõi).
     var soLyConLai: Int?
     /// 1 = Nguyên liệu (đồ ăn/uống), 2 = Vật liệu (vật tư/bao bì/máy móc), 3 = Chi phí khác. Nil = chưa phân loại.
     var phanLoai: Int?

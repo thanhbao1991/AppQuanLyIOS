@@ -3,7 +3,7 @@ import SwiftUI
 /// Tồn kho hiện trong màn "Nguyên liệu & giá" (thay mục menu "Tồn kho" riêng). Nguồn số duy nhất là
 /// NguyenLieuBanHangs.TonKho (đơn vị BÁN, vd lon) — tự trừ khi bán theo công thức, tự cộng khi nhập Chi
 /// tiêu. Nguyên liệu mua (vd thùng) chỉ quy đổi để hiển thị/kiểm kê qua HeSoQuyDoiBanHang (1 thùng = 24 lon).
-/// Quy ước từ 17/10/2026: tồn ≥ 0 = đang theo dõi thật (đã kiểm kê), mọi món khác đặt −1 = chưa theo dõi
+/// Quy ước từ 17/10/2026: tồn ≥ 0 = đang theo dõi thật (đã kiểm kê), mọi món khác đặt −9999 = chưa theo dõi
 /// (số cũ ở bảng _Backup_TonKho_20261017/_20261017b). Chỉ hiện số khi tồn ≥ 0.
 enum TonKhoNguyenLieu {
     static func coTheTheoDoi(_ nl: NguyenLieuDto) -> Bool { nl.nguyenLieuBanHangId != nil }
