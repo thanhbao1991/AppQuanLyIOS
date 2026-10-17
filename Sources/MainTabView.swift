@@ -54,6 +54,7 @@ struct MainTabView: View {
     @ObservedObject private var congViecBadge = CongViecBadge.shared
     @ObservedObject private var thongBaoBadge = ThongBaoBadge.shared
     @State private var showThongBaoSheet = false
+    @State private var showTroLySheet = false
     /// Mặc định Hoá đơn dù Thống kê xếp trước về vị trí hiển thị — mở app luôn vào tab Hoá đơn
     /// theo yêu cầu, thứ tự khai báo trong MainTab không nhất thiết khớp mục mặc định.
     @State private var selection: MainTab = .hoaDon
@@ -78,6 +79,16 @@ struct MainTabView: View {
         }
         .sheet(isPresented: $showThongBaoSheet) {
             ThongBaoNoiBoListView()
+        }
+        .sheet(isPresented: $showTroLySheet) {
+            NavigationStack {
+                TroLyView()
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Xong") { showTroLySheet = false }.foregroundColor(.white)
+                        }
+                    }
+            }
         }
         .task { await thongBaoBadge.refresh() }
         .onChange(of: selection) { newValue in
@@ -111,7 +122,22 @@ struct MainTabView: View {
     /// thẳng vào HStack header của từng tab (view con tự layout, không phải tính tay) bền hơn. Icon
     /// trắng không cần nền tròn riêng vì 6 tab này đều có header tinted brandPrimary. Riêng tab Menu
     /// (thứ 7) KHÔNG có chuông — không có header riêng, theo yêu cầu không cần thêm cho tab đó.
+    /// Nút ✨ Trợ lý ảo + chuông — gắn chung vào thanh tiêu đề mọi tab, nên trợ lý mở được từ bất kỳ đâu
+    /// (18/10/2026, user không muốn phải vào Menu > Trợ lý ảo).
     private var notificationBell: some View {
+        HStack(spacing: 14) {
+            Button { showTroLySheet = true } label: {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 18))
+                    .foregroundColor(.white)
+                    .frame(width: 30, height: 30)
+            }
+            .accessibilityLabel("Trợ lý ảo")
+            chuong
+        }
+    }
+
+    private var chuong: some View {
         Button { showThongBaoSheet = true } label: {
             ZStack(alignment: .topTrailing) {
                 Image(systemName: "bell.fill")
