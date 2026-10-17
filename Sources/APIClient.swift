@@ -656,7 +656,7 @@ actor APIClient {
         return env.data ?? 0
     }
 
-    /// Trợ lý ảo: câu báo cáo mở đầu (server tính thẳng từ tồn kho, không gọi AI) — nil nếu lỗi mạng.
+    /// Trợ lý ảo: câu báo cáo mở đầu (server tính thẳng từ tồn kho) — nil nếu lỗi mạng.
     func getTroLyChao() async -> String? {
         let req = makeRequest("/api/TroLy/chao")
         let (data, _) = await send(req)
@@ -664,14 +664,20 @@ actor APIClient {
         return env.data
     }
 
-    /// Trợ lý ảo: gửi cả lịch sử chat, nhận câu trả lời của AI. Lỗi trả (nil, thông báo lỗi).
-    func troLyChat(_ tinNhan: [TroLyTinNhan]) async -> (traLoi: String?, loi: String?) {
-        let req = makeRequest("/api/TroLy/chat", method: "POST", body: jsonBody(["tinNhan": tinNhan]))
+    /// Trợ lý ảo: các câu hỏi bấm sẵn (server quyết định có câu nào) — rỗng nếu lỗi mạng.
+    func getTroLyCauHoi() async -> [TroLyCauHoi] {
+        let req = makeRequest("/api/TroLy/cau-hoi")
         let (data, _) = await send(req)
-        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<String>.self, from: data) else {
-            return (nil, "Không kết nối được server.")
-        }
-        return env.isSuccess ? (env.data, nil) : (nil, env.message ?? "Trợ lý chưa trả lời được.")
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[TroLyCauHoi]>.self, from: data), env.isSuccess else { return [] }
+        return env.data ?? []
+    }
+
+    /// Trợ lý ảo: câu trả lời cho 1 câu hỏi bấm sẵn — nil nếu lỗi.
+    func getTroLyTraLoi(_ ma: String) async -> String? {
+        let req = makeRequest("/api/TroLy/tra-loi/\(ma)")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<String>.self, from: data), env.isSuccess else { return nil }
+        return env.data
     }
 
     func markThongBaoSeen() async -> ActionResult {

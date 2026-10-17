@@ -1,128 +1,107 @@
 import SwiftUI
 
-/// 1 lượt chat gửi lên /api/TroLy/chat (role "user"/"assistant").
-struct TroLyTinNhan: Codable, Identifiable, Equatable {
-    var id = UUID()
-    let role: String
-    let content: String
-
-    enum CodingKeys: String, CodingKey { case role, content }
+/// 1 câu hỏi bấm sẵn của trợ lý — server trả danh sách (GET /api/TroLy/cau-hoi).
+struct TroLyCauHoi: Codable, Identifiable, Equatable {
+    let ma: String
+    let noiDung: String
+    var id: String { ma }
 }
 
-/// Trợ lý ảo (Menu > Trợ lý ảo) — mở ra là có "Báo cáo chủ nhân…" về tồn kho (server tính, không tốn AI),
-/// rồi chat hỏi đáp kiểu "Bò Húc sắp hết chưa?". Backend gửi ảnh chụp số liệu tồn kho cho AI mỗi câu hỏi
-/// (TroLyService), AI chỉ trả lời dựa trên số liệu đó. Lịch sử chat chỉ giữ trong phiên, đóng màn là mất.
+/// Trợ lý ảo (Menu > Trợ lý ảo) — KHÔNG dùng AI: mở ra là báo cáo những món cần để ý (dưới ngưỡng an toàn,
+/// sắp hết), bên dưới là các câu hỏi bấm sẵn, chạm để xem trả lời (server tính thẳng từ DB). Nhấn giữ rồi
+/// kéo câu hỏi để đổi thứ tự — thứ tự lưu trên máy (AppStorage), câu hỏi mới server thêm sẽ nằm cuối.
 struct TroLyView: View {
-    @State private var tinNhan: [TroLyTinNhan] = []
-    @State private var nhap = ""
-    @State private var dangTraLoi = false
-    @State private var loi: String?
-    @FocusState private var dangGo: Bool
-
-    private let goiY = [
-        "Có nguyên liệu nào sắp hết không?",
-        "Bò Húc sắp hết chưa?",
-        "Mai cần nhập hàng gì?",
-    ]
+    @AppStorage("troLy.thuTu") private var thuTuRaw = ""
+    @State private var baoCao: String?
+    @State private var cauHoi: [TroLyCauHoi] = []
+    @State private var traLoi: [String: String] = [:]
+    @State private var dangHoi: Set<String> = []
+    @State private var dangTai = true
 
     var body: some View {
-        VStack(spacing: 0) {
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 10) {
-                        if tinNhan.isEmpty {
-                            HStack { ProgressView(); Text("Đang xem tồn kho…").foregroundColor(.textMuted) }
-                                .padding(.top, 20)
-                        }
-                        ForEach(tinNhan) { bongBong($0) }
-                        if dangTraLoi {
-                            HStack(spacing: 6) { ProgressView(); Text("Đang nghĩ…").font(.subheadline).foregroundColor(.textMuted) }
-                                .id("dang-tra-loi")
-                        }
-                        if let loi {
-                            Text(loi).font(.footnote).foregroundColor(.red)
-                        }
-                        if tinNhan.count <= 1 && !dangTraLoi {
-                            VStack(alignment: .leading, spacing: 8) {
-                                ForEach(goiY, id: \.self) { cau in
-                                    Button { Task { await gui(cau) } } label: {
-                                        Text(cau)
-                                            .font(.subheadline)
-                                            .padding(.horizontal, 12).padding(.vertical, 8)
-                                            .background(Capsule().stroke(Color.brandPrimary, lineWidth: 1))
-                                    }
-                                    .buttonStyle(.plain)
-                                    .foregroundColor(.brandPrimary)
-                                }
-                            }
-                            .padding(.top, 4)
-                        }
-                        Color.clear.frame(height: 1).id("cuoi")
-                    }
-                    .padding(12)
+        List {
+            Section {
+                if let baoCao {
+                    Text(baoCao).textSelection(.enabled)
+                } else if dangTai {
+                    HStack { ProgressView(); Text("Đang xem tồn kho…").foregroundColor(.textMuted) }
+                } else {
+                    Text("Không tải được báo cáo.").foregroundColor(.textMuted)
                 }
-                .scrollDismissesKeyboard(.interactively)
-                .onChange(of: tinNhan.count) { _ in withAnimation { proxy.scrollTo("cuoi", anchor: .bottom) } }
-                .onChange(of: dangTraLoi) { _ in withAnimation { proxy.scrollTo("cuoi", anchor: .bottom) } }
             }
 
-            HStack(spacing: 8) {
-                TextField("Hỏi trợ lý…", text: $nhap, axis: .vertical)
-                    .lineLimit(1...4)
-                    .focused($dangGo)
-                    .padding(.horizontal, 12).padding(.vertical, 8)
-                    .background(RoundedRectangle(cornerRadius: 18).fill(Color.gray.opacity(0.12)))
-                Button {
-                    let cau = nhap
-                    Task { await gui(cau) }
-                } label: {
-                    Image(systemName: "arrow.up.circle.fill").font(.system(size: 30))
-                }
-                .disabled(dangTraLoi || nhap.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                .foregroundColor(.brandPrimary)
+            Section {
+                ForEach(cauHoi) { hang($0) }
+                    .onMove { tu, den in
+                        cauHoi.move(fromOffsets: tu, toOffset: den)
+                        thuTuRaw = cauHoi.map(\.ma).joined(separator: ",")
+                    }
+            } header: {
+                Text("Hỏi nhanh")
+            } footer: {
+                if !cauHoi.isEmpty { Text("Nhấn giữ rồi kéo để đổi thứ tự.") }
             }
-            .padding(.horizontal, 12).padding(.vertical, 8)
-            .background(Color(.systemBackground))
-            .overlay(Divider(), alignment: .top)
         }
         .navigationTitle("Trợ lý ảo")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color.brandPrimary, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
-        .task {
-            guard tinNhan.isEmpty else { return }
-            let chao = await APIClient.shared.getTroLyChao()
-            tinNhan = [TroLyTinNhan(role: "assistant", content: chao ?? "Chào chủ nhân! Em chưa xem được tồn kho lúc này, chủ nhân cứ hỏi em nhé.")]
+        .refreshable { await taiLai() }
+        .task { if cauHoi.isEmpty { await taiLai() } }
+    }
+
+    private func hang(_ c: TroLyCauHoi) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Button {
+                Task { await hoi(c.ma) }
+            } label: {
+                HStack {
+                    Text(c.noiDung).foregroundColor(.brandPrimary)
+                    Spacer()
+                    if dangHoi.contains(c.ma) {
+                        ProgressView()
+                    } else {
+                        Image(systemName: traLoi[c.ma] == nil ? "chevron.right" : "arrow.clockwise")
+                            .font(.footnote).foregroundColor(.textMuted)
+                    }
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if let tl = traLoi[c.ma] {
+                Text(tl)
+                    .font(.subheadline)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
     }
 
-    private func bongBong(_ m: TroLyTinNhan) -> some View {
-        let laToi = m.role == "user"
-        return HStack {
-            if laToi { Spacer(minLength: 40) }
-            Text(m.content)
-                .textSelection(.enabled)
-                .padding(.horizontal, 12).padding(.vertical, 8)
-                .foregroundColor(laToi ? .white : .primary)
-                .background(RoundedRectangle(cornerRadius: 16).fill(laToi ? Color.brandPrimary : Color.gray.opacity(0.14)))
-            if !laToi { Spacer(minLength: 40) }
-        }
+    private func taiLai() async {
+        dangTai = true
+        async let bc = APIClient.shared.getTroLyChao()
+        async let ds = APIClient.shared.getTroLyCauHoi()
+        let (b, d) = await (bc, ds)
+        baoCao = b
+        if !d.isEmpty { cauHoi = sapTheoThuTu(d) }
+        dangTai = false
+        // Kéo xuống làm mới thì cập nhật luôn các câu đã mở.
+        for ma in traLoi.keys { Task { await hoi(ma) } }
     }
 
-    private func gui(_ cau: String) async {
-        let noiDung = cau.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !noiDung.isEmpty, !dangTraLoi else { return }
-        nhap = ""
-        loi = nil
-        tinNhan.append(TroLyTinNhan(role: "user", content: noiDung))
-        dangTraLoi = true
-        let (traLoi, loiMoi) = await APIClient.shared.troLyChat(tinNhan)
-        dangTraLoi = false
-        if let traLoi {
-            tinNhan.append(TroLyTinNhan(role: "assistant", content: traLoi))
-        } else {
-            loi = loiMoi
-        }
+    private func hoi(_ ma: String) async {
+        guard !dangHoi.contains(ma) else { return }
+        dangHoi.insert(ma)
+        let tl = await APIClient.shared.getTroLyTraLoi(ma)
+        dangHoi.remove(ma)
+        withAnimation { traLoi[ma] = tl ?? "Không tải được, thử lại nhé." }
+    }
+
+    private func sapTheoThuTu(_ ds: [TroLyCauHoi]) -> [TroLyCauHoi] {
+        let thuTu = thuTuRaw.split(separator: ",").map(String.init)
+        let viTri = { (i: Int, c: TroLyCauHoi) in (thuTu.firstIndex(of: c.ma) ?? thuTu.count, i) }
+        return ds.enumerated().sorted { viTri($0.offset, $0.element) < viTri($1.offset, $1.element) }.map(\.element)
     }
 }
