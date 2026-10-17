@@ -1,71 +1,64 @@
 import SwiftUI
 
-/// Tồn kho nguyên liệu bán hàng (Menu > Cấu hình > Tồn kho) — xem số tồn và điều chỉnh theo kiểm kê.
-/// Dùng GET /api/NguyenLieuBanHang (đã có TonKho) và PUT /api/NguyenLieuBanHang/{id}/adjust.
+/// Tồn kho nguyên liệu bán hàng (Menu > Tồn kho) — mỗi dòng 1 MÓN BÁN (Revive, Sting, Soda…), khác màn
+/// "Nguyên liệu & giá" mỗi dòng 1 MÃ NHẬP HÀNG (Revive Thùng, Revive Lốc 6…). Từng gộp 2 màn làm 1 (17/10/2026)
+/// nhưng 1 món bán có nhiều mã nhập nên số tồn bị lặp/khó nhìn → tách lại, có nút qua lại giữa 2 màn.
+/// Quy ước: tồn ≥ 0 = đang theo dõi thật (đã kiểm kê), −1 = chưa theo dõi. Nhóm đang theo dõi xếp theo số ly
+/// size chuẩn còn bán được tăng dần (sắp hết lên đầu).
+/// GET /api/NguyenLieuBanHang (TonKho + SoLyConLai), PUT /api/NguyenLieuBanHang/{id}/adjust.
 struct TonKhoListView: View {
     @State private var items: [NguyenLieuBanHangDto] = []
     @State private var hasLoaded = false
     @State private var loadFailed = false
     @State private var searchText = ""
-    @State private var adjusting: NguyenLieuBanHangDto?
     /// ⭐ đang ghim — giữ local để bấm sao đổi ngay, khớp server sau khi load lại.
     @State private var yeuThichIds: Set<String> = []
 
-    private var filteredItems: [NguyenLieuBanHangDto] {
-        let sorted = items
-            .filter { $0.dangSuDung != false }
-            .sorted { a, b in
-                let fa = yeuThichIds.contains(a.id), fb = yeuThichIds.contains(b.id)
-                if fa != fb { return fa }
-                return a.ten.localizedStandardCompare(b.ten) == .orderedAscending
-            }
-        guard !searchText.isEmpty else { return sorted }
-        return sorted.filter { $0.ten.matchesSearch(searchText) }
+    private var hienThi: [NguyenLieuBanHangDto] {
+        let dangDung = items.filter { $0.dangSuDung != false }
+        guard !searchText.isEmpty else { return dangDung }
+        return dangDung.filter { $0.ten.matchesSearch(searchText) }
+    }
+
+    private var dangTheoDoi: [NguyenLieuBanHangDto] {
+        hienThi.filter { ($0.tonKho ?? -1) >= 0 }.sorted {
+            let a = $0.soLyConLai ?? Int.max, b = $1.soLyConLai ?? Int.max
+            return a != b ? a < b : $0.ten.localizedStandardCompare($1.ten) == .orderedAscending
+        }
+    }
+
+    private var chuaTheoDoi: [NguyenLieuBanHangDto] {
+        hienThi.filter { ($0.tonKho ?? -1) < 0 }.sorted { a, b in
+            let fa = yeuThichIds.contains(a.id), fb = yeuThichIds.contains(b.id)
+            if fa != fb { return fa }
+            return a.ten.localizedStandardCompare(b.ten) == .orderedAscending
+        }
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            SearchBar(text: $searchText, placeholder: "Tìm nguyên liệu...")
+            SearchBar(text: $searchText, placeholder: "Tìm món tồn kho...")
 
             if !hasLoaded {
                 fullScreenLoading()
-            } else if filteredItems.isEmpty && loadFailed {
+            } else if hienThi.isEmpty && loadFailed {
                 ThongKeLoadErrorBanner(text: "Chưa tải được tồn kho") { Task { await load() } }
                     .padding(12)
                 Spacer()
-            } else if filteredItems.isEmpty {
-                Text("Chưa có nguyên liệu bán hàng")
-                    .foregroundColor(.textMuted)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                if loadFailed {
-                    ThongKeLoadErrorBanner(text: "Chưa tải được tồn kho") { Task { await load() } }
-                        .padding(.horizontal, 12)
-                        .padding(.top, 8)
-                }
                 List {
-                    ForEach(filteredItems) { item in
-                        HStack(spacing: 12) {
-                            Button {
-                                toggleYeuThich(item)
-                            } label: {
-                                Image(systemName: yeuThichIds.contains(item.id) ? "star.fill" : "star")
-                                    .foregroundColor(yeuThichIds.contains(item.id) ? .yellow : .textMuted)
-                            }
-                            .buttonStyle(.borderless)
-
-                            Button {
-                                adjusting = item
-                            } label: {
-                                HStack {
-                                    Text(item.ten)
-                                        .foregroundColor(.primary)
-                                    Spacer()
-                                    Text(TonKhoFormatting.soLuong(item))
-                                        .font(.body.monospacedDigit().bold())
-                                        .foregroundColor(TonKhoFormatting.mau(item.tonKho))
-                                }
-                            }
+                    if loadFailed {
+                        ThongKeLoadErrorBanner(text: "Chưa tải được tồn kho") { Task { await load() } }
+                            .listRowSeparator(.hidden)
+                    }
+                    if !dangTheoDoi.isEmpty {
+                        Section("Đang theo dõi") {
+                            ForEach(dangTheoDoi) { row($0) }
+                        }
+                    }
+                    if !chuaTheoDoi.isEmpty {
+                        Section("Chưa theo dõi — chạm để kiểm kê") {
+                            ForEach(chuaTheoDoi) { row($0) }
                         }
                     }
                 }
@@ -78,10 +71,47 @@ struct TonKhoListView: View {
         .toolbarBackground(Color.brandPrimary, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbar {
+            // Nhảy thẳng sang màn mua hàng/giá, khỏi quay ra Menu.
+            ToolbarItem(placement: .navigationBarTrailing) {
+                NavigationLink { GiaNguyenLieuView() } label: {
+                    Image(systemName: "leaf").foregroundColor(.white)
+                }
+            }
+        }
         .task { await load() }
-        .sheet(item: $adjusting) { item in
-            AdjustTonKhoSheet(item: item) {
-                Task { await load() }
+    }
+
+    private func row(_ item: NguyenLieuBanHangDto) -> some View {
+        let theoDoi = (item.tonKho ?? -1) >= 0
+        return HStack(spacing: 12) {
+            Button {
+                toggleYeuThich(item)
+            } label: {
+                Image(systemName: yeuThichIds.contains(item.id) ? "star.fill" : "star")
+                    .foregroundColor(yeuThichIds.contains(item.id) ? .yellow : .textMuted)
+            }
+            .buttonStyle(.borderless)
+
+            NavigationLink {
+                TonKhoChiTietView(nguyenLieuBanHangId: item.id) { await load() }
+            } label: {
+                HStack {
+                    Text(TonKhoFormatting.tenGon(item.ten))
+                        .foregroundColor(theoDoi ? .primary : .textMuted)
+                    Spacer()
+                    if theoDoi {
+                        VStack(alignment: .trailing, spacing: 1) {
+                            Text(TonKhoFormatting.nhan(item))
+                                .font(.body.monospacedDigit().bold())
+                                .foregroundColor(TonKhoFormatting.mau(item))
+                            if item.soLyConLai != nil {
+                                Text(TonKhoFormatting.soLuongDonVi(item))
+                                    .font(.caption2).foregroundColor(.textMuted)
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -107,7 +137,109 @@ struct TonKhoListView: View {
     }
 }
 
-/// Form điều chỉnh tồn kho theo kiểm kê — nhập số tồn thực tế, ghi đè số hiện tại.
+/// Chi tiết 1 món tồn kho: số tồn/số ly + Kiểm kê + các MÃ NHẬP HÀNG nối vào (chạm → xem giá/lịch sử mua bên
+/// "Nguyên liệu & giá"). Mở từ màn Tồn kho hoặc từ dòng "Tồn kho" trong chi tiết nguyên liệu.
+struct TonKhoChiTietView: View {
+    let nguyenLieuBanHangId: String
+    var onChanged: (() async -> Void)? = nil
+
+    @State private var item: NguyenLieuBanHangDto?
+    @State private var maNhap: [NguyenLieuDto] = []
+    @State private var loading = true
+    @State private var showKiemKe = false
+
+    var body: some View {
+        List {
+            if let item {
+                Section {
+                    HStack {
+                        Text("Tồn kho")
+                        Spacer()
+                        if (item.tonKho ?? -1) >= 0 {
+                            VStack(alignment: .trailing, spacing: 1) {
+                                Text(TonKhoFormatting.nhan(item))
+                                    .font(.title3.monospacedDigit().bold())
+                                    .foregroundColor(TonKhoFormatting.mau(item))
+                                if item.soLyConLai != nil {
+                                    Text(TonKhoFormatting.soLuongDonVi(item)).font(.caption).foregroundColor(.textMuted)
+                                }
+                            }
+                        } else {
+                            Text("Chưa theo dõi").foregroundColor(.textMuted)
+                        }
+                    }
+                    Button {
+                        showKiemKe = true
+                    } label: {
+                        Label("Kiểm kê (nhập số đếm thực tế)", systemImage: "checklist")
+                    }
+                } footer: {
+                    Text("Bán theo công thức tự trừ, nhập Chi tiêu tự cộng. Tồn đang âm mà nhập hàng thì tính lại từ 0.")
+                }
+
+                Section("Mã nhập hàng") {
+                    if maNhap.isEmpty {
+                        Text("Chưa có mã nhập hàng nào nối vào món này.").foregroundColor(.textMuted)
+                    }
+                    ForEach(maNhap) { nl in
+                        NavigationLink {
+                            GiaNguyenLieuDetailView(nguyenLieu: nl) { await load() }
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(nl.ten)
+                                    if let h = nl.heSoQuyDoiBanHang, h > 0 {
+                                        Text("1 \(nl.donViTinh ?? "") = \(TonKhoNguyenLieu.so(h)) \(item.donViTinh ?? "")")
+                                            .font(.caption).foregroundColor(.textMuted)
+                                    }
+                                }
+                                Spacer()
+                                Text(HoaDonFormatting.money(nl.giaNhap))
+                                    .font(.subheadline).foregroundColor(.brandPrimary)
+                            }
+                        }
+                    }
+                }
+            } else if loading {
+                Section { ProgressView().frame(maxWidth: .infinity) }
+            } else {
+                Section { Text("Không tìm thấy món tồn kho.").foregroundColor(.textMuted) }
+            }
+        }
+        .navigationTitle(item.map { TonKhoFormatting.tenGon($0.ten) } ?? "Tồn kho")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .refreshable { await load() }
+        .task { await load() }
+        .sheet(isPresented: $showKiemKe) {
+            if let item {
+                AdjustTonKhoSheet(item: item) {
+                    Task {
+                        await load()
+                        await onChanged?()
+                    }
+                }
+            }
+        }
+    }
+
+    private func load() async {
+        async let bhTask = APIClient.shared.getNguyenLieuBanHangOrNil()
+        async let nlTask = APIClient.shared.getNguyenLieuOrNil()
+        if let bh = await bhTask {
+            item = bh.first { $0.id == nguyenLieuBanHangId }
+        }
+        if let nl = await nlTask {
+            maNhap = nl.filter { $0.nguyenLieuBanHangId == nguyenLieuBanHangId && !$0.ngungSuDung }
+                .sorted { ($0.heSoQuyDoiBanHang ?? 0) < ($1.heSoQuyDoiBanHang ?? 0) }
+        }
+        loading = false
+    }
+}
+
+/// Form điều chỉnh tồn kho theo kiểm kê — nhập số tồn thực tế (đơn vị bán), ghi đè số hiện tại.
 private struct AdjustTonKhoSheet: View {
     let item: NguyenLieuBanHangDto
     let onSaved: () -> Void
@@ -121,7 +253,8 @@ private struct AdjustTonKhoSheet: View {
     init(item: NguyenLieuBanHangDto, onSaved: @escaping () -> Void) {
         self.item = item
         self.onSaved = onSaved
-        _soLuongText = State(initialValue: TonKhoFormatting.soLuong(item))
+        // Chưa theo dõi (−1) thì để trống cho nhập số đếm, khỏi phải xoá "-1".
+        _soLuongText = State(initialValue: (item.tonKho ?? -1) >= 0 ? TonKhoFormatting.soLuong(item) : "")
     }
 
     var body: some View {
@@ -135,11 +268,11 @@ private struct AdjustTonKhoSheet: View {
                     TextField("Lý do điều chỉnh (tuỳ chọn)", text: $ghiChu)
                 }
                 Section {
-                    Text("Hiện tại: \(TonKhoFormatting.soLuong(item)) \(item.donViTinh ?? "")")
+                    Text("Hiện tại: \((item.tonKho ?? -1) >= 0 ? "\(TonKhoFormatting.soLuong(item)) \(item.donViTinh ?? "")" : "chưa theo dõi")")
                         .foregroundColor(.textMuted)
                 }
             }
-            .navigationTitle(item.ten)
+            .navigationTitle(TonKhoFormatting.tenGon(item.ten))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -192,8 +325,28 @@ enum TonKhoFormatting {
         return String(format: "%.2f", value)
     }
 
-    static func mau(_ tonKho: Double?) -> Color {
-        guard let tonKho else { return .textMuted }
-        return tonKho < 0 ? .red : .primary
+    /// "Revive Chai (Lon)" → "Revive Chai", "Soda (G)" → "Soda" — đơn vị đã hiện ở số bên phải.
+    static func tenGon(_ ten: String) -> String {
+        guard ten.hasSuffix(")"), let mo = ten.lastIndex(of: "(") else { return ten }
+        let gon = ten[..<mo].trimmingCharacters(in: .whitespaces)
+        return gon.isEmpty ? ten : gon
+    }
+
+    /// "5 Lon" / "1600 G".
+    static func soLuongDonVi(_ item: NguyenLieuBanHangDto) -> String {
+        "\(soLuong(item)) \(item.donViTinh ?? "")".trimmingCharacters(in: .whitespaces)
+    }
+
+    /// Nhãn chính: "5 ly" khi biết số ly size chuẩn, không thì số tồn kèm đơn vị.
+    static func nhan(_ item: NguyenLieuBanHangDto) -> String {
+        if let ly = item.soLyConLai { return "\(ly) ly" }
+        return soLuongDonVi(item)
+    }
+
+    static func mau(_ item: NguyenLieuBanHangDto) -> Color {
+        guard let tonKho = item.tonKho else { return .textMuted }
+        if tonKho < 0 { return .red }
+        if tonKho == 0 || (item.soLyConLai ?? 99) <= 2 { return .orange }
+        return .primary
     }
 }

@@ -117,24 +117,10 @@ struct GiaNguyenLieuView: View {
         var id: String { nl.id }
     }
 
-    /// Đầu màn "Tất cả": món đang theo dõi tồn thật (tồn ≥ 0), sắp hết lên trước — xếp theo số ly size
-    /// chuẩn còn bán được (cùng 2 lon: Bò Húc 2 ly đứng trên Soda 3 ly). 1 nguyên liệu bán hàng chỉ 1 dòng.
-    private var dangTheoDoiList: [NguyenLieuDto] {
-        var seenBh = Set<String>()
-        return nguyenLieuList
-            .filter { !$0.ngungSuDung && TonKhoNguyenLieu.dangTheoDoi($0) }
-            .sorted {
-                let a = $0.soLyConLai ?? Int.max, b = $1.soLyConLai ?? Int.max
-                return a != b ? a < b : $0.ten.localizedCompare($1.ten) == .orderedAscending
-            }
-            .filter { seenBh.insert($0.nguyenLieuBanHangId ?? $0.id).inserted }
-    }
-
     private var goiYList: [GoiYItem] {
         let byId = Dictionary(uniqueKeysWithValues: nguyenLieuList.map { ($0.id, $0) })
         var result: [GoiYItem] = []
-        // Đã hiện ở nhóm "đang theo dõi" trên cùng thì không lặp lại.
-        var seen = Set(dangTheoDoiList.map(\.id))
+        var seen = Set<String>()
         for d in canMua {
             if let id = d.nguyenLieuId, let nl = byId[id], !nl.ngungSuDung, seen.insert(id).inserted {
                 result.append(GoiYItem(nl: nl, d: d))
@@ -188,24 +174,7 @@ struct GiaNguyenLieuView: View {
                     } else {
                         Section { ForEach(locDanhSach) { row($0) } }
                     }
-                    // Mục menu "Tồn kho" riêng đã gộp vào đây — đồ tự chế biến (cà phê đen ml, đường
-                    // nước…) không có nguyên liệu mua nào nối vào nên chỉ xem được ở màn đầy đủ này.
-                    if locDanhDau == .quanLyTonKho {
-                        Section {
-                            NavigationLink {
-                                TonKhoListView()
-                            } label: {
-                                Label("Xem tất cả tồn kho bán hàng", systemImage: "list.bullet")
-                                    .foregroundColor(.brandPrimary)
-                            }
-                        }
-                    }
                 } else if searchText.isEmpty {
-                    if !dangTheoDoiList.isEmpty {
-                        Section {
-                            ForEach(dangTheoDoiList) { row($0) }
-                        }
-                    }
                     if !goiYYeuThich.isEmpty {
                         Section {
                             ForEach(goiYYeuThich) { row($0.nl, $0.d) }
@@ -243,6 +212,12 @@ struct GiaNguyenLieuView: View {
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
+            // Nhảy thẳng sang Tồn kho, khỏi quay ra Menu (2 màn tách riêng từ 17/10/2026).
+            ToolbarItem(placement: .navigationBarTrailing) {
+                NavigationLink { TonKhoListView() } label: {
+                    Image(systemName: "shippingbox").foregroundColor(.white)
+                }
+            }
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button { showAdd = true } label: {
                     Image(systemName: "plus").foregroundColor(.white)
@@ -342,16 +317,6 @@ struct GiaNguyenLieuView: View {
                         }
                     }
                     Spacer()
-                    if let ton = TonKhoNguyenLieu.nhanDong(nl) {
-                        VStack(alignment: .trailing, spacing: 1) {
-                            Text(ton)
-                                .font(.subheadline.monospacedDigit().bold())
-                                .foregroundColor(TonKhoNguyenLieu.mau(nl))
-                            if let phu = TonKhoNguyenLieu.phuDong(nl) {
-                                Text(phu).font(.caption2).foregroundColor(.textMuted)
-                            }
-                        }
-                    }
                     if let d {
                         Text(d.soNgayConLai < 0 ? "Trễ \(-d.soNgayConLai) ngày" : d.soNgayConLai == 0 ? "Hôm nay" : "Còn \(d.soNgayConLai) ngày")
                             .font(.caption.bold())
@@ -437,7 +402,7 @@ struct GiaNguyenLieuView: View {
 }
 
 /// Màn xem giá 1 nguyên liệu: thông tin (sửa/xoá qua nút "Sửa") + biểu đồ + 5 lần mua gần nhất.
-private struct GiaNguyenLieuDetailView: View {
+struct GiaNguyenLieuDetailView: View {
     @State private var nguyenLieu: NguyenLieuDto
     /// Báo màn danh sách tải lại sau khi sửa/xoá.
     let onChanged: () async -> Void
@@ -454,7 +419,6 @@ private struct GiaNguyenLieuDetailView: View {
     /// Tải riêng, không chặn danh sách giá — AI trả chậm hơn, xong lúc nào hiện lúc đó.
     @State private var deXuat: MuaHangDeXuatDto?
     @State private var deXuatLoading = true
-    @State private var showKiemKe = false
 
     var body: some View {
         List {
@@ -510,9 +474,6 @@ private struct GiaNguyenLieuDetailView: View {
         .sheet(isPresented: $showEdit) {
             NguyenLieuEditSheet(existing: nguyenLieu) { Task { await refresh() } }
         }
-        .sheet(isPresented: $showKiemKe) {
-            KiemKeTonKhoSheet(nguyenLieu: nguyenLieu) { await refresh() }
-        }
         .task {
             async let giaTask = APIClient.shared.getGiaNguyenLieuGanDay(nguyenLieuId: nguyenLieu.id, soLan: 5)
             async let deXuatTask = APIClient.shared.getDeXuatMua(nguyenLieuId: nguyenLieu.id)
@@ -558,23 +519,23 @@ private struct GiaNguyenLieuDetailView: View {
                 Text("Chưa phân loại").foregroundColor(.textMuted)
             }
         }
-        // Đã nối nguyên liệu bán hàng thì luôn kiểm kê được — kiểm kê xong (tồn ≥ 0) là bắt đầu theo dõi.
-        if TonKhoNguyenLieu.coTheTheoDoi(nguyenLieu) {
-            HStack {
-                Text("Tồn kho")
-                Spacer()
-                VStack(alignment: .trailing, spacing: 1) {
-                    Text(TonKhoNguyenLieu.nhanDong(nguyenLieu) ?? "Chưa theo dõi")
-                        .fontWeight(.semibold).monospacedDigit()
-                        .foregroundColor(TonKhoNguyenLieu.dangTheoDoi(nguyenLieu) ? TonKhoNguyenLieu.mau(nguyenLieu) : .textMuted)
-                    if let phu = TonKhoNguyenLieu.phuDong(nguyenLieu) {
-                        Text(phu).font(.caption).foregroundColor(.textMuted)
+        // Chạm → sang đúng món này bên màn Tồn kho (xem/kiểm kê), khỏi quay ra Menu tìm lại.
+        if let bhId = nguyenLieu.nguyenLieuBanHangId {
+            NavigationLink {
+                TonKhoChiTietView(nguyenLieuBanHangId: bhId)
+            } label: {
+                HStack {
+                    Text("Tồn kho")
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 1) {
+                        Text(TonKhoNguyenLieu.nhanDong(nguyenLieu) ?? "Chưa theo dõi")
+                            .fontWeight(.semibold).monospacedDigit()
+                            .foregroundColor(TonKhoNguyenLieu.dangTheoDoi(nguyenLieu) ? TonKhoNguyenLieu.mau(nguyenLieu) : .textMuted)
+                        if let phu = TonKhoNguyenLieu.phuDong(nguyenLieu) {
+                            Text(phu).font(.caption).foregroundColor(.textMuted)
+                        }
                     }
                 }
-                Button("Kiểm kê") { showKiemKe = true }
-                    .buttonStyle(.bordered)
-                    .tint(.brandPrimary)
-                    .padding(.leading, 8)
             }
         }
         if nguyenLieu.ngungSuDung {
