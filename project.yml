@@ -46,6 +46,11 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_VERSION: "5.0"
         CODE_SIGN_ENTITLEMENTS: AppMobileIOS.entitlements
+        # SDK iOS 26 tách phần Swift của WebKit (callAsyncJavaScript async ở màn Shopee) ra
+        # libswiftWebKit.dylib — iOS < 26 không có file này, link cứng thì dyld giết app ngay lúc mở
+        # (CI simulator iOS 18.5 crash "before establishing connection" từ commit 6cf4d19). Weak-link
+        # để app vẫn mở được trên iOS cũ.
+        OTHER_LDFLAGS: ["$(inherited)", "-Xlinker", "-weak-lswiftWebKit"]
     scheme:
       testTargets:
         - AppMobileIOSTests
