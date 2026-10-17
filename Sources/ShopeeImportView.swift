@@ -94,7 +94,7 @@ private final class ShopeeWebModel: ObservableObject {
         }
         return JSON.stringify({ orders: out });
         """
-        let value = try await webView.callAsyncJavaScript(script, arguments: ["since": since, "stopIds": stopIds], contentWorld: .page)
+        let value = try await webView.goiJS(script, arguments: ["since": since, "stopIds": stopIds])
         guard let text = value as? String, let data = text.data(using: .utf8) else {
             throw NSError(domain: "Shopee", code: 0, userInfo: [NSLocalizedDescriptionKey: "Trang Shopee không trả dữ liệu."])
         }

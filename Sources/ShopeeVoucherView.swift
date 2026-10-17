@@ -589,14 +589,14 @@ private final class ShopeeVoucherWebModel: NSObject, ObservableObject, WKNavigat
             var lan = 0
             while result.items.count < Self.soTheToiDa && lan < Self.soLanCuonToiDa {
                 lan += 1
-                _ = try? await webView.callAsyncJavaScript("window.scrollTo(0, document.documentElement.scrollHeight); return true;", arguments: [:], contentWorld: .page)
+                _ = try? await webView.goiJS("window.scrollTo(0, document.documentElement.scrollHeight); return true;", arguments: [:])
                 try? await Task.sleep(nanoseconds: 1_800_000_000)
                 let them = try await chay(script)
                 if them.items.count <= result.items.count { break }
                 result = them
             }
             if lan > 0 {
-                _ = try? await webView.callAsyncJavaScript("window.scrollTo(0, 0); return true;", arguments: [:], contentWorld: .page)
+                _ = try? await webView.goiJS("window.scrollTo(0, 0); return true;", arguments: [:])
             }
             pageInfo = result.info
             return result.items
@@ -607,7 +607,7 @@ private final class ShopeeVoucherWebModel: NSObject, ObservableObject, WKNavigat
     }
 
     private func chay(_ script: String) async throws -> ScanResult {
-        let value = try await webView.callAsyncJavaScript(script, arguments: ["max": Self.soTheToiDa], contentWorld: .page)
+        let value = try await webView.goiJS(script, arguments: ["max": Self.soTheToiDa])
         guard let text = value as? String, let data = text.data(using: .utf8) else {
             return ScanResult(items: [], info: "trang không trả kết quả")
         }
@@ -627,7 +627,7 @@ private final class ShopeeVoucherWebModel: NSObject, ObservableObject, WKNavigat
         """
         Task {
             try? await Task.sleep(nanoseconds: 500_000_000)
-            let ok = (try? await webView.callAsyncJavaScript(js, arguments: ["id": v.id], contentWorld: .page)) as? Bool
+            let ok = (try? await webView.goiJS(js, arguments: ["id": v.id])) as? Bool
             if ok != true {
                 status = "Không tìm thấy thẻ \(v.pct)% trên trang nữa (trang đã vẽ lại) — bấm \"Quét\" lại."
             }
