@@ -287,6 +287,11 @@ private struct MoreMenuView: View {
                     } label: {
                         Label("Âm báo đã tải", systemImage: "speaker.wave.2")
                     }
+                    NavigationLink {
+                        PhienBanAppKhachView()
+                    } label: {
+                        Label("Phiên bản app khách", systemImage: "iphone")
+                    }
 
                     if let balance = aiBalance {
                         HStack {
