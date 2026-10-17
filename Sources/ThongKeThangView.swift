@@ -16,6 +16,7 @@ struct ThongKeThangView: View {
     @State private var chuaThanhToan: ThongKeDonChuaThanhToanDto?
     @State private var tongNo: TongNoDto?
     @State private var giamGia: ThongKeGiamGiaDto?
+    @State private var nhip: NhipDoanhThuDto?
     @State private var chiTieuMonthItems: [ChiTieuHangNgayDto] = []
     @State private var hasLoaded = false
     /// Xem ThongKeView: banner thử lại khi có API lỗi + chặn kết quả của lượt load cũ ghi đè lượt mới.
@@ -41,6 +42,11 @@ struct ThongKeThangView: View {
                         VStack(spacing: 10) {
                             if loadFailed {
                                 ThongKeLoadErrorBanner { Task { await load() } }
+                            }
+                            // 18/10/2026 (BaoCaoUI): khối tổng quan doanh thu đầu tab — số lớn + so kỳ trước + nhịp bán.
+                            // Các card bên dưới giữ nguyên thứ tự Desktop.
+                            if let nhip {
+                                TongQuanDoanhThuCard(nhip: nhip, theoNgay: false)
                             }
                             if let thanhToan {
                                 StatCard(icon: "creditcard", title: "Thanh toán", value: thanhToan.tongTienMat + thanhToan.tongChuyenKhoan, color: .thongKeBlue, isExpanded: expandedCards.contains(.thanhToan)) {
@@ -205,7 +211,7 @@ struct ThongKeThangView: View {
         // số cũ, API nào lỗi thì thẻ đó không bị mất.
         if key != loadedKey {
             chiTieu = nil; thanhToan = nil; doanhThu = nil
-            chuaThanhToan = nil; tongNo = nil; giamGia = nil
+            chuaThanhToan = nil; tongNo = nil; giamGia = nil; nhip = nil
             chiTieuMonthItems = []
             hasLoaded = false
         }
@@ -218,8 +224,13 @@ struct ThongKeThangView: View {
         async let h = APIClient.shared.getChiTieuByMonth(year: nam, month: thang)
         async let i = APIClient.shared.getThongKeGiamGiaThang(thang: thang, nam: nam)
 
+        async let j = APIClient.shared.getNhipDoanhThuThang(thang: thang, nam: nam)
+
         let r = await (a, c, d, f, g, h, i)
+        let nhipMoi = await j
         guard generation == loadGeneration else { return }   // đã có lượt load mới hơn — bỏ kết quả cũ
+
+        nhip = nhipMoi ?? nhip
 
         chiTieu = r.0 ?? chiTieu
         thanhToan = r.1 ?? thanhToan

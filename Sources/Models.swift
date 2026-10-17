@@ -332,6 +332,27 @@ struct NguyenLieuBanHangDto: Decodable, Identifiable {
     let yeuThich: Bool?
     /// Còn bán được bao nhiêu ly size chuẩn (backend tính) — nil khi tồn < 0 (−9999 = chưa theo dõi).
     let soLyConLai: Int?
+    /// Ước còn bán được bao nhiêu ngày theo lượng dùng 7 ngày qua — nil khi chưa theo dõi/chưa bán.
+    var soNgayConLai: Double?
+    /// Ngưỡng an toàn (đơn vị bán) — dưới ngưỡng thì push "Sắp hết hàng".
+    var canhBaoDuoi: Double?
+}
+
+/// Nhịp doanh thu cộng dồn của 1 kỳ so với kỳ trước — GET /api/ThongKe/nhip-doanh-thu-{ngay,thang}.
+struct NhipDoanhThuDto: Decodable {
+    struct Diem: Decodable {
+        /// Giờ (kỳ ngày) hoặc ngày trong tháng (kỳ tháng).
+        let x: Int
+        let giaTri: Double
+        /// "nay" | "truoc"
+        let nhom: String
+    }
+    let tong: Double
+    let soDon: Int
+    let tongKyTruoc: Double
+    let soDonKyTruoc: Int
+    let nhanKyTruoc: String
+    let diem: [Diem]
 }
 
 /// Body PUT /api/NguyenLieuBanHang/{id}/adjust — khớp DieuChinhTonKhoDto bên Backend.

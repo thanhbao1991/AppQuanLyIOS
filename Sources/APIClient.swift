@@ -814,6 +814,9 @@ actor APIClient {
     func getThongKeDoanhThu(ngay: Int, thang: Int, nam: Int) async -> ThongKeDoanhThuNgayDto? {
         await getThongKe("doanh-thu-ngay", ngay: ngay, thang: thang, nam: nam)
     }
+    func getNhipDoanhThuNgay(ngay: Int, thang: Int, nam: Int) async -> NhipDoanhThuDto? {
+        await getThongKe("nhip-doanh-thu-ngay", ngay: ngay, thang: thang, nam: nam)
+    }
     func getThongKeTraNo(ngay: Int, thang: Int, nam: Int) async -> ThongKeTraNoNgayDto? {
         await getThongKe("tra-no-ngay", ngay: ngay, thang: thang, nam: nam)
     }
@@ -839,6 +842,9 @@ actor APIClient {
     }
     func getThongKeThanhToanThang(thang: Int, nam: Int) async -> ThongKeThanhToanDto? {
         await getThongKeThang("thanh-toan-thang", thang: thang, nam: nam)
+    }
+    func getNhipDoanhThuThang(thang: Int, nam: Int) async -> NhipDoanhThuDto? {
+        await getThongKeThang("nhip-doanh-thu-thang", thang: thang, nam: nam)
     }
     func getThongKeDoanhThuThang(thang: Int, nam: Int) async -> ThongKeDoanhThuNgayDto? {
         await getThongKeThang("doanh-thu-thang", thang: thang, nam: nam)

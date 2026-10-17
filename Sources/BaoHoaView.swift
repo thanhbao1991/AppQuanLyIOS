@@ -16,22 +16,40 @@ import SwiftUI
 ///    (ban đầu diễn giải một chiều là bão hoà, sai vì không nhìn số đơn đi kèm).
 /// 4. Tỷ lệ khách tháng trước quay lại tháng sau có giảm không — ĐÃ LÀM (Backend HoaDons).
 
+/// 18/10/2026: trình bày lại theo BaoCaoUI (kết luận trước, chi tiết sau) — thẻ kết luận tổng đầu màn,
+/// mỗi tín hiệu 1 dòng (kết luận 1 câu + màu mức độ + con số), chạm mới mở biểu đồ + giải thích dài.
 struct BaoHoaView: View {
     @State private var doanhThuThang: [DoanhThuTheoThangItemDto] = []
     @State private var gioItems: [PhanBoDonTheoGioItemDto] = []
     @State private var retentionThang: [TyLeKhachQuayLaiThangItemDto] = []
     @State private var shipRadiusThang: [ShipRadiusThangItemDto] = []
     @State private var loading = true
+    @State private var moRa: Set<String> = []
+
+    /// Kết luận 1 tín hiệu: mức độ, câu ngắn hiện ở dòng thu gọn, con số canh phải, nhận xét đầy đủ khi mở.
+    private struct TinHieu {
+        let mucDo: MucDo
+        let ketLuan: String
+        let giaTri: String?
+        let nhanXet: String?
+    }
 
     var body: some View {
         List {
             if loading {
                 Section { fullScreenLoading() }
             } else {
-                doanhThuSection
-                gioSection
-                shipRadiusSection
-                retentionSection
+                Section { theKetLuan }
+                Section {
+                    khoi("doanh-thu", icon: "chart.line.uptrend.xyaxis", tieuDe: "Doanh thu theo tháng", tinHieuDoanhThu) { doanhThuChart }
+                    khoi("ban-kinh", icon: "scope", tieuDe: "Bán kính ship", tinHieuBanKinh) { shipRadiusChart }
+                    khoi("quay-lai", icon: "arrow.uturn.backward.circle", tieuDe: "Khách quay lại", tinHieuQuayLai) { retentionChart }
+                    khoi("gio", icon: "clock", tieuDe: "Giờ đông đơn nhất", tinHieuGio) { gioChart }
+                } header: {
+                    Text("Tín hiệu")
+                } footer: {
+                    Text("Chạm từng dòng để xem biểu đồ và giải thích. Doanh thu, bán kính, khách quay lại tính trên 12 tháng; giờ đông tính 30 ngày.")
+                }
                 todoSection
             }
         }
@@ -43,44 +61,76 @@ struct BaoHoaView: View {
         .task { await load() }
     }
 
-    // MARK: - 1. Doanh thu theo tháng
+    // MARK: - Kết luận tổng
 
-    private var doanhThuSection: some View {
-        Section("Doanh thu theo tháng (12 tháng gần đây)") {
-            if doanhThuThang.allSatisfy({ $0.doanhThu == 0 }) {
-                Text("Chưa có đủ dữ liệu.").foregroundColor(.textMuted)
-            } else {
-                Chart(doanhThuThang) { item in
-                    LineMark(x: .value("Tháng", nhanThang(item.thang, item.nam)), y: .value("Doanh thu", item.doanhThu))
-                    PointMark(x: .value("Tháng", nhanThang(item.thang, item.nam)), y: .value("Doanh thu", item.doanhThu))
-                }
-                .frame(height: 180)
-                .chartXAxis { AxisMarks { AxisValueLabel().font(.caption2) } }
+    /// Gộp 3 tín hiệu có thể nói lên bão hoà (giờ đông chỉ để tham khảo): ≥ 2 xấu → có dấu hiệu; 1 xấu hoặc
+    /// có cảnh báo → cần theo dõi; còn lại → chưa có dấu hiệu.
+    @ViewBuilder private var theKetLuan: some View {
+        let ds = [("Doanh thu", tinHieuDoanhThu), ("Bán kính ship", tinHieuBanKinh), ("Khách quay lại", tinHieuQuayLai)]
+            .compactMap { ten, th in th.map { (ten, $0) } }
+        let xau = ds.filter { $0.1.mucDo == .xau }
+        let canhBao = ds.filter { $0.1.mucDo == .canhBao }
+        if ds.isEmpty {
+            TheKetLuan(mucDo: .trungTinh, tieuDe: "Chưa đủ dữ liệu", moTa: "Cần ít nhất vài tháng số liệu để đánh giá.")
+        } else if xau.count >= 2 {
+            TheKetLuan(mucDo: .xau, tieuDe: "Có dấu hiệu bão hoà",
+                       moTa: (xau + canhBao).map { "\($0.0): \($0.1.ketLuan.lowercased())" }.joined(separator: " · "))
+        } else if !xau.isEmpty || !canhBao.isEmpty {
+            TheKetLuan(mucDo: .canhBao, tieuDe: "Cần theo dõi",
+                       moTa: (xau + canhBao).map { "\($0.0): \($0.1.ketLuan.lowercased())" }.joined(separator: " · "))
+        } else {
+            TheKetLuan(mucDo: .tot, tieuDe: "Chưa có dấu hiệu bão hoà", moTa: "\(ds.count) tín hiệu đều ổn")
+        }
+    }
 
-                if let nhanXet = nhanXetDoanhThu {
-                    Text(nhanXet).font(.caption).foregroundColor(.brandPrimary).fontWeight(.semibold)
+    @ViewBuilder
+    private func khoi<C: View>(_ ma: String, icon: String, tieuDe: String, _ th: TinHieu?, @ViewBuilder chart: () -> C) -> some View {
+        let t = th ?? TinHieu(mucDo: .trungTinh, ketLuan: "Chưa đủ dữ liệu", giaTri: nil, nhanXet: nil)
+        KhoiChiSo(icon: icon, tieuDe: tieuDe, ketLuan: t.ketLuan, mucDo: t.mucDo, giaTri: t.giaTri,
+                  moRa: moRa.contains(ma), onToggle: {
+                      withAnimation { if moRa.contains(ma) { moRa.remove(ma) } else { moRa.insert(ma) } }
+                  }) {
+            VStack(alignment: .leading, spacing: 8) {
+                chart()
+                if let nx = t.nhanXet {
+                    Text(nx).font(.caption).foregroundColor(.textMuted).fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
     }
 
+    // MARK: - 1. Doanh thu theo tháng
+
     /// So sánh doanh thu trung bình nửa ĐẦU kỳ với nửa SAU kỳ (bỏ tháng cuối nếu đang chạy dở, dễ
-    /// thấp giả tạo) để đưa ra nhận xét chững/tăng trưởng — ngưỡng ±10% coi là "chững", không phải
-    /// con số khoa học, chỉ để gợi ý staff tự nhìn thêm biểu đồ.
-    private var nhanXetDoanhThu: String? {
+    /// thấp giả tạo) — ngưỡng ±10% coi là "chững", không phải con số khoa học, chỉ để gợi ý staff tự
+    /// nhìn thêm biểu đồ.
+    private var tinHieuDoanhThu: TinHieu? {
         let items = doanhThuThang.count >= 2 ? Array(doanhThuThang.dropLast()) : doanhThuThang
         guard items.count >= 4 else { return nil }
         let mid = items.count / 2
         let dauKy = items[..<mid].map(\.doanhThu).reduce(0, +) / Double(mid)
         let sauKy = items[mid...].map(\.doanhThu).reduce(0, +) / Double(items.count - mid)
         guard dauKy > 0 else { return nil }
-        let tangTruong = (sauKy - dauKy) / dauKy
-        if tangTruong > 0.1 {
-            return "Doanh thu đang tăng trưởng (+\(Int(tangTruong * 100))% nửa sau so nửa đầu kỳ) — chưa có dấu hiệu bão hoà."
-        } else if tangTruong < -0.1 {
-            return "Doanh thu đang GIẢM (\(Int(tangTruong * 100))% nửa sau so nửa đầu kỳ) — cần xem thêm nguyên nhân."
+        let pt = Int(((sauKy - dauKy) / dauKy * 100).rounded())
+        let giaTri = "\(pt >= 0 ? "+" : "")\(pt)%"
+        let tb = "TB nửa sau kỳ \(BaoCaoSo.rutGon(sauKy))/tháng so với \(BaoCaoSo.rutGon(dauKy))/tháng nửa đầu kỳ (không tính tháng đang chạy)."
+        if pt > 10 { return TinHieu(mucDo: .tot, ketLuan: "Đang tăng trưởng", giaTri: giaTri, nhanXet: tb) }
+        if pt < -10 { return TinHieu(mucDo: .xau, ketLuan: "Đang giảm", giaTri: giaTri, nhanXet: tb + " Cần xem thêm nguyên nhân.") }
+        return TinHieu(mucDo: .canhBao, ketLuan: "Chững lại", giaTri: giaTri, nhanXet: tb + " Chững là 1 dấu hiệu có thể đã bão hoà.")
+    }
+
+    @ViewBuilder private var doanhThuChart: some View {
+        if doanhThuThang.allSatisfy({ $0.doanhThu == 0 }) {
+            Text("Chưa có đủ dữ liệu.").foregroundColor(.textMuted)
         } else {
-            return "Doanh thu khá chững (\(tangTruong >= 0 ? "+" : "")\(Int(tangTruong * 100))% nửa sau so nửa đầu kỳ) — 1 dấu hiệu có thể đã bão hoà."
+            Chart(doanhThuThang) { item in
+                BarMark(x: .value("Tháng", nhanThang(item.thang, item.nam)), y: .value("Doanh thu", item.doanhThu))
+                    .foregroundStyle(Color.brandPrimary.gradient)
+                    .cornerRadius(3)
+            }
+            .frame(height: 180)
+            .chartXAxis { AxisMarks { AxisValueLabel().font(.caption2) } }
+            .chartYAxis { AxisMarks(position: .leading) { v in AxisGridLine(); AxisValueLabel { if let y = v.as(Double.self) { Text(BaoCaoSo.rutGon(y)) } } } }
         }
     }
 
@@ -88,56 +138,34 @@ struct BaoHoaView: View {
 
     // MARK: - 2. Giờ cao điểm
 
-    private var gioSection: some View {
-        Section("Giờ đông đơn nhất (30 ngày gần đây)") {
-            if gioItems.allSatisfy({ $0.soDon == 0 }) {
-                Text("Chưa có đủ dữ liệu.").foregroundColor(.textMuted)
-            } else {
-                Chart(gioItems) { item in
-                    BarMark(x: .value("Giờ", "\(item.gio)h"), y: .value("Số đơn", item.soDon))
-                        .foregroundStyle(topGioSet.contains(item.gio) ? Color.brandPrimary : Color.textMuted.opacity(0.35))
-                }
-                .frame(height: 160)
-                .chartXAxis { AxisMarks(values: .automatic(desiredCount: 8)) { AxisValueLabel().font(.caption2) } }
-
-                let topNames = gioItems.sorted { $0.soDon > $1.soDon }.prefix(3).map { "\($0.gio)h" }.joined(separator: ", ")
-                Text("Đông nhất: \(topNames) — kiểm tra thực tế có bị chờ lâu/huỷ đơn nhiều vào các giờ này không.")
-                    .font(.caption).foregroundColor(.textMuted)
-            }
-        }
+    private var topGio: [PhanBoDonTheoGioItemDto] {
+        Array(gioItems.filter { $0.soDon > 0 }.sorted { $0.soDon > $1.soDon }.prefix(3))
     }
 
-    private var topGioSet: Set<Int> {
-        Set(gioItems.sorted { $0.soDon > $1.soDon }.prefix(3).map(\.gio))
+    private var tinHieuGio: TinHieu? {
+        guard !topGio.isEmpty else { return nil }
+        return TinHieu(mucDo: .trungTinh,
+                       ketLuan: "Đông nhất: " + topGio.map { "\($0.gio)h" }.joined(separator: ", "),
+                       giaTri: nil,
+                       nhanXet: "Chỉ để tham khảo: kiểm tra thực tế có bị chờ lâu/huỷ đơn nhiều vào các giờ này không.")
+    }
+
+    @ViewBuilder private var gioChart: some View {
+        let top = Set(topGio.map(\.gio))
+        Chart(gioItems) { item in
+            BarMark(x: .value("Giờ", "\(item.gio)h"), y: .value("Số đơn", item.soDon))
+                .foregroundStyle(top.contains(item.gio) ? Color.brandPrimary : Color.textMuted.opacity(0.35))
+                .cornerRadius(3)
+        }
+        .frame(height: 160)
+        .chartXAxis { AxisMarks(values: .automatic(desiredCount: 8)) { AxisValueLabel().font(.caption2) } }
     }
 
     // MARK: - 3. Bán kính ship trung bình theo tháng
 
-    private var shipRadiusSection: some View {
-        Section("Bán kính ship trung bình theo tháng") {
-            if shipRadiusThang.isEmpty {
-                Text("Chưa có dữ liệu.").foregroundColor(.textMuted)
-            } else {
-                Chart(shipRadiusThang) { item in
-                    LineMark(x: .value("Tháng", nhanThang(item.thang, item.nam)), y: .value("Km", item.banKinhTrungBinhKm))
-                    PointMark(x: .value("Tháng", nhanThang(item.thang, item.nam)), y: .value("Km", item.banKinhTrungBinhKm))
-                }
-                .frame(height: 160)
-                .chartXAxis { AxisMarks { AxisValueLabel().font(.caption2) } }
-
-                if let nhanXet = nhanXetBanKinhShip {
-                    Text(nhanXet).font(.caption).foregroundColor(.brandPrimary).fontWeight(.semibold)
-                }
-                Text("Bán kính tăng không tự nó là xấu — phải nhìn kèm số đơn: tăng cùng lúc số đơn tăng mạnh là mở rộng thành công, chỉ đáng lo khi số đơn đi ngang/giảm mà vẫn phải với xa hơn.")
-                    .font(.caption2).foregroundColor(.textMuted)
-            }
-        }
-    }
-
     /// Ghép bán kính VỚI số đơn (shipRadiusThang.soDon, từ DonViTriLog) để tránh diễn giải một
     /// chiều — xem comment đầu file.
-    private var nhanXetBanKinhShip: String? {
-        guard shipRadiusThang.count >= 4 else { return nil }
+    private var tinHieuBanKinh: TinHieu? {
         let items = Array(shipRadiusThang.dropLast())
         guard items.count >= 4 else { return nil }
         let mid = items.count / 2
@@ -149,44 +177,80 @@ struct BaoHoaView: View {
         let donSau = Double(sauKy.map(\.soDon).reduce(0, +)) / Double(sauKy.count)
         let deltaKm = kmSau - kmDau
         guard donDau > 0 else { return nil }
-        let tangTruongDon = (donSau - donDau) / donDau
+        let ptDon = Int(((donSau - donDau) / donDau * 100).rounded())
+        let giaTri = String(format: "%+.1f km", deltaKm)
+        let soLieu = String(format: "Bán kính TB %.1f km → %.1f km, số đơn %+ld%% (nửa đầu → nửa sau kỳ).", kmDau, kmSau, ptDon)
 
         if deltaKm <= 0.3 {
-            return "Bán kính ship khá ổn định (\(String(format: "%+.1f", deltaKm))km nửa sau so nửa đầu kỳ)."
-        } else if tangTruongDon > 0.1 {
-            return "Bán kính tăng +\(String(format: "%.1f", deltaKm))km nhưng số đơn cũng tăng +\(Int(tangTruongDon * 100))% — đang MỞ RỘNG THÀNH CÔNG, không phải bão hoà."
-        } else if tangTruongDon < -0.1 {
-            return "Bán kính tăng +\(String(format: "%.1f", deltaKm))km trong khi số đơn GIẢM \(Int(tangTruongDon * 100))% — dấu hiệu bão hoà thật: phải với xa hơn mới đủ đơn."
+            return TinHieu(mucDo: .tot, ketLuan: "Ổn định", giaTri: giaTri, nhanXet: soLieu)
+        } else if ptDon > 10 {
+            return TinHieu(mucDo: .tot, ketLuan: "Mở rộng thành công", giaTri: giaTri,
+                           nhanXet: soLieu + " Bán kính tăng cùng lúc số đơn tăng mạnh — không phải bão hoà.")
+        } else if ptDon < -10 {
+            return TinHieu(mucDo: .xau, ketLuan: "Phải với xa hơn mới đủ đơn", giaTri: giaTri,
+                           nhanXet: soLieu + " Bán kính tăng trong khi số đơn giảm — dấu hiệu bão hoà thật.")
         } else {
-            return "Bán kính tăng +\(String(format: "%.1f", deltaKm))km nhưng số đơn gần như đi ngang — có thể đã bắt đầu bão hoà, cần theo dõi thêm."
+            return TinHieu(mucDo: .canhBao, ketLuan: "Xa hơn nhưng đơn đi ngang", giaTri: giaTri,
+                           nhanXet: soLieu + " Có thể đã bắt đầu bão hoà, cần theo dõi thêm.")
+        }
+    }
+
+    @ViewBuilder private var shipRadiusChart: some View {
+        if shipRadiusThang.isEmpty {
+            Text("Chưa có dữ liệu.").foregroundColor(.textMuted)
+        } else {
+            Chart(shipRadiusThang) { item in
+                LineMark(x: .value("Tháng", nhanThang(item.thang, item.nam)), y: .value("Km", item.banKinhTrungBinhKm))
+                    .foregroundStyle(Color.brandPrimary)
+                    .interpolationMethod(.monotone)
+                PointMark(x: .value("Tháng", nhanThang(item.thang, item.nam)), y: .value("Km", item.banKinhTrungBinhKm))
+                    .foregroundStyle(Color.brandPrimary)
+            }
+            .frame(height: 160)
+            .chartXAxis { AxisMarks { AxisValueLabel().font(.caption2) } }
+            .chartYAxis { AxisMarks(position: .leading) { v in AxisGridLine(); AxisValueLabel { if let y = v.as(Double.self) { Text(String(format: "%.1f km", y)) } } } }
         }
     }
 
     // MARK: - 4. Tỷ lệ khách quay lại theo tháng
 
-    private var retentionSection: some View {
-        Section("Tỷ lệ khách tháng trước quay lại tháng sau") {
-            if retentionThang.isEmpty {
-                Text("Chưa có đủ dữ liệu.").foregroundColor(.textMuted)
-            } else {
-                Chart(retentionThang) { item in
-                    LineMark(x: .value("Tháng", nhanThang(item.thang, item.nam)), y: .value("Tỷ lệ", item.tyLeQuayLai * 100))
-                    PointMark(x: .value("Tháng", nhanThang(item.thang, item.nam)), y: .value("Tỷ lệ", item.tyLeQuayLai * 100))
-                }
-                .frame(height: 160)
-                .chartXAxis { AxisMarks { AxisValueLabel().font(.caption2) } }
-                .chartYAxis { AxisMarks { AxisValueLabel("\(($0.as(Double.self) ?? 0).formatted(.number.precision(.fractionLength(0))))%") } }
+    /// Nửa sau kỳ so nửa đầu kỳ (điểm %): giảm > 3 điểm → xấu, tăng > 3 → tốt, còn lại ổn định (cũng tốt).
+    private var tinHieuQuayLai: TinHieu? {
+        let items = Array(retentionThang.dropLast())
+        guard items.count >= 4 else { return nil }
+        let mid = items.count / 2
+        let dau = items[..<mid].map(\.tyLeQuayLai).reduce(0, +) / Double(mid) * 100
+        let sau = items[mid...].map(\.tyLeQuayLai).reduce(0, +) / Double(items.count - mid) * 100
+        let delta = sau - dau
+        let giaTri = String(format: "%.0f%%", sau)
+        let nx = String(format: "TB %.0f%% → %.0f%% (nửa đầu → nửa sau kỳ). Tính trên khách CÓ đơn tháng trước, bao nhiêu %% đặt tiếp ngay tháng sau.", dau, sau)
+        if delta < -3 { return TinHieu(mucDo: .xau, ketLuan: String(format: "Đang giảm (%.0f điểm)", delta), giaTri: giaTri, nhanXet: nx) }
+        if delta > 3 { return TinHieu(mucDo: .tot, ketLuan: String(format: "Đang tăng (+%.0f điểm)", delta), giaTri: giaTri, nhanXet: nx) }
+        return TinHieu(mucDo: .tot, ketLuan: "Ổn định", giaTri: giaTri, nhanXet: nx)
+    }
 
-                Text("Tính trên khách CÓ đơn ở tháng trước, bao nhiêu % đặt tiếp ngay tháng sau (không tính quay lại trễ hơn).")
-                    .font(.caption2).foregroundColor(.textMuted)
+    @ViewBuilder private var retentionChart: some View {
+        if retentionThang.isEmpty {
+            Text("Chưa có đủ dữ liệu.").foregroundColor(.textMuted)
+        } else {
+            Chart(retentionThang) { item in
+                LineMark(x: .value("Tháng", nhanThang(item.thang, item.nam)), y: .value("Tỷ lệ", item.tyLeQuayLai * 100))
+                    .foregroundStyle(Color.brandPrimary)
+                    .interpolationMethod(.monotone)
+                PointMark(x: .value("Tháng", nhanThang(item.thang, item.nam)), y: .value("Tỷ lệ", item.tyLeQuayLai * 100))
+                    .foregroundStyle(Color.brandPrimary)
             }
+            .frame(height: 160)
+            .chartXAxis { AxisMarks { AxisValueLabel().font(.caption2) } }
+            .chartYAxis { AxisMarks(position: .leading) { AxisValueLabel("\(($0.as(Double.self) ?? 0).formatted(.number.precision(.fractionLength(0))))%") } }
         }
     }
 
     // MARK: - TODO
 
     private var todoSection: some View {
-        Section("Việc còn thiếu (đọc lại khi quay lại làm tiếp)") {
+        Section {
+            DisclosureGroup("Việc còn thiếu (4)") {
             VStack(alignment: .leading, spacing: 10) {
                 todoItem("Độ trễ/huỷ đơn THẬT theo giờ cao điểm",
                          "Hiện chỉ có 'giờ nào đông đơn nhất' (số đơn), chưa đo được có bị CHẬM/HUỶ nhiều không — " +
@@ -204,6 +268,9 @@ struct BaoHoaView: View {
                          "liên quan đồ uống sẽ bị bỏ sót, chưa có cách lọc 100% chính xác.")
             }
             .padding(.vertical, 4)
+            }
+            .font(.subheadline)
+            .foregroundColor(.textMuted)
         }
     }
 

@@ -27,6 +27,18 @@ struct TonKhoListView: View {
         }
     }
 
+    /// 18/10/2026 (BaoCaoUI): kết luận lên đầu — món nào cần nhập (hết / dưới ngưỡng / còn < 3 ngày).
+    @ViewBuilder private var theKetLuan: some View {
+        let can = dangTheoDoi.filter { TonKhoFormatting.mucDo($0) != nil }
+        if can.isEmpty {
+            TheKetLuan(mucDo: .tot, tieuDe: "Tồn kho ổn", moTa: "\(dangTheoDoi.count) món đang theo dõi đều trên ngưỡng an toàn")
+        } else {
+            TheKetLuan(mucDo: can.contains { TonKhoFormatting.mucDo($0) == .xau } ? .xau : .canhBao,
+                       tieuDe: "\(can.count) món cần nhập",
+                       moTa: can.map { TonKhoFormatting.tenGon($0.ten) }.joined(separator: ", "))
+        }
+    }
+
     private var chuaTheoDoi: [NguyenLieuBanHangDto] {
         hienThi.filter { ($0.tonKho ?? -1) < 0 }.sorted { a, b in
             let fa = yeuThichIds.contains(a.id), fb = yeuThichIds.contains(b.id)
@@ -50,6 +62,9 @@ struct TonKhoListView: View {
                     if loadFailed {
                         ThongKeLoadErrorBanner(text: "Chưa tải được tồn kho") { Task { await load() } }
                             .listRowSeparator(.hidden)
+                    }
+                    if !dangTheoDoi.isEmpty && searchText.isEmpty {
+                        Section { theKetLuan }
                     }
                     if !dangTheoDoi.isEmpty {
                         Section("Đang theo dõi") {
@@ -97,8 +112,16 @@ struct TonKhoListView: View {
                 TonKhoChiTietView(nguyenLieuBanHangId: item.id) { await load() }
             } label: {
                 HStack {
-                    Text(TonKhoFormatting.tenGon(item.ten))
-                        .foregroundColor(theoDoi ? .primary : .textMuted)
+                    if theoDoi {
+                        Circle().fill(TonKhoFormatting.mucDo(item)?.mau ?? .green).frame(width: 8, height: 8)
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(TonKhoFormatting.tenGon(item.ten))
+                            .foregroundColor(theoDoi ? .primary : .textMuted)
+                        if theoDoi, let phu = TonKhoFormatting.dongPhu(item) {
+                            Text(phu).font(.caption).foregroundColor(TonKhoFormatting.mucDo(item)?.mau ?? .textMuted)
+                        }
+                    }
                     Spacer()
                     if theoDoi {
                         VStack(alignment: .trailing, spacing: 1) {
@@ -347,6 +370,26 @@ enum TonKhoFormatting {
         guard let tonKho = item.tonKho else { return .textMuted }
         if tonKho < 0 { return .red }
         if tonKho == 0 || (item.soLyConLai ?? 99) <= 2 { return .orange }
-        return .primary
+        return mucDo(item)?.mau ?? .primary
+    }
+
+    /// Mức độ món đang theo dõi, khớp Trợ lý ảo: hết → xấu; dưới ngưỡng an toàn hoặc còn < 3 ngày → cảnh
+    /// báo; nil = ổn (hoặc chưa theo dõi).
+    static func mucDo(_ item: NguyenLieuBanHangDto) -> MucDo? {
+        guard let ton = item.tonKho, ton >= 0 else { return nil }
+        if ton == 0 { return .xau }
+        if let n = item.canhBaoDuoi, n > 0, ton < n { return .canhBao }
+        if let ngay = item.soNgayConLai, ngay < 3 { return .canhBao }
+        return nil
+    }
+
+    /// "còn ~10 ngày · dưới ngưỡng 12" — nil khi chưa có gì để nói.
+    static func dongPhu(_ item: NguyenLieuBanHangDto) -> String? {
+        guard let ton = item.tonKho, ton >= 0 else { return nil }
+        if ton == 0 { return "Hết hàng" }
+        var phan: [String] = []
+        if let ngay = item.soNgayConLai { phan.append(ngay < 1 ? "còn dưới 1 ngày" : "còn ~\(Int(ngay.rounded())) ngày") }
+        if let n = item.canhBaoDuoi, n > 0, ton < n { phan.append("dưới ngưỡng \(TonKhoNguyenLieu.so(n))") }
+        return phan.isEmpty ? nil : phan.joined(separator: " · ")
     }
 }

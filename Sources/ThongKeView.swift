@@ -20,6 +20,7 @@ struct ThongKeView: View {
     @State private var chuaThanhToan: ThongKeDonChuaThanhToanDto?
     @State private var tongNo: TongNoDto?
     @State private var giamGia: ThongKeGiamGiaDto?
+    @State private var nhip: NhipDoanhThuDto?
     @State private var hasLoaded = false
     /// Có ít nhất 1 API lỗi ở lượt tải gần nhất — hiện banner "Thử lại" thay vì im lặng để thẻ biến mất.
     @State private var loadFailed = false
@@ -78,6 +79,11 @@ struct ThongKeView: View {
                         VStack(spacing: 10) {
                             if loadFailed {
                                 ThongKeLoadErrorBanner { Task { await load() } }
+                            }
+                            // 18/10/2026 (BaoCaoUI): khối tổng quan doanh thu đầu tab — số lớn + so kỳ trước + nhịp bán.
+                            // Các card bên dưới giữ nguyên thứ tự Desktop.
+                            if let nhip {
+                                TongQuanDoanhThuCard(nhip: nhip, theoNgay: true)
                             }
                             // Thứ tự Y HỆT WrapPanel Desktop: Thanh toán, Doanh thu, Công nợ,
                             // Khách trả nợ, Chi tiêu, Chưa thanh toán, Tổng nợ.
@@ -269,7 +275,7 @@ struct ThongKeView: View {
         // Cùng ngày (kéo refresh/thử lại): giữ số cũ, API nào lỗi thì thẻ đó không bị mất.
         if key != loadedKey {
             chiTieu = nil; congNo = nil; thanhToan = nil; doanhThu = nil
-            traNo = nil; chuaThanhToan = nil; tongNo = nil; giamGia = nil
+            traNo = nil; chuaThanhToan = nil; tongNo = nil; giamGia = nil; nhip = nil
             chiTieuDayItems = []
             hasLoaded = false
         }
@@ -283,9 +289,13 @@ struct ThongKeView: View {
         async let g = APIClient.shared.getTongNo()
         async let h = APIClient.shared.getChiTieuByDay(DateNavFormat.queryDate.string(from: currentDate))
         async let i = APIClient.shared.getThongKeGiamGiaNgay(ngay: ngay, thang: thang, nam: nam)
+        async let j = APIClient.shared.getNhipDoanhThuNgay(ngay: ngay, thang: thang, nam: nam)
 
         let r = await (a, b, c, d, e, f, g, h, i)
+        let nhipMoi = await j
         guard generation == loadGeneration else { return }   // đã có lượt load mới hơn — bỏ kết quả cũ
+
+        nhip = nhipMoi ?? nhip
 
         chiTieu = r.0 ?? chiTieu
         congNo = r.1 ?? congNo

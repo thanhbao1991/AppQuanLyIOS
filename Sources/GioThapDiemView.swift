@@ -62,30 +62,36 @@ struct GioThapDiemView: View {
                         .foregroundColor(.textMuted)
                 }
             } else {
-                Section("Doanh thu theo giờ (30 ngày gần đây, trong giờ mở bán)") {
+                // 18/10/2026 (BaoCaoUI): kết luận lên đầu bằng chữ to, biểu đồ bên dưới làm bằng chứng.
+                if let goiYGio {
+                    Section {
+                        TheKetLuan(
+                            mucDo: .trungTinh,
+                            tieuDe: "Vắng nhất: \(goiYGio.batDau)h–\(goiYGio.ketThuc)h",
+                            moTa: goiYThu.isEmpty ? "30 ngày gần đây" :
+                                goiYThu.sorted().compactMap { tenThuTrongTuan[$0] }.joined(separator: ", ") + " · 30 ngày gần đây")
+                    }
+                }
+                Section("Doanh thu theo giờ (trong giờ mở bán)") {
                     Chart(itemsGioMoCua) { item in
                         let trongGoiY = goiYGio.map { item.gio >= $0.batDau && item.gio < $0.ketThuc } ?? false
                         BarMark(x: .value("Giờ", "\(item.gio)h"), y: .value("Doanh thu", item.doanhThu))
                             .foregroundStyle(trongGoiY ? Color.brandPrimary : Color.textMuted.opacity(0.35))
+                            .cornerRadius(3)
                     }
                     .frame(height: 180)
                     .chartXAxis { AxisMarks(values: .automatic(desiredCount: 8)) { AxisValueLabel().font(.caption2) } }
-                    if let goiYGio {
-                        Text("Gợi ý: \(goiYGio.batDau)h–\(goiYGio.ketThuc)h (doanh thu thấp nhất)")
-                            .font(.caption).foregroundColor(.brandPrimary).fontWeight(.semibold)
-                    }
+                    .chartYAxis { AxisMarks(position: .leading) { v in AxisGridLine(); AxisValueLabel { if let y = v.as(Double.self) { Text(BaoCaoSo.rutGon(y)) } } } }
                 }
 
-                Section("Doanh thu theo thứ trong tuần (30 ngày gần đây)") {
+                Section("Doanh thu theo thứ trong tuần") {
                     Chart(itemsThu.sorted { $0.thu < $1.thu }) { item in
                         BarMark(x: .value("Thứ", tenThuNganGon[item.thu] ?? "?"), y: .value("Doanh thu", item.doanhThu))
                             .foregroundStyle(goiYThu.contains(item.thu) ? Color.brandPrimary : Color.textMuted.opacity(0.35))
+                            .cornerRadius(3)
                     }
                     .frame(height: 180)
-                    if !goiYThu.isEmpty {
-                        Text("Gợi ý: \(goiYThu.sorted().compactMap { tenThuTrongTuan[$0] }.joined(separator: ", ")) (doanh thu thấp nhất)")
-                            .font(.caption).foregroundColor(.brandPrimary).fontWeight(.semibold)
-                    }
+                    .chartYAxis { AxisMarks(position: .leading) { v in AxisGridLine(); AxisValueLabel { if let y = v.as(Double.self) { Text(BaoCaoSo.rutGon(y)) } } } }
                 }
 
                 if let onChon, let goiYGio {

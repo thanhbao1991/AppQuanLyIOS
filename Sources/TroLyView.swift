@@ -118,21 +118,16 @@ struct TroLyView: View {
 
     @ViewBuilder private var theTinhTrang: some View {
         let ok = tongQuan?.trangThai == "ok"
+        let capNhat = capNhatLuc.map { "Cập nhật \($0.formatted(date: .omitted, time: .shortened))" }
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 12) {
-                Image(systemName: tongQuan == nil ? "shippingbox" : ok ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
-                    .font(.system(size: 30))
-                    .foregroundColor(tongQuan == nil ? .textMuted : ok ? .green : .orange)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(tongQuan == nil ? (dangTai ? "Đang xem tồn kho…" : "Không tải được") : ok ? "Tồn kho ổn" : (tongQuan?.thongDiep ?? ""))
-                        .font(.headline)
-                    if ok, let td = tongQuan?.thongDiep {
-                        Text(td).font(.subheadline).foregroundColor(.textMuted)
-                    } else if let capNhatLuc {
-                        Text("Cập nhật \(capNhatLuc.formatted(date: .omitted, time: .shortened))")
-                            .font(.caption).foregroundColor(.textMuted)
-                    }
-                }
+            if let tq = tongQuan {
+                TheKetLuan(mucDo: ok ? .tot : .canhBao,
+                           tieuDe: ok ? "Tồn kho ổn" : (tq.thongDiep ?? ""),
+                           moTa: ok ? tq.thongDiep : capNhat)
+            } else if dangTai {
+                HStack { ProgressView(); Text("Đang xem tồn kho…").foregroundColor(.textMuted) }
+            } else {
+                Text("Không tải được tồn kho.").foregroundColor(.textMuted)
             }
             if let tq = tongQuan, !tq.dong.isEmpty {
                 TroLyDongList(dong: tq.dong)
@@ -197,29 +192,16 @@ struct TroLyTraLoiView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if traLoi.tieuDe != nil || traLoi.moTa != nil || traLoi.soSanh != nil {
-                VStack(alignment: .leading, spacing: 4) {
-                    if let td = traLoi.tieuDe {
-                        Text(td).font(.system(size: 32, weight: .bold, design: .rounded)).monospacedDigit()
-                    }
-                    if let mt = traLoi.moTa {
-                        Text(mt).font(.subheadline).foregroundColor(.textMuted)
-                    }
-                    if let ss = traLoi.soSanh {
-                        let tang = traLoi.soSanhTang ?? true
-                        Label(ss, systemImage: tang ? "arrow.up.right" : "arrow.down.right")
-                            .font(.footnote.weight(.semibold))
-                            .foregroundColor(tang ? .green : .red)
-                            .padding(.horizontal, 8).padding(.vertical, 4)
-                            .background(Capsule().fill((tang ? Color.green : Color.red).opacity(0.12)))
-                            .padding(.top, 2)
-                    }
-                }
+            if let td = traLoi.tieuDe {
+                SoLon(giaTri: td, moTa: traLoi.moTa, soSanh: traLoi.soSanh, tang: traLoi.soSanhTang)
             }
 
             if let bd = traLoi.bieuDo, !bd.diem.isEmpty {
                 switch bd.loai {
-                case "duong": TroLyBieuDoDuong(bieuDo: bd)
+                case "duong":
+                    BieuDoCongDon(diem: bd.diem.map {
+                        DiemCongDon(x: Int($0.nhan) ?? 0, giaTri: $0.giaTri, laKyNay: $0.nhom == "Hôm nay")
+                    })
                 default: TroLyBieuDoCot(bieuDo: bd)
                 }
             }
@@ -244,13 +226,6 @@ enum TroLyMau {
         case "ok": return .green
         default: return .brandPrimary
         }
-    }
-
-    /// 4.991.000 → "5tr", 750.000 → "750k".
-    static func rutGon(_ v: Double) -> String {
-        if v >= 1_000_000 { return String(format: v.truncatingRemainder(dividingBy: 1_000_000) == 0 ? "%.0ftr" : "%.1ftr", v / 1_000_000) }
-        if v >= 1_000 { return String(format: "%.0fk", v / 1_000) }
-        return String(format: "%.0f", v)
     }
 }
 
@@ -284,51 +259,6 @@ struct TroLyDongList: View {
                 .padding(.vertical, 8)
             }
         }
-    }
-}
-
-/// Đường doanh thu cộng dồn theo giờ: hôm nay (màu chính, có nền) vs hôm qua (xám).
-struct TroLyBieuDoDuong: View {
-    let bieuDo: TroLyTraLoi.BieuDo
-
-    private var homNay: [TroLyTraLoi.Diem] { bieuDo.diem.filter { $0.nhom == "Hôm nay" } }
-
-    var body: some View {
-        Chart {
-            ForEach(homNay) { d in
-                AreaMark(x: .value("Giờ", Int(d.nhan) ?? 0), y: .value("Doanh thu", d.giaTri))
-                    .foregroundStyle(LinearGradient(colors: [Color.brandPrimary.opacity(0.25), Color.brandPrimary.opacity(0.02)],
-                                                    startPoint: .top, endPoint: .bottom))
-                    .interpolationMethod(.monotone)
-            }
-            ForEach(bieuDo.diem) { d in
-                LineMark(x: .value("Giờ", Int(d.nhan) ?? 0), y: .value("Doanh thu", d.giaTri),
-                         series: .value("Ngày", d.nhom ?? ""))
-                    .foregroundStyle(by: .value("Ngày", d.nhom ?? ""))
-                    .lineStyle(StrokeStyle(lineWidth: d.nhom == "Hôm nay" ? 2.5 : 1.5,
-                                           dash: d.nhom == "Hôm nay" ? [] : [4, 3]))
-                    .interpolationMethod(.monotone)
-            }
-            if let cuoi = homNay.last {
-                PointMark(x: .value("Giờ", Int(cuoi.nhan) ?? 0), y: .value("Doanh thu", cuoi.giaTri))
-                    .foregroundStyle(Color.brandPrimary)
-            }
-        }
-        .chartForegroundStyleScale(["Hôm nay": Color.brandPrimary, "Hôm qua": Color.gray.opacity(0.6)])
-        .chartXAxis {
-            AxisMarks(values: .stride(by: 3)) { v in
-                AxisGridLine()
-                AxisValueLabel { if let h = v.as(Int.self) { Text("\(h)h") } }
-            }
-        }
-        .chartYAxis {
-            AxisMarks(position: .leading) { v in
-                AxisGridLine()
-                AxisValueLabel { if let x = v.as(Double.self) { Text(TroLyMau.rutGon(x)) } }
-            }
-        }
-        .chartLegend(position: .top, alignment: .trailing)
-        .frame(height: 180)
     }
 }
 
