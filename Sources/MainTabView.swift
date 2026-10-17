@@ -205,6 +205,14 @@ private struct MoreMenuView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    NavigationLink {
+                        TroLyView()
+                    } label: {
+                        Label("Trợ lý ảo", systemImage: "sparkles")
+                    }
+                }
+
                 Section("Cấu hình") {
                     NavigationLink {
                         GiaNguyenLieuView()

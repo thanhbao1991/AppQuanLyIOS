@@ -656,6 +656,24 @@ actor APIClient {
         return env.data ?? 0
     }
 
+    /// Trợ lý ảo: câu báo cáo mở đầu (server tính thẳng từ tồn kho, không gọi AI) — nil nếu lỗi mạng.
+    func getTroLyChao() async -> String? {
+        let req = makeRequest("/api/TroLy/chao")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<String>.self, from: data), env.isSuccess else { return nil }
+        return env.data
+    }
+
+    /// Trợ lý ảo: gửi cả lịch sử chat, nhận câu trả lời của AI. Lỗi trả (nil, thông báo lỗi).
+    func troLyChat(_ tinNhan: [TroLyTinNhan]) async -> (traLoi: String?, loi: String?) {
+        let req = makeRequest("/api/TroLy/chat", method: "POST", body: jsonBody(["tinNhan": tinNhan]))
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<String>.self, from: data) else {
+            return (nil, "Không kết nối được server.")
+        }
+        return env.isSuccess ? (env.data, nil) : (nil, env.message ?? "Trợ lý chưa trả lời được.")
+    }
+
     func markThongBaoSeen() async -> ActionResult {
         let req = makeRequest("/api/ThongBaoNoiBo/danh-dau-da-xem", method: "POST")
         return await executeAction(req)
