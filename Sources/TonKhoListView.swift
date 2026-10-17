@@ -21,7 +21,11 @@ struct TonKhoListView: View {
     }
 
     private var dangTheoDoi: [NguyenLieuBanHangDto] {
+        // 18/10/2026: xếp theo số NGÀY còn lại (món sắp hết lên đầu) thay vì số ly — món bán chậm còn ít ly
+        // vẫn có thể dùng rất lâu. Chưa tính được ngày (chưa có lịch sử bán) xuống cuối, rồi tới số ly, tên.
         hienThi.filter { ($0.tonKho ?? -1) >= 0 }.sorted {
+            let na = $0.soNgayConLai ?? .infinity, nb = $1.soNgayConLai ?? .infinity
+            if na != nb { return na < nb }
             let a = $0.soLyConLai ?? Int.max, b = $1.soLyConLai ?? Int.max
             return a != b ? a < b : $0.ten.localizedStandardCompare($1.ten) == .orderedAscending
         }
