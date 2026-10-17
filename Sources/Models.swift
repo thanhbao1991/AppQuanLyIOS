@@ -380,6 +380,9 @@ struct NguyenLieuDto: Decodable, Identifiable {
     var yeuThich: Bool?
     /// Đang quản lý số lượng realtime — optional để không vỡ khi backend cũ chưa trả field.
     var quanLyTonKho: Bool?
+    /// Tồn kho của nguyên liệu bán hàng đã nối, theo ĐƠN VỊ BÁN (vd 48 lon) — chỉ đọc, nil khi chưa nối.
+    var tonKhoBanHang: Double?
+    let donViTinhBanHang: String?
     /// 1 = Nguyên liệu (đồ ăn/uống), 2 = Vật liệu (vật tư/bao bì/máy móc), 3 = Chi phí khác. Nil = chưa phân loại.
     var phanLoai: Int?
 }

@@ -64,6 +64,10 @@ struct NguyenLieuEditSheet: View {
     @State private var saving = false
     @State private var errorMessage: String?
     @State private var deleting: NguyenLieuDto?
+    /// Nối tồn kho: nguyên liệu bán hàng (đơn vị bán, vd lon) + 1 đơn vị nhập = bao nhiêu đơn vị bán.
+    @State private var nguyenLieuBanHangId: String?
+    @State private var heSoQuyDoi: Double?
+    @State private var dsBanHang: [NguyenLieuBanHangDto] = []
 
     init(existing: NguyenLieuDto?, onSaved: @escaping () -> Void) {
         self.existing = existing
@@ -73,6 +77,18 @@ struct NguyenLieuEditSheet: View {
         _giaNhap = State(initialValue: existing?.giaNhap ?? 0)
         _ngungSuDung = State(initialValue: existing?.ngungSuDung ?? false)
         _phanLoai = State(initialValue: existing?.phanLoai)
+        _nguyenLieuBanHangId = State(initialValue: existing?.nguyenLieuBanHangId)
+        _heSoQuyDoi = State(initialValue: existing?.heSoQuyDoiBanHang)
+    }
+
+    /// Đang dùng + mục đang chọn (kể cả khi nó đã ngừng dùng, để không mất liên kết cũ khi lưu).
+    private var dsBanHangChon: [NguyenLieuBanHangDto] {
+        dsBanHang.filter { $0.dangSuDung != false || $0.id == nguyenLieuBanHangId }
+            .sorted { $0.ten.localizedStandardCompare($1.ten) == .orderedAscending }
+    }
+
+    private var donViBan: String {
+        dsBanHang.first { $0.id == nguyenLieuBanHangId }?.donViTinh ?? "đơn vị bán"
     }
 
     var body: some View {
@@ -97,6 +113,33 @@ struct NguyenLieuEditSheet: View {
                             Text(loai.label).tag(Int?.some(loai.rawValue))
                         }
                     }
+                }
+
+                // Nối tồn kho — trước đây không sửa được ở đâu (Desktop cũng không có màn này), nên
+                // bật "Quản lý số lượng" cho món chưa nối là vô dụng. Số tồn nằm ở nguyên liệu bán hàng.
+                Section {
+                    Picker("Nguyên liệu bán hàng", selection: $nguyenLieuBanHangId) {
+                        Text("Không nối").tag(String?.none)
+                        ForEach(dsBanHangChon) { bh in
+                            Text(bh.ten).tag(String?.some(bh.id))
+                        }
+                    }
+                    .pickerStyle(.navigationLink)
+                    if nguyenLieuBanHangId != nil {
+                        HStack {
+                            Text("1 \(donViTinh.isEmpty ? "đơn vị nhập" : donViTinh) =")
+                            Spacer()
+                            TextField("1", value: $heSoQuyDoi, format: .number)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                                .frame(maxWidth: 90)
+                            Text(donViBan).foregroundColor(.textMuted)
+                        }
+                    }
+                } header: {
+                    Text("Tồn kho")
+                } footer: {
+                    Text("Nhập Chi tiêu món này sẽ cộng tồn theo hệ số (vd 1 thùng = 24 lon); bán theo công thức tự trừ.")
                 }
 
                 Section {
@@ -153,6 +196,7 @@ struct NguyenLieuEditSheet: View {
                 }
                 return result
             }, onDone: {})
+            .task { dsBanHang = await APIClient.shared.getNguyenLieuBanHangOrNil() ?? [] }
         }
     }
 
@@ -166,9 +210,10 @@ struct NguyenLieuEditSheet: View {
             giaNhap: giaNhap,
             ngungSuDung: ngungSuDung,
             thuTu: existing?.thuTu ?? 0,
-            // Giữ nguyên liên kết tồn kho bán hàng — không cho sửa ở màn này, xem NguyenLieuDto.
-            nguyenLieuBanHangId: existing?.nguyenLieuBanHangId,
-            heSoQuyDoiBanHang: existing?.heSoQuyDoiBanHang,
+            // Chưa tải xong danh sách NL bán hàng thì giữ nguyên liên kết cũ (Picker chưa có lựa chọn).
+            nguyenLieuBanHangId: dsBanHang.isEmpty ? existing?.nguyenLieuBanHangId : nguyenLieuBanHangId,
+            heSoQuyDoiBanHang: dsBanHang.isEmpty ? existing?.heSoQuyDoiBanHang
+                : (nguyenLieuBanHangId == nil ? nil : (heSoQuyDoi ?? 1)),
             phanLoai: phanLoai
         )
 

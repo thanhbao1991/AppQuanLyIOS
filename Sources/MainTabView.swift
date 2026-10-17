@@ -200,11 +200,6 @@ private struct MoreMenuView: View {
                         Label("Nguyên liệu & giá", systemImage: "leaf")
                     }
                     NavigationLink {
-                        TonKhoListView()
-                    } label: {
-                        Label("Tồn kho", systemImage: "shippingbox")
-                    }
-                    NavigationLink {
                         SanPhamListView()
                     } label: {
                         Label("Sản phẩm", systemImage: "cup.and.saucer")

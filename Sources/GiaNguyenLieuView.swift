@@ -35,6 +35,10 @@ struct GiaNguyenLieuView: View {
     /// Nguyên liệu đang chờ xác nhận "Ngừng dùng" — chạm nhầm 1 lần là dòng biến khỏi danh sách,
     /// muốn lấy lại phải gõ tìm đúng tên.
     @State private var ngungDungPending: NguyenLieuDto?
+    /// Vừa bật "Quản lý số lượng" → mở kiểm kê để đặt mốc tồn thực tế.
+    @State private var kiemKe: NguyenLieuDto?
+    /// Bật "Quản lý số lượng" cho món chưa nối nguyên liệu bán hàng → báo, không bật.
+    @State private var chuaNoiTonKho: NguyenLieuDto?
 
     /// Không chọn nhóm nào (Tất cả) thì lấy hết; chọn nhóm thì lọc đúng nhóm đó (nhóm Nguyên liệu
     /// nhận thêm cả phanLoai == nil).
@@ -170,6 +174,18 @@ struct GiaNguyenLieuView: View {
                     } else {
                         Section { ForEach(locDanhSach) { row($0) } }
                     }
+                    // Mục menu "Tồn kho" riêng đã gộp vào đây — đồ tự chế biến (cà phê đen ml, đường
+                    // nước…) không có nguyên liệu mua nào nối vào nên chỉ xem được ở màn đầy đủ này.
+                    if locDanhDau == .quanLyTonKho {
+                        Section {
+                            NavigationLink {
+                                TonKhoListView()
+                            } label: {
+                                Label("Xem tất cả tồn kho bán hàng", systemImage: "list.bullet")
+                                    .foregroundColor(.brandPrimary)
+                            }
+                        }
+                    }
                 } else if searchText.isEmpty {
                     if !goiYYeuThich.isEmpty {
                         Section {
@@ -248,6 +264,15 @@ struct GiaNguyenLieuView: View {
         .sheet(isPresented: $showAdd) {
             NguyenLieuEditSheet(existing: nil) { Task { await load() } }
         }
+        .sheet(item: $kiemKe) { nl in
+            KiemKeTonKhoSheet(nguyenLieu: nl) { await load() }
+        }
+        .alert("Chưa nối tồn kho", isPresented: Binding(
+            get: { chuaNoiTonKho != nil }, set: { if !$0 { chuaNoiTonKho = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("\"\(chuaNoiTonKho?.ten ?? "")\" chưa nối với nguyên liệu bán hàng nào nên chưa có số tồn để theo dõi. Mở món → Sửa → mục Tồn kho để nối, rồi bật lại.")
+        }
         .task { await load() }
         .confirmDelete(
             $ngungDungPending, title: "Ngừng dùng nguyên liệu", confirmLabel: "Ngừng dùng",
@@ -298,6 +323,16 @@ struct GiaNguyenLieuView: View {
                         }
                     }
                     Spacer()
+                    if nl.quanLyTonKho == true, let ton = TonKhoNguyenLieu.chinh(nl) {
+                        VStack(alignment: .trailing, spacing: 1) {
+                            Text(ton)
+                                .font(.subheadline.monospacedDigit().bold())
+                                .foregroundColor(TonKhoNguyenLieu.mau(nl))
+                            if let phu = TonKhoNguyenLieu.phu(nl) {
+                                Text(phu).font(.caption2).foregroundColor(.textMuted)
+                            }
+                        }
+                    }
                     if let d {
                         Text(d.soNgayConLai < 0 ? "Trễ \(-d.soNgayConLai) ngày" : d.soNgayConLai == 0 ? "Hôm nay" : "Còn \(d.soNgayConLai) ngày")
                             .font(.caption.bold())
@@ -353,13 +388,21 @@ struct GiaNguyenLieuView: View {
         }
     }
 
+    /// Bật: món phải nối nguyên liệu bán hàng (nơi chứa số tồn), bật xong mở kiểm kê để đặt mốc thật.
     private func toggleQuanLyTonKho(_ nl: NguyenLieuDto) async {
         guard let i = allNguyenLieu.firstIndex(where: { $0.id == nl.id }) else { return }
         let value = allNguyenLieu[i].quanLyTonKho != true
+        if value && !TonKhoNguyenLieu.coTheTheoDoi(nl) {
+            chuaNoiTonKho = nl
+            return
+        }
         allNguyenLieu[i].quanLyTonKho = value
-        if !(await APIClient.shared.setNguyenLieuQuanLyTonKho(id: nl.id, value: value)),
-           let j = allNguyenLieu.firstIndex(where: { $0.id == nl.id }) {
-            allNguyenLieu[j].quanLyTonKho = !value
+        if !(await APIClient.shared.setNguyenLieuQuanLyTonKho(id: nl.id, value: value)) {
+            if let j = allNguyenLieu.firstIndex(where: { $0.id == nl.id }) {
+                allNguyenLieu[j].quanLyTonKho = !value
+            }
+        } else if value, let j = allNguyenLieu.firstIndex(where: { $0.id == nl.id }) {
+            kiemKe = allNguyenLieu[j]
         }
     }
 
@@ -392,6 +435,7 @@ private struct GiaNguyenLieuDetailView: View {
     /// Tải riêng, không chặn danh sách giá — AI trả chậm hơn, xong lúc nào hiện lúc đó.
     @State private var deXuat: MuaHangDeXuatDto?
     @State private var deXuatLoading = true
+    @State private var showKiemKe = false
 
     var body: some View {
         List {
@@ -447,6 +491,9 @@ private struct GiaNguyenLieuDetailView: View {
         .sheet(isPresented: $showEdit) {
             NguyenLieuEditSheet(existing: nguyenLieu) { Task { await refresh() } }
         }
+        .sheet(isPresented: $showKiemKe) {
+            KiemKeTonKhoSheet(nguyenLieu: nguyenLieu) { await refresh() }
+        }
         .task {
             async let giaTask = APIClient.shared.getGiaNguyenLieuGanDay(nguyenLieuId: nguyenLieu.id, soLan: 5)
             async let deXuatTask = APIClient.shared.getDeXuatMua(nguyenLieuId: nguyenLieu.id)
@@ -490,6 +537,24 @@ private struct GiaNguyenLieuDetailView: View {
                     .clipShape(Capsule())
             } else {
                 Text("Chưa phân loại").foregroundColor(.textMuted)
+            }
+        }
+        if nguyenLieu.quanLyTonKho == true && TonKhoNguyenLieu.coTheTheoDoi(nguyenLieu) {
+            HStack {
+                Text("Tồn kho")
+                Spacer()
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text(TonKhoNguyenLieu.chinh(nguyenLieu) ?? "—")
+                        .fontWeight(.semibold).monospacedDigit()
+                        .foregroundColor(TonKhoNguyenLieu.mau(nguyenLieu))
+                    if let phu = TonKhoNguyenLieu.phu(nguyenLieu) {
+                        Text(phu).font(.caption).foregroundColor(.textMuted)
+                    }
+                }
+                Button("Kiểm kê") { showKiemKe = true }
+                    .buttonStyle(.bordered)
+                    .tint(.brandPrimary)
+                    .padding(.leading, 8)
             }
         }
         if nguyenLieu.ngungSuDung {
