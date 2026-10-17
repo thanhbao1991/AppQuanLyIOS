@@ -656,11 +656,11 @@ actor APIClient {
         return env.data ?? 0
     }
 
-    /// Trợ lý ảo: câu báo cáo mở đầu (server tính thẳng từ tồn kho) — nil nếu lỗi mạng.
-    func getTroLyChao() async -> String? {
-        let req = makeRequest("/api/TroLy/chao")
+    /// Trợ lý ảo: thẻ tình trạng tồn kho đầu màn — nil nếu lỗi mạng.
+    func getTroLyTongQuan() async -> TroLyTraLoi? {
+        let req = makeRequest("/api/TroLy/tong-quan")
         let (data, _) = await send(req)
-        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<String>.self, from: data), env.isSuccess else { return nil }
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<TroLyTraLoi>.self, from: data), env.isSuccess else { return nil }
         return env.data
     }
 
@@ -672,11 +672,11 @@ actor APIClient {
         return env.data ?? []
     }
 
-    /// Trợ lý ảo: câu trả lời cho 1 câu hỏi bấm sẵn — nil nếu lỗi.
-    func getTroLyTraLoi(_ ma: String) async -> String? {
-        let req = makeRequest("/api/TroLy/tra-loi/\(ma)")
+    /// Trợ lý ảo: câu trả lời có cấu trúc cho 1 câu hỏi bấm sẵn — nil nếu lỗi.
+    func getTroLyChiTiet(_ ma: String) async -> TroLyTraLoi? {
+        let req = makeRequest("/api/TroLy/chi-tiet/\(ma)")
         let (data, _) = await send(req)
-        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<String>.self, from: data), env.isSuccess else { return nil }
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<TroLyTraLoi>.self, from: data), env.isSuccess else { return nil }
         return env.data
     }
 
