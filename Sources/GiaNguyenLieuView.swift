@@ -35,10 +35,6 @@ struct GiaNguyenLieuView: View {
     /// Nguyên liệu đang chờ xác nhận "Ngừng dùng" — chạm nhầm 1 lần là dòng biến khỏi danh sách,
     /// muốn lấy lại phải gõ tìm đúng tên.
     @State private var ngungDungPending: NguyenLieuDto?
-    /// Vừa bật "Quản lý số lượng" → mở kiểm kê để đặt mốc tồn thực tế.
-    @State private var kiemKe: NguyenLieuDto?
-    /// Bật "Quản lý số lượng" cho món chưa nối nguyên liệu bán hàng → báo, không bật.
-    @State private var chuaNoiTonKho: NguyenLieuDto?
 
     /// Không chọn nhóm nào (Tất cả) thì lấy hết; chọn nhóm thì lọc đúng nhóm đó (nhóm Nguyên liệu
     /// nhận thêm cả phanLoai == nil).
@@ -52,7 +48,6 @@ struct GiaNguyenLieuView: View {
         switch locDanhDau {
         case .tatCa: return list
         case .muaShopee: return list.filter { $0.yeuThich == true }
-        case .quanLyTonKho: return list.filter { $0.quanLyTonKho == true }
         }
     }
 
@@ -63,20 +58,18 @@ struct GiaNguyenLieuView: View {
     }
 
     private enum LocDanhDau: String, CaseIterable, Identifiable {
-        case tatCa, muaShopee, quanLyTonKho
+        case tatCa, muaShopee
         var id: String { rawValue }
         var label: String {
             switch self {
             case .tatCa: return "Tất cả"
             case .muaShopee: return "Mua Shopee"
-            case .quanLyTonKho: return "Quản lý số lượng"
             }
         }
         var icon: String? {
             switch self {
             case .tatCa: return nil
             case .muaShopee: return "bag.fill"
-            case .quanLyTonKho: return "shippingbox.fill"
             }
         }
     }
@@ -258,15 +251,6 @@ struct GiaNguyenLieuView: View {
         .sheet(isPresented: $showAdd) {
             NguyenLieuEditSheet(existing: nil) { Task { await load() } }
         }
-        .sheet(item: $kiemKe) { nl in
-            KiemKeTonKhoSheet(nguyenLieu: nl) { await load() }
-        }
-        .alert("Chưa nối tồn kho", isPresented: Binding(
-            get: { chuaNoiTonKho != nil }, set: { if !$0 { chuaNoiTonKho = nil } })) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("\"\(chuaNoiTonKho?.ten ?? "")\" chưa nối với nguyên liệu bán hàng nào nên chưa có số tồn để theo dõi. Mở món → Sửa → mục Tồn kho để nối, rồi bật lại.")
-        }
         .task { await load() }
         .confirmDelete(
             $ngungDungPending, title: "Ngừng dùng nguyên liệu", confirmLabel: "Ngừng dùng",
@@ -294,14 +278,6 @@ struct GiaNguyenLieuView: View {
             } label: {
                 Image(systemName: nl.yeuThich == true ? "bag.fill" : "bag")
                     .foregroundColor(nl.yeuThich == true ? .orange : .textMuted)
-            }
-            .buttonStyle(.borderless)
-            // Hộp = đang quản lý số lượng (tồn kho) realtime.
-            Button {
-                Task { await toggleQuanLyTonKho(nl) }
-            } label: {
-                Image(systemName: nl.quanLyTonKho == true ? "shippingbox.fill" : "shippingbox")
-                    .foregroundColor(nl.quanLyTonKho == true ? .green : .textMuted)
             }
             .buttonStyle(.borderless)
             Button {
@@ -369,24 +345,6 @@ struct GiaNguyenLieuView: View {
         if !(await APIClient.shared.setNguyenLieuNgungSuDung(id: nl.id, value: false)),
            let j = allNguyenLieu.firstIndex(where: { $0.id == nl.id }) {
             allNguyenLieu[j].ngungSuDung = true
-        }
-    }
-
-    /// Bật: món phải nối nguyên liệu bán hàng (nơi chứa số tồn), bật xong mở kiểm kê để đặt mốc thật.
-    private func toggleQuanLyTonKho(_ nl: NguyenLieuDto) async {
-        guard let i = allNguyenLieu.firstIndex(where: { $0.id == nl.id }) else { return }
-        let value = allNguyenLieu[i].quanLyTonKho != true
-        if value && !TonKhoNguyenLieu.coTheTheoDoi(nl) {
-            chuaNoiTonKho = nl
-            return
-        }
-        allNguyenLieu[i].quanLyTonKho = value
-        if !(await APIClient.shared.setNguyenLieuQuanLyTonKho(id: nl.id, value: value)) {
-            if let j = allNguyenLieu.firstIndex(where: { $0.id == nl.id }) {
-                allNguyenLieu[j].quanLyTonKho = !value
-            }
-        } else if value, let j = allNguyenLieu.firstIndex(where: { $0.id == nl.id }) {
-            kiemKe = allNguyenLieu[j]
         }
     }
 
