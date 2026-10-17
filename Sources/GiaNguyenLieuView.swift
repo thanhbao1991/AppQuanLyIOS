@@ -117,10 +117,24 @@ struct GiaNguyenLieuView: View {
         var id: String { nl.id }
     }
 
+    /// Đầu màn "Tất cả": món đang theo dõi tồn thật (tồn ≥ 0), sắp hết lên trước — xếp theo số ly size
+    /// chuẩn còn bán được (cùng 2 lon: Bò Húc 2 ly đứng trên Soda 3 ly). 1 nguyên liệu bán hàng chỉ 1 dòng.
+    private var dangTheoDoiList: [NguyenLieuDto] {
+        var seenBh = Set<String>()
+        return nguyenLieuList
+            .filter { !$0.ngungSuDung && TonKhoNguyenLieu.dangTheoDoi($0) }
+            .sorted {
+                let a = $0.soLyConLai ?? Int.max, b = $1.soLyConLai ?? Int.max
+                return a != b ? a < b : $0.ten.localizedCompare($1.ten) == .orderedAscending
+            }
+            .filter { seenBh.insert($0.nguyenLieuBanHangId ?? $0.id).inserted }
+    }
+
     private var goiYList: [GoiYItem] {
         let byId = Dictionary(uniqueKeysWithValues: nguyenLieuList.map { ($0.id, $0) })
         var result: [GoiYItem] = []
-        var seen = Set<String>()
+        // Đã hiện ở nhóm "đang theo dõi" trên cùng thì không lặp lại.
+        var seen = Set(dangTheoDoiList.map(\.id))
         for d in canMua {
             if let id = d.nguyenLieuId, let nl = byId[id], !nl.ngungSuDung, seen.insert(id).inserted {
                 result.append(GoiYItem(nl: nl, d: d))
@@ -187,6 +201,11 @@ struct GiaNguyenLieuView: View {
                         }
                     }
                 } else if searchText.isEmpty {
+                    if !dangTheoDoiList.isEmpty {
+                        Section {
+                            ForEach(dangTheoDoiList) { row($0) }
+                        }
+                    }
                     if !goiYYeuThich.isEmpty {
                         Section {
                             ForEach(goiYYeuThich) { row($0.nl, $0.d) }
@@ -323,12 +342,12 @@ struct GiaNguyenLieuView: View {
                         }
                     }
                     Spacer()
-                    if nl.quanLyTonKho == true, let ton = TonKhoNguyenLieu.chinh(nl) {
+                    if let ton = TonKhoNguyenLieu.nhanDong(nl) {
                         VStack(alignment: .trailing, spacing: 1) {
                             Text(ton)
                                 .font(.subheadline.monospacedDigit().bold())
                                 .foregroundColor(TonKhoNguyenLieu.mau(nl))
-                            if let phu = TonKhoNguyenLieu.phu(nl) {
+                            if let phu = TonKhoNguyenLieu.phuDong(nl) {
                                 Text(phu).font(.caption2).foregroundColor(.textMuted)
                             }
                         }
@@ -539,15 +558,16 @@ private struct GiaNguyenLieuDetailView: View {
                 Text("Chưa phân loại").foregroundColor(.textMuted)
             }
         }
-        if nguyenLieu.quanLyTonKho == true && TonKhoNguyenLieu.coTheTheoDoi(nguyenLieu) {
+        // Đã nối nguyên liệu bán hàng thì luôn kiểm kê được — kiểm kê xong (tồn ≥ 0) là bắt đầu theo dõi.
+        if TonKhoNguyenLieu.coTheTheoDoi(nguyenLieu) {
             HStack {
                 Text("Tồn kho")
                 Spacer()
                 VStack(alignment: .trailing, spacing: 1) {
-                    Text(TonKhoNguyenLieu.chinh(nguyenLieu) ?? "—")
+                    Text(TonKhoNguyenLieu.nhanDong(nguyenLieu) ?? "Chưa theo dõi")
                         .fontWeight(.semibold).monospacedDigit()
-                        .foregroundColor(TonKhoNguyenLieu.mau(nguyenLieu))
-                    if let phu = TonKhoNguyenLieu.phu(nguyenLieu) {
+                        .foregroundColor(TonKhoNguyenLieu.dangTheoDoi(nguyenLieu) ? TonKhoNguyenLieu.mau(nguyenLieu) : .textMuted)
+                    if let phu = TonKhoNguyenLieu.phuDong(nguyenLieu) {
                         Text(phu).font(.caption).foregroundColor(.textMuted)
                     }
                 }

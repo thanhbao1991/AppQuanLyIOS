@@ -3,10 +3,29 @@ import SwiftUI
 /// Tồn kho hiện trong màn "Nguyên liệu & giá" (thay mục menu "Tồn kho" riêng). Nguồn số duy nhất là
 /// NguyenLieuBanHangs.TonKho (đơn vị BÁN, vd lon) — tự trừ khi bán theo công thức, tự cộng khi nhập Chi
 /// tiêu. Nguyên liệu mua (vd thùng) chỉ quy đổi để hiển thị/kiểm kê qua HeSoQuyDoiBanHang (1 thùng = 24 lon).
-/// Toàn bộ tồn kho đã reset về 0 ngày 17/10/2026 để bắt đầu theo dõi thật (số cũ ở bảng
-/// _Backup_TonKho_20261017) — chỉ món bật "Quản lý số lượng" mới hiện số.
+/// Quy ước từ 17/10/2026: tồn ≥ 0 = đang theo dõi thật (đã kiểm kê), mọi món khác đặt −1 = chưa theo dõi
+/// (số cũ ở bảng _Backup_TonKho_20261017/_20261017b). Chỉ hiện số khi tồn ≥ 0.
 enum TonKhoNguyenLieu {
     static func coTheTheoDoi(_ nl: NguyenLieuDto) -> Bool { nl.nguyenLieuBanHangId != nil }
+
+    /// Đang theo dõi thật = đã nối + tồn ≥ 0.
+    static func dangTheoDoi(_ nl: NguyenLieuDto) -> Bool {
+        coTheTheoDoi(nl) && (nl.tonKhoBanHang ?? -1) >= 0
+    }
+
+    /// Nhãn chính trên dòng: "5 ly" khi biết số ly size chuẩn, không thì số tồn quy đổi.
+    static func nhanDong(_ nl: NguyenLieuDto) -> String? {
+        guard dangTheoDoi(nl) else { return nil }
+        if let ly = nl.soLyConLai { return "\(ly) ly" }
+        return chinh(nl)
+    }
+
+    /// Dòng phụ: số tồn theo đơn vị bán ("= 1600 G", "= 5 Lon").
+    static func phuDong(_ nl: NguyenLieuDto) -> String? {
+        guard dangTheoDoi(nl), let ton = nl.tonKhoBanHang else { return nil }
+        if nl.soLyConLai == nil { return phu(nl) }
+        return "= \(so(ton)) \(nl.donViTinhBanHang ?? "")".trimmingCharacters(in: .whitespaces)
+    }
 
     private static func heSo(_ nl: NguyenLieuDto) -> Double? {
         guard let h = nl.heSoQuyDoiBanHang, h > 0, h != 1 else { return nil }
@@ -30,7 +49,9 @@ enum TonKhoNguyenLieu {
 
     static func mau(_ nl: NguyenLieuDto) -> Color {
         guard let ton = nl.tonKhoBanHang else { return .textMuted }
-        return ton < 0 ? .red : ton == 0 ? .orange : .primary
+        if ton < 0 { return .red }
+        if ton == 0 || (nl.soLyConLai ?? 99) <= 2 { return .orange }
+        return .primary
     }
 
     static func so(_ v: Double) -> String {
@@ -73,7 +94,7 @@ struct KiemKeTonKhoSheet: View {
                     }
                 }
                 Section {
-                    Text("Hiện tại: \(TonKhoNguyenLieu.chinh(nguyenLieu) ?? "—")")
+                    Text("Hiện tại: \(TonKhoNguyenLieu.dangTheoDoi(nguyenLieu) ? (TonKhoNguyenLieu.chinh(nguyenLieu) ?? "—") : "chưa theo dõi")")
                         .foregroundColor(.textMuted)
                 } footer: {
                     Text("Từ giờ số tồn tự trừ khi bán theo công thức và tự cộng khi nhập Chi tiêu.")
@@ -91,7 +112,7 @@ struct KiemKeTonKhoSheet: View {
                 Button("OK", role: .cancel) {}
             } message: { Text(errorMessage ?? "") }
             .onAppear {
-                if let ton = nguyenLieu.tonKhoBanHang, ton != 0 { soLuongText = TonKhoNguyenLieu.so(ton / heSo) }
+                if let ton = nguyenLieu.tonKhoBanHang, ton > 0 { soLuongText = TonKhoNguyenLieu.so(ton / heSo) }
             }
         }
         .presentationDetents([.medium])
