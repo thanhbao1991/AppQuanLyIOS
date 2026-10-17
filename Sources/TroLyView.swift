@@ -46,13 +46,16 @@ struct TroLyTraLoi: Codable, Equatable {
 }
 
 /// Trợ lý ảo (Menu > Trợ lý ảo) — KHÔNG dùng AI. Đầu màn là thẻ tình trạng tồn kho, bên dưới các câu hỏi bấm
-/// sẵn tự tải câu trả lời (server tính thẳng từ DB) kèm biểu đồ. Kéo xuống để làm mới; nhấn giữ rồi kéo 1 câu
-/// để đổi thứ tự — lưu trên máy (AppStorage), câu hỏi mới server thêm sẽ nằm cuối.
+/// sẵn THU GỌN — chạm câu nào mới mở + tải câu trả lời câu đó (server tính thẳng từ DB, kèm biểu đồ); user
+/// không muốn phải đọc hết mọi câu. Kéo xuống để làm mới; nhấn giữ rồi kéo 1 câu để đổi thứ tự — lưu trên máy
+/// (AppStorage), câu hỏi mới server thêm sẽ nằm cuối.
 struct TroLyView: View {
     @AppStorage("troLy.thuTu") private var thuTuRaw = ""
     @State private var tongQuan: TroLyTraLoi?
     @State private var cauHoi: [TroLyCauHoi] = []
     @State private var traLoi: [String: TroLyTraLoi] = [:]
+    @State private var moRa: Set<String> = []
+    @State private var dangHoi: Set<String> = []
     @State private var dangTai = true
     @State private var capNhatLuc: Date?
 
@@ -65,16 +68,36 @@ struct TroLyView: View {
             Section {
                 ForEach(cauHoi) { c in
                     VStack(alignment: .leading, spacing: 12) {
-                        Text(c.noiDung).font(.headline)
-                        if let tl = traLoi[c.ma] {
-                            TroLyTraLoiView(traLoi: tl)
-                        } else if dangTai {
-                            ProgressView().frame(maxWidth: .infinity)
-                        } else {
-                            Text("Không tải được.").font(.subheadline).foregroundColor(.textMuted)
+                        Button { bamCauHoi(c.ma) } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: Self.icon[c.ma] ?? "questionmark.circle")
+                                    .font(.body.weight(.semibold))
+                                    .foregroundColor(.brandPrimary)
+                                    .frame(width: 24)
+                                Text(c.noiDung).font(.body.weight(.medium)).foregroundColor(.primary)
+                                Spacer()
+                                if dangHoi.contains(c.ma) {
+                                    ProgressView()
+                                } else {
+                                    Image(systemName: "chevron.right")
+                                        .font(.footnote.weight(.semibold))
+                                        .foregroundColor(.textMuted)
+                                        .rotationEffect(.degrees(moRa.contains(c.ma) ? 90 : 0))
+                                }
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+
+                        if moRa.contains(c.ma) {
+                            if let tl = traLoi[c.ma] {
+                                TroLyTraLoiView(traLoi: tl)
+                            } else if !dangHoi.contains(c.ma) {
+                                Text("Không tải được, chạm lại để thử.").font(.subheadline).foregroundColor(.textMuted)
+                            }
                         }
                     }
-                    .padding(.vertical, 6)
+                    .padding(.vertical, 4)
                 }
                 .onMove { tu, den in
                     cauHoi.move(fromOffsets: tu, toOffset: den)
@@ -125,12 +148,35 @@ struct TroLyView: View {
         let (t, d) = await (tq, ds)
         tongQuan = t
         if !d.isEmpty { cauHoi = sapTheoThuTu(d) }
-        await withTaskGroup(of: (String, TroLyTraLoi?).self) { group in
-            for c in cauHoi { group.addTask { (c.ma, await APIClient.shared.getTroLyChiTiet(c.ma)) } }
-            for await (ma, tl) in group { if let tl { traLoi[ma] = tl } }
-        }
         capNhatLuc = Date()
         dangTai = false
+        // Câu nào đang mở thì làm mới luôn; câu đã tải mà đang đóng thì bỏ để lần mở sau tải số mới.
+        traLoi = traLoi.filter { moRa.contains($0.key) }
+        for ma in moRa { Task { await hoi(ma) } }
+    }
+
+    private static let icon: [String: String] = [
+        "can-nhap": "cart",
+        "ton-kho": "shippingbox",
+        "doanh-thu": "chart.line.uptrend.xyaxis",
+        "ban-chay": "trophy",
+    ]
+
+    private func bamCauHoi(_ ma: String) {
+        if moRa.contains(ma) {
+            withAnimation { _ = moRa.remove(ma) }
+        } else {
+            withAnimation { _ = moRa.insert(ma) }
+            if traLoi[ma] == nil { Task { await hoi(ma) } }
+        }
+    }
+
+    private func hoi(_ ma: String) async {
+        guard !dangHoi.contains(ma) else { return }
+        dangHoi.insert(ma)
+        let tl = await APIClient.shared.getTroLyChiTiet(ma)
+        dangHoi.remove(ma)
+        withAnimation { traLoi[ma] = tl }
     }
 
     private func sapTheoThuTu(_ ds: [TroLyCauHoi]) -> [TroLyCauHoi] {
