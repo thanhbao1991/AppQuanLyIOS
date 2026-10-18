@@ -13,7 +13,16 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     // Không có hàm này thì iOS im lặng nuốt push khi app đang mở — cần để vẫn đọc tiêu đề (âm tts_*.wav).
     // Push là kênh chính cho thông báo nội bộ; signal ThongBaoNoiBo trong EntityChangeBus không toast/kêu nữa để khỏi trùng.
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
-        [.banner, .list, .sound]
+        if notification.request.content.userInfo["mo"] as? String == "troLy" {
+            Task { await CanhBaoBadge.shared.refresh() }
+        }
+        return [.banner, .list, .sound]
+    }
+
+    // Bấm vào push: "mo" = màn cần mở (backend ApnsPushService). Hiện chỉ có "troLy" (cảnh báo cần xử lý).
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        guard response.notification.request.content.userInfo["mo"] as? String == "troLy" else { return }
+        await MainActor.run { DeepLinkRouter.shared.moTroLy = true }
     }
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {

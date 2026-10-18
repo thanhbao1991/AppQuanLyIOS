@@ -11,6 +11,9 @@ final class DeepLinkRouter: ObservableObject {
     /// rồi tự set về nil sau khi đã mở sheet tạo đơn, tránh mở lại nếu view rebuild.
     @Published var khachHangIdToOrder: String?
 
+    /// Bấm push "Trợ lý: cần xử lý" (payload mo="troLy") → MainTabView mở sheet Trợ lý ảo rồi tự set về false.
+    @Published var moTroLy = false
+
     func handle(_ url: URL) {
         guard url.scheme == "trasuaapp", url.host == "khachhang" else { return }
         let id = url.pathComponents.first { $0 != "/" }

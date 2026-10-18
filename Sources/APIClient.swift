@@ -680,6 +680,20 @@ actor APIClient {
         return env.data
     }
 
+    /// Trợ lý ảo: việc cần xử lý (lỗi, VPS, lệch ví, backup — thay Discord). nil nếu lỗi mạng hoặc không
+    /// phải tài khoản Admin (server trả 403) — màn trợ lý ẩn hẳn mục này.
+    func getCanhBao(daXuLy: Bool = false) async -> [CanhBaoHeThong]? {
+        let req = makeRequest("/api/TroLy/canh-bao?daXuLy=\(daXuLy)&take=100")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[CanhBaoHeThong]>.self, from: data), env.isSuccess else { return nil }
+        return env.data ?? []
+    }
+
+    func danhDauCanhBao(id: String, daXuLy: Bool) async -> ActionResult {
+        let req = makeRequest("/api/TroLy/canh-bao/\(id)/xu-ly", method: "POST", body: jsonBody(["daXuLy": daXuLy]))
+        return await executeAction(req)
+    }
+
     func markThongBaoSeen() async -> ActionResult {
         let req = makeRequest("/api/ThongBaoNoiBo/danh-dau-da-xem", method: "POST")
         return await executeAction(req)

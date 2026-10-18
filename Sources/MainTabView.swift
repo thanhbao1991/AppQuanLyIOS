@@ -53,6 +53,7 @@ struct MainTabView: View {
     @ObservedObject private var deepLink = DeepLinkRouter.shared
     @ObservedObject private var congViecBadge = CongViecBadge.shared
     @ObservedObject private var thongBaoBadge = ThongBaoBadge.shared
+    @ObservedObject private var canhBaoBadge = CanhBaoBadge.shared
     @State private var showThongBaoSheet = false
     @State private var showTroLySheet = false
     /// Mặc định Hoá đơn dù Thống kê xếp trước về vị trí hiển thị — mở app luôn vào tab Hoá đơn
@@ -91,6 +92,13 @@ struct MainTabView: View {
             }
         }
         .task { await thongBaoBadge.refresh() }
+        .task { await canhBaoBadge.refresh() }
+        .onChange(of: showTroLySheet) { dangMo in
+            if !dangMo { Task { await canhBaoBadge.refresh() } }
+        }
+        // Bấm push "Trợ lý: cần xử lý" — onAppear cho trường hợp app mở nguội từ push (cờ bật trước khi view có).
+        .onChange(of: deepLink.moTroLy) { mo in if mo { moTroLyTuPush() } }
+        .onAppear { if deepLink.moTroLy { moTroLyTuPush() } }
         .onChange(of: selection) { newValue in
             switch newValue {
             case .hoaDon: activeTab.tab = .hoaDon
@@ -127,14 +135,34 @@ struct MainTabView: View {
     private var notificationBell: some View {
         HStack(spacing: 14) {
             Button { showTroLySheet = true } label: {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 18))
-                    .foregroundColor(.white)
-                    .frame(width: 30, height: 30)
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 18))
+                        .foregroundColor(.white)
+                        .frame(width: 30, height: 30)
+                    // Số việc "Cần xử lý" chưa tick (chỉ Admin thấy).
+                    if canhBaoBadge.soViec > 0 {
+                        Text(canhBaoBadge.soViec > 99 ? "99+" : "\(canhBaoBadge.soViec)")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(Color.dangerColor)
+                            .clipShape(Capsule())
+                            .overlay(Capsule().stroke(Color.white, lineWidth: 1.2))
+                            .offset(x: 6, y: -4)
+                    }
+                }
             }
             .accessibilityLabel("Trợ lý ảo")
             chuong
         }
+    }
+
+    private func moTroLyTuPush() {
+        deepLink.moTroLy = false
+        showThongBaoSheet = false
+        showTroLySheet = true
     }
 
     private var chuong: some View {

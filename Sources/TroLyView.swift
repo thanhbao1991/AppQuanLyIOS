@@ -1,5 +1,6 @@
 import Charts
 import SwiftUI
+import UIKit
 
 /// 1 câu hỏi bấm sẵn của trợ lý — server trả danh sách (GET /api/TroLy/cau-hoi).
 struct TroLyCauHoi: Codable, Identifiable, Equatable {
@@ -45,6 +46,33 @@ struct TroLyTraLoi: Codable, Equatable {
     let bieuDo: BieuDo?
 }
 
+/// Việc "Cần xử lý" (GET /api/TroLy/canh-bao) — lỗi API/crash, VPS (RAM/disk/SQL), lệch ví, backup. Thay Discord
+/// từ 18/10/2026. Cùng 1 lỗi lặp lại thì server gộp (soLan), tick xong mà tái diễn thì thành việc mới.
+struct CanhBaoHeThong: Codable, Identifiable, Equatable {
+    let id: String
+    /// "Loi" | "HeThong" | "Vi" | "Backup"
+    let loai: String
+    let tieuDe: String
+    let noiDung: String?
+    let chiTiet: String?
+    let soLan: Int
+    let taoLuc: String
+    let lanCuoiLuc: String
+    var daXuLy: Bool
+    let xuLyLuc: String?
+}
+
+/// Số việc cần xử lý trên nút ✨ (0 với tài khoản không phải Admin).
+final class CanhBaoBadge: ObservableObject {
+    static let shared = CanhBaoBadge()
+    @Published var soViec = 0
+
+    func refresh() async {
+        guard let ds = await APIClient.shared.getCanhBao() else { return }
+        await MainActor.run { soViec = ds.count }
+    }
+}
+
 /// Trợ lý ảo (Menu > Trợ lý ảo) — KHÔNG dùng AI. Đầu màn là thẻ tình trạng tồn kho, bên dưới các câu hỏi bấm
 /// sẵn THU GỌN — chạm câu nào mới mở + tải câu trả lời câu đó (server tính thẳng từ DB, kèm biểu đồ); user
 /// không muốn phải đọc hết mọi câu. Kéo xuống để làm mới; nhấn giữ rồi kéo 1 câu để đổi thứ tự — lưu trên máy
@@ -58,9 +86,42 @@ struct TroLyView: View {
     @State private var dangHoi: Set<String> = []
     @State private var dangTai = true
     @State private var capNhatLuc: Date?
+    /// nil = không phải Admin / lỗi → ẩn mục Cần xử lý.
+    @State private var canhBao: [CanhBaoHeThong]?
+    @State private var daXuLy: [CanhBaoHeThong] = []
+    @State private var xemDaXuLy = false
+    @State private var moCanhBao: Set<String> = []
 
     var body: some View {
         List {
+            if let canhBao {
+                Section {
+                    if canhBao.isEmpty {
+                        Label("Không có việc cần xử lý", systemImage: "checkmark.circle.fill")
+                            .font(.subheadline)
+                            .foregroundColor(.green)
+                    }
+                    ForEach(canhBao) { cb in canhBaoRow(cb) }
+                } header: {
+                    Text(canhBao.isEmpty ? "Cần xử lý" : "Cần xử lý (\(canhBao.count))")
+                } footer: {
+                    Button(xemDaXuLy ? "Ẩn việc đã xử lý" : "Xem việc đã xử lý") {
+                        khongHieuUng { xemDaXuLy.toggle() }
+                        if xemDaXuLy { Task { await taiDaXuLy() } }
+                    }
+                    .font(.footnote)
+                }
+
+                if xemDaXuLy {
+                    Section("Đã xử lý") {
+                        if daXuLy.isEmpty {
+                            Text("Chưa có.").font(.subheadline).foregroundColor(.textMuted)
+                        }
+                        ForEach(daXuLy) { cb in canhBaoRow(cb) }
+                    }
+                }
+            }
+
             Section {
                 theTinhTrang
             }
@@ -140,14 +201,136 @@ struct TroLyView: View {
         dangTai = true
         async let tq = APIClient.shared.getTroLyTongQuan()
         async let ds = APIClient.shared.getTroLyCauHoi()
-        let (t, d) = await (tq, ds)
+        async let cbs = APIClient.shared.getCanhBao()
+        let (t, d, c) = await (tq, ds, cbs)
         tongQuan = t
+        if let c {
+            canhBao = c
+            CanhBaoBadge.shared.soViec = c.count
+        }
+        if xemDaXuLy { await taiDaXuLy() }
         if !d.isEmpty { cauHoi = sapTheoThuTu(d) }
         capNhatLuc = Date()
         dangTai = false
         // Câu nào đang mở thì làm mới luôn; câu đã tải mà đang đóng thì bỏ để lần mở sau tải số mới.
         traLoi = traLoi.filter { moRa.contains($0.key) }
         for ma in moRa { Task { await hoi(ma) } }
+    }
+
+    private func taiDaXuLy() async {
+        if let ds = await APIClient.shared.getCanhBao(daXuLy: true) { daXuLy = ds }
+    }
+
+    /// 1 việc: vòng tròn tick bên trái · tiêu đề, nội dung, "Lỗi · 3 lần · 14:05 18/10". Chạm chữ để mở chi tiết
+    /// (stack trace/log, sao chép được để gửi Claude).
+    @ViewBuilder private func canhBaoRow(_ cb: CanhBaoHeThong) -> some View {
+        let mo = moCanhBao.contains(cb.id)
+        HStack(alignment: .top, spacing: 12) {
+            Button { Task { await tick(cb) } } label: {
+                Image(systemName: cb.daXuLy ? "checkmark.circle.fill" : "circle")
+                    .font(.title2)
+                    .foregroundColor(cb.daXuLy ? .green : Self.mauLoai(cb.loai))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(cb.daXuLy ? "Bỏ đánh dấu đã xử lý" : "Đánh dấu đã xử lý")
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Image(systemName: Self.iconLoai(cb.loai)).font(.caption).foregroundColor(Self.mauLoai(cb.loai))
+                    Text(cb.tieuDe)
+                        .font(.subheadline.weight(.semibold))
+                        .strikethrough(cb.daXuLy)
+                        .foregroundColor(cb.daXuLy ? .textMuted : .primary)
+                }
+                if let nd = cb.noiDung, !nd.isEmpty {
+                    Text(nd).font(.caption).foregroundColor(.textMuted).lineLimit(mo ? nil : 2)
+                }
+                Text(Self.dongPhu(cb)).font(.caption2).foregroundColor(.textMuted)
+
+                if mo, let ct = cb.chiTiet, !ct.isEmpty {
+                    ScrollView(.horizontal) {
+                        Text(ct)
+                            .font(.system(.caption2, design: .monospaced))
+                            .textSelection(.enabled)
+                            .padding(8)
+                    }
+                    .frame(maxHeight: 240)
+                    .background(Color.gray.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    Button {
+                        UIPasteboard.general.string = "\(cb.tieuDe)\n\(cb.noiDung ?? "")\n\n\(ct)"
+                    } label: {
+                        Label("Sao chép chi tiết", systemImage: "doc.on.doc").font(.caption)
+                    }
+                    .buttonStyle(.borderless)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                khongHieuUng {
+                    if mo { moCanhBao.remove(cb.id) } else { moCanhBao.insert(cb.id) }
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    /// Tick/bỏ tick — đổi trên màn ngay, lỗi mạng thì trả lại như cũ.
+    private func tick(_ cb: CanhBaoHeThong) async {
+        let moi = !cb.daXuLy
+        let truocCanhBao = canhBao, truocDaXuLy = daXuLy
+        var doi = cb
+        doi.daXuLy = moi
+        khongHieuUng {
+            if moi {
+                canhBao?.removeAll { $0.id == cb.id }
+                daXuLy.insert(doi, at: 0)
+            } else {
+                daXuLy.removeAll { $0.id == cb.id }
+                canhBao?.insert(doi, at: 0)
+            }
+        }
+        CanhBaoBadge.shared.soViec = canhBao?.count ?? 0
+        let kq = await APIClient.shared.danhDauCanhBao(id: cb.id, daXuLy: moi)
+        if !kq.success {
+            khongHieuUng {
+                canhBao = truocCanhBao
+                daXuLy = truocDaXuLy
+            }
+            CanhBaoBadge.shared.soViec = canhBao?.count ?? 0
+        }
+    }
+
+    private static func iconLoai(_ loai: String) -> String {
+        switch loai {
+        case "Loi": return "ladybug.fill"
+        case "Vi": return "wallet.pass.fill"
+        case "Backup": return "externaldrive.fill.badge.exclamationmark"
+        default: return "server.rack"
+        }
+    }
+
+    private static func mauLoai(_ loai: String) -> Color {
+        loai == "Loi" || loai == "Backup" ? .red : .orange
+    }
+
+    private static func dongPhu(_ cb: CanhBaoHeThong) -> String {
+        let ten: String
+        switch cb.loai {
+        case "Loi": ten = "Lỗi"
+        case "Vi": ten = "Ví khách"
+        case "Backup": ten = "Backup"
+        default: ten = "Máy chủ"
+        }
+        var parts = [ten]
+        if cb.soLan > 1 { parts.append("\(cb.soLan) lần") }
+        if cb.daXuLy, let x = cb.xuLyLuc {
+            parts.append("xử lý \(ThongBaoNoiBoFormatting.thoiGian(x))")
+        } else {
+            parts.append(ThongBaoNoiBoFormatting.thoiGian(cb.lanCuoiLuc))
+        }
+        return parts.joined(separator: " · ")
     }
 
     private static let icon: [String: String] = [
