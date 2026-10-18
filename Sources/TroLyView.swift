@@ -158,12 +158,21 @@ struct TroLyView: View {
     ]
 
     private func bamCauHoi(_ ma: String) {
-        if moRa.contains(ma) {
-            withAnimation { _ = moRa.remove(ma) }
-        } else {
-            withAnimation { _ = moRa.insert(ma) }
-            if traLoi[ma] == nil { Task { await hoi(ma) } }
+        // Mở/đóng câu hỏi hiện ngay, không hiệu ứng (user 18/10: hiệu ứng làm chữ đè lên nhau lúc bung).
+        khongHieuUng {
+            if moRa.contains(ma) {
+                _ = moRa.remove(ma)
+            } else {
+                _ = moRa.insert(ma)
+                if traLoi[ma] == nil { Task { await hoi(ma) } }
+            }
         }
+    }
+
+    private func khongHieuUng(_ thayDoi: () -> Void) {
+        var t = Transaction()
+        t.disablesAnimations = true
+        withTransaction(t, thayDoi)
     }
 
     private func hoi(_ ma: String) async {
@@ -171,7 +180,7 @@ struct TroLyView: View {
         dangHoi.insert(ma)
         let tl = await APIClient.shared.getTroLyChiTiet(ma)
         dangHoi.remove(ma)
-        withAnimation { traLoi[ma] = tl }
+        khongHieuUng { traLoi[ma] = tl }
     }
 
     private func sapTheoThuTu(_ ds: [TroLyCauHoi]) -> [TroLyCauHoi] {
