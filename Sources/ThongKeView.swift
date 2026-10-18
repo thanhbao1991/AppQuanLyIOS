@@ -253,7 +253,7 @@ struct ThongKeView: View {
     private var dayOfCurrentDate: Int { Calendar.current.component(.day, from: currentDate) }
 
     private func toggle(_ card: ThongKeCard) {
-        withAnimation(.easeInOut(duration: 0.2)) {
+        khongHieuUng {
             if expandedCards.contains(card) {
                 expandedCards.remove(card)
             } else {
@@ -390,7 +390,6 @@ struct StatCard<Content: View>: View {
                     }
                     .padding(12)
                 }
-                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
         .background(color.opacity(0.08))

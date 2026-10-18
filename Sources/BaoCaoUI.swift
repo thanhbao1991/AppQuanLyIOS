@@ -1,6 +1,13 @@
 import Charts
 import SwiftUI
 
+/// Mở/đóng khối báo cáo hiện ngay, không hiệu ứng (user 18/10: hiệu ứng bung làm chữ đè lên nhau).
+func khongHieuUng(_ thayDoi: () -> Void) {
+    var t = Transaction()
+    t.disablesAnimations = true
+    withTransaction(t, thayDoi)
+}
+
 // Bộ thành phần trình bày số liệu dùng chung (18/10/2026) — rút từ màn Trợ lý ảo, user khen "trình bày rất
 // chuyên nghiệp" rồi yêu cầu áp sang Phân tích bão hoà, Giờ vắng khách, Tồn kho, tab Kê. Nguyên tắc:
 // 1. Kết luận trước (thẻ kết luận / con số lớn), chi tiết sau.

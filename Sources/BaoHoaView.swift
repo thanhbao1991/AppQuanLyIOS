@@ -88,7 +88,7 @@ struct BaoHoaView: View {
         let t = th ?? TinHieu(mucDo: .trungTinh, ketLuan: "Chưa đủ dữ liệu", giaTri: nil, nhanXet: nil)
         KhoiChiSo(icon: icon, tieuDe: tieuDe, ketLuan: t.ketLuan, mucDo: t.mucDo, giaTri: t.giaTri,
                   moRa: moRa.contains(ma), onToggle: {
-                      withAnimation { if moRa.contains(ma) { moRa.remove(ma) } else { moRa.insert(ma) } }
+                      khongHieuUng { if moRa.contains(ma) { moRa.remove(ma) } else { moRa.insert(ma) } }
                   }) {
             VStack(alignment: .leading, spacing: 8) {
                 chart()

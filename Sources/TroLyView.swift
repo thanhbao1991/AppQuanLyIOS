@@ -169,12 +169,6 @@ struct TroLyView: View {
         }
     }
 
-    private func khongHieuUng(_ thayDoi: () -> Void) {
-        var t = Transaction()
-        t.disablesAnimations = true
-        withTransaction(t, thayDoi)
-    }
-
     private func hoi(_ ma: String) async {
         guard !dangHoi.contains(ma) else { return }
         dangHoi.insert(ma)

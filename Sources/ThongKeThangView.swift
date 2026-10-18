@@ -190,7 +190,7 @@ struct ThongKeThangView: View {
     }
 
     private func toggle(_ card: ThongKeThangCard) {
-        withAnimation(.easeInOut(duration: 0.2)) {
+        khongHieuUng {
             if expandedCards.contains(card) {
                 expandedCards.remove(card)
             } else {
