@@ -188,14 +188,13 @@ struct ReceiptReviewSheet: View {
         })
     }
 
-    /// Luồng Shopee: dòng dựng sẵn (đã có ngày/ghi chú/nhóm theo từng đơn), Bill tháng mặc định tắt.
+    /// Luồng Shopee: dòng dựng sẵn (đã có ngày/ghi chú/nhóm theo từng đơn), Bill tháng mặc định bật như luồng ảnh.
     init(title: String, lines: [ReceiptDraftLine], onSaved: @escaping () -> Void) {
         _selectedDate = State(initialValue: Date())
         self.result = ReceiptParseResultDto(lines: [], tongTrenPhieu: nil)
         self.title = title
         self.onSaved = onSaved
         _lines = State(initialValue: lines)
-        _billThang = State(initialValue: false)
     }
 
     /// Mọi dòng tự mang ngày riêng (luồng Shopee) — ẩn ô chọn ngày chung.
