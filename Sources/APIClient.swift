@@ -238,9 +238,9 @@ actor APIClient {
         return await executeAction(req).success
     }
 
-    /// Bật/tắt ⭐ nguyên liệu (PATCH riêng, không qua Update để không ghi đè các field khác).
-    func setNguyenLieuYeuThich(id: String, value: Bool) async -> Bool {
-        let req = makeRequest("/api/NguyenLieu/\(id)/yeu-thich?value=\(value)", method: "PATCH")
+    /// Bật/tắt giỏ Shopee của nguyên liệu (PATCH riêng, không qua Update để không ghi đè các field khác).
+    func setNguyenLieuMuaShopee(id: String, value: Bool) async -> Bool {
+        let req = makeRequest("/api/NguyenLieu/\(id)/mua-shopee?value=\(value)", method: "PATCH")
         return await executeAction(req).success
     }
 

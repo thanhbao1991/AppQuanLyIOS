@@ -48,12 +48,12 @@ struct GiaNguyenLieuView: View {
         return list
     }
 
-    private var yeuThichList: [NguyenLieuDto] {
-        nguyenLieuList.filter { $0.yeuThich == true && !$0.ngungSuDung }
+    private var muaShopeeList: [NguyenLieuDto] {
+        nguyenLieuList.filter { $0.muaShopee == true && !$0.ngungSuDung }
             .sorted { $0.ten.localizedCompare($1.ten) == .orderedAscending }
     }
 
-    /// Nguyên liệu cần mua (có đề xuất) + nguyên liệu ⭐ chưa đến hạn (d = nil).
+    /// Nguyên liệu cần mua (có đề xuất) + nguyên liệu giỏ Shopee chưa đến hạn (d = nil).
     private struct GoiYItem: Identifiable {
         let nl: NguyenLieuDto
         let d: MuaHangDeXuatDto?
@@ -69,19 +69,19 @@ struct GiaNguyenLieuView: View {
                 result.append(GoiYItem(nl: nl, d: d))
             }
         }
-        for nl in yeuThichList where seen.insert(nl.id).inserted {
+        for nl in muaShopeeList where seen.insert(nl.id).inserted {
             result.append(GoiYItem(nl: nl, d: nil))
         }
         return result
     }
 
-    /// Tách "Gợi ý mua" thành 2 nhóm: nhóm 1 là nguyên liệu đã ⭐, nhóm 2 là phần còn lại (đến hạn/trễ hạn nhưng chưa ⭐).
-    private var goiYYeuThich: [GoiYItem] {
-        goiYList.filter { $0.nl.yeuThich == true }
+    /// Tách "Gợi ý mua" thành 2 nhóm: nhóm 1 là nguyên liệu giỏ Shopee, nhóm 2 là phần còn lại (đến hạn/trễ hạn nhưng không mua Shopee).
+    private var goiYMuaShopee: [GoiYItem] {
+        goiYList.filter { $0.nl.muaShopee == true }
     }
 
     private var goiYKhac: [GoiYItem] {
-        goiYList.filter { $0.nl.yeuThich != true }
+        goiYList.filter { $0.nl.muaShopee != true }
     }
 
     /// Rỗng khi chưa gõ gì — khớp cách AddExpenseSheet (ChiTieuListView) tránh liệt kê hết danh
@@ -91,13 +91,13 @@ struct GiaNguyenLieuView: View {
         return nguyenLieuList.filter { $0.ten.matchesSearch(searchText) }
     }
 
-    /// Tách kết quả tìm kiếm: nhóm 1 là nguyên liệu đã ⭐, nhóm 2 là phần còn lại.
-    private var filteredYeuThich: [NguyenLieuDto] {
-        filteredList.filter { $0.yeuThich == true }
+    /// Tách kết quả tìm kiếm: nhóm 1 là nguyên liệu giỏ Shopee, nhóm 2 là phần còn lại.
+    private var filteredMuaShopee: [NguyenLieuDto] {
+        filteredList.filter { $0.muaShopee == true }
     }
 
     private var filteredKhac: [NguyenLieuDto] {
-        filteredList.filter { $0.yeuThich != true }
+        filteredList.filter { $0.muaShopee != true }
     }
 
     var body: some View {
@@ -109,26 +109,26 @@ struct GiaNguyenLieuView: View {
                     ThongKeLoadErrorBanner(text: "Chưa tải được danh sách nguyên liệu") { Task { await load() } }
                         .listRowSeparator(.hidden)
                 }
-                // Không tiêu đề nhóm (đồng bộ màn Tồn kho). Tách ⭐ riêng với nhóm còn lại; ⭐ trên từng dòng vẫn bấm để ghim/bỏ ghim.
+                // Không tiêu đề nhóm (đồng bộ màn Tồn kho). Tách giỏ Shopee riêng với nhóm còn lại; giỏ trên từng dòng vẫn bấm để ghim/bỏ ghim.
                 if searchText.isEmpty {
-                    if !goiYYeuThich.isEmpty {
+                    if !goiYMuaShopee.isEmpty {
                         Section {
-                            ForEach(goiYYeuThich) { row($0.nl, $0.d) }
+                            ForEach(goiYMuaShopee) { row($0.nl, $0.d) }
                         }
                     }
                     if !goiYKhac.isEmpty {
                         Section {
                             ForEach(goiYKhac) { row($0.nl, $0.d) }
                         }
-                    } else if canMuaLoaded && goiYYeuThich.isEmpty && !loadFailed {
+                    } else if canMuaLoaded && goiYMuaShopee.isEmpty && !loadFailed {
                         Section {
                             Text("Chưa có nguyên liệu nào đến hạn mua.").foregroundColor(.textMuted)
                         }
                     }
                 } else {
-                    if !filteredYeuThich.isEmpty {
+                    if !filteredMuaShopee.isEmpty {
                         Section {
-                            ForEach(filteredYeuThich.prefix(30)) { row($0) }
+                            ForEach(filteredMuaShopee.prefix(30)) { row($0) }
                         }
                     }
                     if !filteredKhac.isEmpty {
@@ -196,16 +196,16 @@ struct GiaNguyenLieuView: View {
         canMuaLoaded = true
     }
 
-    /// Dòng nguyên liệu: chạm tên để xem giá, chạm ⭐ để ghim/bỏ ghim (cập nhật ngay, lỗi thì hoàn lại).
+    /// Dòng nguyên liệu: chạm tên để xem giá, chạm giỏ để ghim/bỏ ghim (cập nhật ngay, lỗi thì hoàn lại).
     /// Có đề xuất `d` thì hiện thêm số lượng thường mua + mức gấp (trễ/hôm nay/còn N ngày).
     private func row(_ nl: NguyenLieuDto, _ d: MuaHangDeXuatDto? = nil) -> some View {
         HStack(spacing: 12) {
-            // Giỏ xách bên trái tên = mua qua Shopee (field yeuThich).
+            // Giỏ xách bên trái tên = mua qua Shopee (field muaShopee).
             Button {
-                Task { await toggleYeuThich(nl) }
+                Task { await toggleMuaShopee(nl) }
             } label: {
-                Image(systemName: nl.yeuThich == true ? "bag.fill" : "bag")
-                    .foregroundColor(nl.yeuThich == true ? .orange : .textMuted)
+                Image(systemName: nl.muaShopee == true ? "bag.fill" : "bag")
+                    .foregroundColor(nl.muaShopee == true ? .orange : .textMuted)
             }
             .buttonStyle(.borderless)
             Button {
@@ -228,7 +228,7 @@ struct GiaNguyenLieuView: View {
                     }
                 }
             }
-            // Nút "Ngừng dùng" cạnh ⭐: loại nguyên liệu không còn mua khỏi danh sách (đặt NgungSuDung).
+            // Nút "Ngừng dùng" cạnh giỏ Shopee: loại nguyên liệu không còn mua khỏi danh sách (đặt NgungSuDung).
             if !nl.ngungSuDung {
                 Button {
                     ngungDungPending = nl
@@ -276,13 +276,13 @@ struct GiaNguyenLieuView: View {
         }
     }
 
-    private func toggleYeuThich(_ nl: NguyenLieuDto) async {
+    private func toggleMuaShopee(_ nl: NguyenLieuDto) async {
         guard let i = allNguyenLieu.firstIndex(where: { $0.id == nl.id }) else { return }
-        let value = allNguyenLieu[i].yeuThich != true
-        allNguyenLieu[i].yeuThich = value
-        if !(await APIClient.shared.setNguyenLieuYeuThich(id: nl.id, value: value)),
+        let value = allNguyenLieu[i].muaShopee != true
+        allNguyenLieu[i].muaShopee = value
+        if !(await APIClient.shared.setNguyenLieuMuaShopee(id: nl.id, value: value)),
            let j = allNguyenLieu.firstIndex(where: { $0.id == nl.id }) {
-            allNguyenLieu[j].yeuThich = !value
+            allNguyenLieu[j].muaShopee = !value
         }
     }
 }
