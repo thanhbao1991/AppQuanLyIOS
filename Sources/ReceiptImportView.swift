@@ -167,6 +167,10 @@ struct ReceiptReviewSheet: View {
     // Mặc định bật — luồng "Thêm từ ảnh"/camera hầu hết dùng cho bill nhà cung cấp cuối tháng, người
     // dùng vẫn tắt được nếu là hoá đơn lẻ trong ngày.
     @State private var billThang = true
+    // Tài khoản ghi nhận — mặc định "ty" (người đi mua hàng/nhận bill), đổi được nếu người khác mua.
+    // nil = tài khoản đang đăng nhập (khi chưa tải được danh sách hoặc không có "ty").
+    @State private var taiKhoanList: [TaiKhoanDto] = []
+    @State private var taiKhoanId: String?
     @State private var saving = false
     @State private var errorMessage: String?
     @State private var warningAlertText: String?
@@ -230,6 +234,14 @@ struct ReceiptReviewSheet: View {
                             .environment(\.locale, Locale(identifier: "vi_VN"))
                     }
                     Toggle("Bill tháng", isOn: $billThang)
+                    if !taiKhoanList.isEmpty {
+                        Picker("Tài khoản", selection: $taiKhoanId) {
+                            if taiKhoanId == nil { Text("Tài khoản đang đăng nhập").tag(String?.none) }
+                            ForEach(taiKhoanList) { tk in
+                                Text(tk.tenHienThiHoacDangNhap).tag(Optional(tk.id))
+                            }
+                        }
+                    }
                 } footer: {
                     Text(perLineDate
                          ? "Mỗi đơn lưu theo ngày giao hàng của đơn đó. Bill tháng áp dụng chung."
@@ -294,6 +306,15 @@ struct ReceiptReviewSheet: View {
             }
         }
         .task { nguyenLieuList = await APIClient.shared.getNguyenLieu() }
+        .task {
+            let list = await APIClient.shared.getTaiKhoan()
+                .filter(\.isActive)
+                .sorted { $0.tenHienThiHoacDangNhap.localizedCompare($1.tenHienThiHoacDangNhap) == .orderedAscending }
+            taiKhoanList = list
+            if taiKhoanId == nil {
+                taiKhoanId = list.first { $0.tenDangNhap.caseInsensitiveCompare("ty") == .orderedSame }?.id
+            }
+        }
         // Đã lưu thành công nhưng có dòng giá lệch lớn so với lần mua gần nhất — chỉ cảnh báo,
         // không chặn (xem AddExpenseSheet cùng cơ chế).
         .popupHost { host in
@@ -452,7 +473,7 @@ struct ReceiptReviewSheet: View {
                 )
             }
             // NgayGio do server quyết định (VietnamTime.Now) — không gửi, để Backend tự set.
-            let body = ChiTieuHangNgayBulkCreateRequest(ngay: key + "T00:00:00", ngayGio: nil, billThang: billThang, items: items)
+            let body = ChiTieuHangNgayBulkCreateRequest(ngay: key + "T00:00:00", ngayGio: nil, billThang: billThang, taiKhoanId: taiKhoanId, items: items)
             let result = await APIClient.shared.bulkCreateChiTieu(body)
             guard result.success else {
                 saving = false

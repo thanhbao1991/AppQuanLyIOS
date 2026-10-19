@@ -318,7 +318,22 @@ struct ChiTieuHangNgayBulkCreateRequest: Encodable {
     let ngay: String
     let ngayGio: String?
     let billThang: Bool
+    /// Tài khoản ghi nhận — nil = tài khoản đang đăng nhập (Backend tự lấy).
+    var taiKhoanId: String? = nil
     let items: [ChiTieuHangNgayBulkItemRequest]
+}
+
+/// GET /api/TaiKhoan — chỉ lấy field cần cho combobox chọn tài khoản.
+struct TaiKhoanDto: Decodable, Identifiable {
+    let id: String
+    let tenDangNhap: String
+    let tenHienThi: String?
+    let isActive: Bool
+
+    var tenHienThiHoacDangNhap: String {
+        if let t = tenHienThi, !t.isEmpty { return t }
+        return tenDangNhap
+    }
 }
 
 struct NguyenLieuBanHangDto: Decodable, Identifiable {

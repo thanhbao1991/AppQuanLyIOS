@@ -208,6 +208,12 @@ actor APIClient {
         return env.data ?? []
     }
 
+    func getTaiKhoan() async -> [TaiKhoanDto] {
+        let (data, _) = await send(makeRequest("/api/TaiKhoan"))
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[TaiKhoanDto]>.self, from: data), env.isSuccess else { return [] }
+        return env.data ?? []
+    }
+
     /// Công cụ "Giá nguyên liệu gần đây" (Menu > Công cụ) — N lần mua gần nhất của 1 nguyên liệu.
     func getGiaNguyenLieuGanDay(nguyenLieuId: String, soLan: Int = 3) async -> [ChiTieuHangNgayDto] {
         let req = makeRequest("/api/ChiTieuHangNgay/gia-gan-day?nguyenLieuId=\(nguyenLieuId)&soLan=\(soLan)")
