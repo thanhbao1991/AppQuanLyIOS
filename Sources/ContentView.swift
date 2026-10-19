@@ -9,6 +9,7 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var backgroundTaskId: UIBackgroundTaskIdentifier = .invalid
     @State private var sessionKey = UUID()
+    @ObservedObject private var ketNoi = KetNoiMayChu.shared
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -22,6 +23,9 @@ struct ContentView: View {
                     LoginView(isLoggedIn: $isLoggedIn)
                 }
             }
+            // Mất kết nối máy chủ/mạng — đẩy nội dung xuống thay vì che ô tìm kiếm (xem KetNoiMayChu).
+            .safeAreaInset(edge: .top, spacing: 0) { KetNoiMayChuBanner() }
+            .animation(.easeInOut(duration: 0.25), value: ketNoi.trangThai)
             // Hiện lý do vừa rung (xem EntityChangeBus.toastText) — đặt ở gốc ContentView để hiện đè
             // lên MỌI tab, không riêng tab đang xem. KHÔNG ignoresSafeArea (khác trước đây) — để banner
             // tự nằm trong safe area giống DaySearchBar/SearchBar, cùng gốc toạ độ nên căn đúng vị trí

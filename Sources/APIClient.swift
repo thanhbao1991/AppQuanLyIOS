@@ -37,6 +37,10 @@ actor APIClient {
         do {
             let (data, resp) = try await URLSession.shared.data(for: req)
             let http = resp as? HTTPURLResponse
+            // Thanh "Không kết nối được máy chủ" (KetNoiMayChu) — 52x/502-504 = Cloudflare không tới được VPS.
+            if let song = KetNoiMayChu.phanLoai(status: http?.statusCode, error: nil) {
+                song ? KetNoiMayChu.baoThanhCong() : KetNoiMayChu.baoThatBai()
+            }
             if http?.statusCode == 401, allowRefresh {
                 let usedToken = req.value(forHTTPHeaderField: "Authorization")?
                     .replacingOccurrences(of: "Bearer ", with: "")
@@ -52,6 +56,7 @@ actor APIClient {
             }
             return (data, http)
         } catch {
+            if KetNoiMayChu.phanLoai(status: nil, error: error) == false { KetNoiMayChu.baoThatBai() }
             return (nil, nil)
         }
     }
