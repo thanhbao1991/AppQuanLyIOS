@@ -39,7 +39,6 @@ struct HoaDonListView: View {
     /// waitingMinutes chỉ tính 1 lần lúc load rồi đứng yên mãi (không tự cập nhật theo thời gian thực).
     @State private var now = Date()
     @State private var activeFilter: HoaDonQuickFilter?
-    @State private var showFilterPopover = false
     /// Hàng icon phân loại (🛵 203k, 🪑 230k...) mặc định ẩn — chỉ hiện khi bấm vào tổng tiền, đỡ
     /// chiếm chỗ thanh dưới cùng lúc bình thường không cần xem chi tiết theo từng loại.
     @State private var showPhanLoaiTotals = false
@@ -107,10 +106,26 @@ struct HoaDonListView: View {
                     placeholder: "Tìm khách, món, ghi chú...",
                     trailing: AnyView(
                         HStack(spacing: 14) {
-                        // Popover tự vẽ thay cho `Menu` hệ thống (đổi 2026-10-19): trên iOS 26+ UIMenu
-                        // tự giới hạn chiều cao, 12 filter + 2 Divider bị cắt mất "App Đenn" dù màn hình
-                        // còn trống. Popover co theo nội dung nên luôn hiện đủ.
-                        Button { showFilterPopover = true } label: {
+                        // PopoverMenu thay `Menu` hệ thống (2026-10-19) — UIMenu iOS 26+ cắt mất
+                        // "App Đenn" dù còn chỗ. Chỉ lọc 1 loại tại 1 thời điểm: chọn lại đúng filter
+                        // đang bật để tắt, chọn filter khác để thay hẳn. Chia 3 cụm theo `group`
+                        // (4 filter Khánh / 2 filter Nhã / 6 filter theo PhanLoai).
+                        PopoverMenu {
+                            ForEach(HoaDonQuickFilter.allCases, id: \.self) { filter in
+                                let count = filterCounts[filter] ?? 0
+                                if filter.isFirstInGroup { PopoverMenuDivider() }
+                                PopoverMenuItem("\(count) \(filter.label)", isSelected: activeFilter == filter,
+                                                isDimmed: count == 0) {
+                                    activeFilter = (activeFilter == filter) ? nil : filter
+                                } icon: {
+                                    QuickFilterIcon(avatarName: filter.avatarName, emoji: filter.systemIcon)
+                                }
+                            }
+                            if activeFilter != nil {
+                                PopoverMenuDivider()
+                                PopoverMenuItem("Bỏ lọc", role: .destructive) { activeFilter = nil }
+                            }
+                        } label: {
                             // Đổi lại SF Symbol (revert 2026-09-15) — bản .fill khi đang lọc để phân
                             // biệt trạng thái, cộng badge số đếm góc trên-phải.
                             Image(systemName: activeFilter != nil ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
@@ -128,9 +143,6 @@ struct HoaDonListView: View {
                                             .offset(x: 8, y: -8)
                                     }
                                 }
-                        }
-                        .popover(isPresented: $showFilterPopover, arrowEdge: .top) {
-                            filterPopoverContent
                         }
                         notificationBell
                         }
@@ -348,85 +360,6 @@ struct HoaDonListView: View {
         Task { await load() }
     }
 
-    /// Nội dung popover lọc nhanh. Chỉ lọc 1 loại tại 1 thời điểm — chọn lại đúng filter đang bật để
-    /// tắt, chọn filter khác để thay hẳn. Chia 3 cụm theo `group` (4 filter Khánh / 2 filter Nhã /
-    /// 6 filter theo PhanLoai), Divider giữa mỗi cụm. Bấm xong tự đóng popover như menu cũ.
-    @ViewBuilder
-    private var filterPopoverContent: some View {
-        let rows = VStack(alignment: .leading, spacing: 0) {
-            ForEach(HoaDonQuickFilter.allCases, id: \.self) { filter in
-                if filter.isFirstInGroup {
-                    Divider().padding(.vertical, 4)
-                }
-                filterRow(filter)
-            }
-            if activeFilter != nil {
-                Divider().padding(.vertical, 4)
-                Button(role: .destructive) {
-                    activeFilter = nil
-                    showFilterPopover = false
-                } label: {
-                    Text("Bỏ lọc")
-                        .font(.body)
-                        .foregroundColor(.red)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.vertical, 8)
-        .frame(width: 270)
-        // Popover co theo chiều cao nội dung; chỉ máy màn nhỏ không đủ chỗ mới chuyển sang cuộn
-        // (ScrollView luôn chiếm hết chiều cao được cấp nên không dùng nó mặc định).
-        let content = ViewThatFits(in: .vertical) {
-            rows
-            ScrollView { rows }
-        }
-        if #available(iOS 16.4, *) {
-            content.presentationCompactAdaptation(.popover)
-        } else {
-            content
-        }
-    }
-
-    private func filterRow(_ filter: HoaDonQuickFilter) -> some View {
-        let count = filterCounts[filter] ?? 0
-        let isActive = activeFilter == filter
-        return Button {
-            activeFilter = isActive ? nil : filter
-            showFilterPopover = false
-        } label: {
-            HStack(spacing: 12) {
-                Group {
-                    if let avatarName = filter.avatarName {
-                        ShipperAvatarView(name: avatarName, size: 26)
-                    } else if let systemIcon = filter.systemIcon {
-                        Text(systemIcon).font(.system(size: 20))
-                    }
-                }
-                .frame(width: 28, height: 28)
-                Text("\(count) \(filter.label)")
-                    .font(.body)
-                    .fontWeight(isActive ? .semibold : .regular)
-                    .foregroundColor(count == 0 ? .secondary : .primary)
-                Spacer(minLength: 8)
-                if isActive {
-                    Image(systemName: "checkmark")
-                        .font(.body.weight(.semibold))
-                        .foregroundColor(.brandPrimary)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(isActive ? Color.brandPrimary.opacity(0.10) : Color.clear)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-
     /// Mở sheet tạo đơn Ship prefill khách từ link Danh bạ (DeepLinkRouter) — bỏ qua nếu đang có
     /// sheet tạo đơn khác dở dang (creatingPending != nil) để không mất dữ liệu nhân viên đang nhập.
     private func openPendingDeepLink() {
@@ -457,6 +390,20 @@ struct ShipperAvatarView: View {
             .scaledToFill()
             .frame(width: size, height: size)
             .clipShape(Circle())
+    }
+}
+
+/// Icon ô trái của mục lọc nhanh (tab Đơn + tab Tiền): avatar shipper nếu có, không thì emoji PhanLoai.
+struct QuickFilterIcon: View {
+    let avatarName: String?
+    let emoji: String?
+
+    var body: some View {
+        if let avatarName {
+            ShipperAvatarView(name: avatarName, size: 26)
+        } else if let emoji {
+            Text(emoji).font(.system(size: 20))
+        }
     }
 }
 

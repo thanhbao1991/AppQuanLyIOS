@@ -77,31 +77,24 @@ struct ThanhToanListView: View {
                     placeholder: "Tìm khách, món, ghi chú...",
                     trailing: AnyView(
                         HStack(spacing: 14) {
-                        Menu {
+                        PopoverMenu {
                             // Chỉ lọc 1 loại tại 1 thời điểm — khớp cơ chế HoaDonQuickFilter bên tab
                             // Hoá đơn. 2 filter đầu (avatar Khánh) đọc GhiChu=="Shipper" — đúng cờ
                             // "Duy Khánh" mà ThongKeService dùng để tách "Tiền mặt/Trả nợ Khánh" khỏi
                             // phần thu tại quán (xem ThongKeService.GetThanhToanAsync, Backend).
                             ForEach(ThanhToanQuickFilter.allCases, id: \.self) { filter in
                                 let count = filterCounts[filter] ?? 0
-                                if filter.isFirstInGroup { Divider() }
-                                Button {
+                                if filter.isFirstInGroup { PopoverMenuDivider() }
+                                PopoverMenuItem("\(count) \(filter.label)", isSelected: activeFilter == filter,
+                                                isDimmed: count == 0) {
                                     activeFilter = (activeFilter == filter) ? nil : filter
-                                } label: {
-                                    Label {
-                                        if let avatarName = filter.avatarName {
-                                            ShipperAvatarView(name: avatarName, size: 20)
-                                        } else if let systemIcon = filter.systemIcon {
-                                            emojiMenuIcon(systemIcon)
-                                        }
-                                    } icon: {
-                                        Text(activeFilter == filter ? "✓ \(count) \(filter.label)" : "\(count) \(filter.label)")
-                                    }
+                                } icon: {
+                                    QuickFilterIcon(avatarName: filter.avatarName, emoji: filter.systemIcon)
                                 }
                             }
                             if activeFilter != nil {
-                                Divider()
-                                Button("Bỏ lọc", role: .destructive) { activeFilter = nil }
+                                PopoverMenuDivider()
+                                PopoverMenuItem("Bỏ lọc", role: .destructive) { activeFilter = nil }
                             }
                         } label: {
                             // Đổi lại SF Symbol (revert 2026-09-15) — khớp HoaDonListView.

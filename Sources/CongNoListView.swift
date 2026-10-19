@@ -114,7 +114,7 @@ struct CongNoListView: View {
 
 /// Nút chọn ngày lọc cho tab Công nợ — khác `DaySearchBar` (Hoá đơn/Thanh toán) ở chỗ cho phép
 /// trạng thái "Tất cả" (date == nil), vì Công nợ không bắt buộc phải xem theo từng ngày như 2 tab
-/// kia. Dùng Menu thay vì bấm mở thẳng DatePicker để chèn 2 lối tắt "Hôm nay"/"Hôm qua" (khớp yêu
+/// kia. Dùng PopoverMenu thay vì bấm mở thẳng DatePicker để chèn 2 lối tắt "Hôm nay"/"Hôm qua" (khớp yêu
 /// cầu) mà không phải tự vẽ lại UI chọn ngày kiểu Hoá đơn.
 private struct CongNoDateFilterBar: View {
     @Binding var date: Date?
@@ -127,16 +127,18 @@ private struct CongNoDateFilterBar: View {
     }
 
     var body: some View {
-        Menu {
-            Button("Hôm nay") { date = Date() }
-            Button("Hôm qua") { date = Calendar.current.date(byAdding: .day, value: -1, to: Date()) }
-            Button("Chọn ngày khác…") {
+        PopoverMenu(width: 230) {
+            PopoverMenuItem("Hôm nay", systemImage: "sun.max") { date = Date() }
+            PopoverMenuItem("Hôm qua", systemImage: "clock.arrow.circlepath") {
+                date = Calendar.current.date(byAdding: .day, value: -1, to: Date())
+            }
+            PopoverMenuItem("Chọn ngày khác…", systemImage: "calendar") {
                 pickerDate = date ?? Date()
                 showPicker = true
             }
             if date != nil {
-                Divider()
-                Button("Tất cả", role: .destructive) { date = nil }
+                PopoverMenuDivider()
+                PopoverMenuItem("Tất cả", systemImage: "xmark.circle", role: .destructive) { date = nil }
             }
         } label: {
             HStack(spacing: 4) {

@@ -31,24 +31,6 @@ func fullScreenLoading() -> some View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
 }
 
-/// Emoji rasterize thành UIImage, dùng riêng cho item trong `Menu` (UIMenu thật) — KHÔNG dùng
-/// Text(emoji) trực tiếp được: UIMenu chỉ hiện đúng 1 trong 2 view lồng trong Label khi CẢ 2 closure
-/// (title/icon) đều là Text, rớt mất chữ số đếm+tên filter, chỉ còn trơ emoji to đùng (ảnh báo lỗi
-/// 12/9). Title-slot phải LUÔN LÀ Image — vẽ emoji ra ảnh thay vì Text thẳng. Dùng chung cho menu
-/// lọc của tab Đơn và tab Tiền.
-func emojiMenuIcon(_ emoji: String, size: CGFloat = 22) -> Image {
-    let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size))
-    let img = renderer.image { _ in
-        let font = UIFont.systemFont(ofSize: size * 0.82)
-        let str = emoji as NSString
-        let strSize = str.size(withAttributes: [.font: font])
-        let rect = CGRect(x: (size - strSize.width) / 2, y: (size - strSize.height) / 2,
-                          width: strSize.width, height: strSize.height)
-        str.draw(in: rect, withAttributes: [.font: font])
-    }
-    return Image(uiImage: img)
-}
-
 enum HoaDonFormatting {
     static let moneyFormatter: NumberFormatter = {
         let f = NumberFormatter()

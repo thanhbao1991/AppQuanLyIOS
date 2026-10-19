@@ -68,21 +68,15 @@ struct SanPhamListView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 HStack(spacing: 16) {
-                    Menu {
-                        Button {
+                    PopoverMenu(width: 260) {
+                        PopoverMenuItem("Kiểm tra Store", systemImage: "arrow.triangle.2.circlepath") {
                             Task { await syncStore() }
-                        } label: {
-                            Label("Kiểm tra Store", systemImage: "arrow.triangle.2.circlepath")
                         }
-                        Button {
+                        PopoverMenuItem("Đẩy topping hàng loạt", systemImage: "text.badge.plus") {
                             showPushToppingAllConfirm = true
-                        } label: {
-                            Label("Đẩy topping hàng loạt", systemImage: "text.badge.plus")
                         }
-                        Button {
+                        PopoverMenuItem("Đẩy Size XL hàng loạt", systemImage: "arrow.up.circle") {
                             showPushSizeXLAllConfirm = true
-                        } label: {
-                            Label("Đẩy Size XL hàng loạt", systemImage: "arrow.up.circle")
                         }
                     } label: {
                         if isSyncingStore || isPushingToppingAll || isPushingSizeXLAll {

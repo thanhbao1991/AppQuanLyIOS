@@ -160,29 +160,14 @@ struct GiaNguyenLieuView: View {
                 }
             }
             ToolbarItem(placement: .navigationBarTrailing) {
-                Menu {
-                    Button {
-                        phanLoai = nil
-                    } label: {
-                        if phanLoai == nil {
-                            Label("Tất cả", systemImage: "checkmark")
-                        } else {
-                            Text("Tất cả")
-                        }
-                    }
+                PopoverMenu(width: 230) {
+                    PopoverMenuItem("Tất cả", isSelected: phanLoai == nil) { phanLoai = nil }
+                    PopoverMenuDivider()
                     ForEach(PhanLoaiNguyenLieu.allCases) { pl in
-                        Button {
-                            phanLoai = pl
-                        } label: {
-                            if phanLoai == pl {
-                                Label(pl.label, systemImage: "checkmark")
-                            } else {
-                                Text(pl.label)
-                            }
-                        }
+                        PopoverMenuItem(pl.label, isSelected: phanLoai == pl) { phanLoai = pl }
                     }
                 } label: {
-                    Image(systemName: "line.3.horizontal.decrease.circle")
+                    Image(systemName: phanLoai != nil ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
                         .foregroundColor(.white)
                 }
             }

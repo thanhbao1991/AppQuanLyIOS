@@ -186,13 +186,16 @@ private struct KhachHangRowView: View {
             .buttonStyle(.plain)
 
             if !isMergeMode {
-                Menu {
-                    Button { onViTien() } label: { Label("Ví tiền", systemImage: "wallet.pass") }
-                    Button { onLichSu() } label: { Label("Lịch sử mua hàng", systemImage: "clock.arrow.circlepath") }
+                PopoverMenu(width: 240) {
+                    PopoverMenuItem("Ví tiền", systemImage: "wallet.pass") { onViTien() }
+                    PopoverMenuItem("Lịch sử mua hàng", systemImage: "clock.arrow.circlepath") { onLichSu() }
                 } label: {
                     Image(systemName: "ellipsis.circle")
                         .foregroundColor(.textMuted)
                 }
+                // Borderless: Button thường trong dòng List làm cả dòng bấm được — chạm tên khách lại
+                // mở popover thay vì chọn khách.
+                .buttonStyle(.borderless)
             }
         }
         .listRowBackground(isSelected ? Color.brandPrimary.opacity(0.12) : Color.clear)
