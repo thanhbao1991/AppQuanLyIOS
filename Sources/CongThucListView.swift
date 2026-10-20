@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Quản trị Công thức bán hàng (Menu > Cấu hình) — mỗi biến thể sản phẩm gắn ĐÚNG 1 công thức gồm
 /// nhiều dòng nguyên liệu + số lượng, dùng để tự động trừ tồn kho khi bán (SanPhamBienThe →
@@ -205,6 +206,7 @@ private struct CongThucEditSheet: View {
     @State private var pickingLine: UUID?
     @State private var saving = false
     @State private var errorMessage: String?
+    @FocusState private var focusedSoLuongLineId: UUID?
     /// Lưu dở (vài dòng nguyên liệu lỗi) — khoá nút Lưu: `existingLines` của sheet này đã cũ, lưu
     /// lại lần nữa sẽ diff sai (có thể tạo trùng dòng). Phải đóng rồi mở lại công thức.
     @State private var luuDoDang = false
@@ -333,6 +335,13 @@ private struct CongThucEditSheet: View {
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
                 .frame(width: 70)
+                .focused($focusedSoLuongLineId, equals: line.wrappedValue.id)
+                .onChange(of: focusedSoLuongLineId) { _, newValue in
+                    guard newValue == line.wrappedValue.id else { return }
+                    DispatchQueue.main.async {
+                        UIApplication.shared.sendAction(#selector(UIResponder.selectAll(_:)), to: nil, from: nil, for: nil)
+                    }
+                }
             if let dvt = line.wrappedValue.donViTinh {
                 Text(dvt).font(.caption).foregroundColor(.textMuted)
             }
