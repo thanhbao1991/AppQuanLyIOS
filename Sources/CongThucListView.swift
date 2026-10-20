@@ -336,7 +336,7 @@ private struct CongThucEditSheet: View {
                 .multilineTextAlignment(.trailing)
                 .frame(width: 70)
                 .focused($focusedSoLuongLineId, equals: line.wrappedValue.id)
-                .onChange(of: focusedSoLuongLineId) { _, newValue in
+                .onChange(of: focusedSoLuongLineId) { newValue in
                     guard newValue == line.wrappedValue.id else { return }
                     DispatchQueue.main.async {
                         UIApplication.shared.sendAction(#selector(UIResponder.selectAll(_:)), to: nil, from: nil, for: nil)
