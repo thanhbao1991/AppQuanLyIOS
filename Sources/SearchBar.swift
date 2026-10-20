@@ -84,8 +84,15 @@ extension String {
     func matchesSearch(_ query: String, diacriticInsensitive: Bool = true) -> Bool {
         guard !query.isEmpty else { return true }
         var options: String.CompareOptions = [.caseInsensitive]
-        if diacriticInsensitive { options.insert(.diacriticInsensitive) }
-        return range(of: query, options: options) != nil
+        guard diacriticInsensitive else { return range(of: query, options: options) != nil }
+        options.insert(.diacriticInsensitive)
+        // .diacriticInsensitive KHÔNG gộp "đ" về "d" (Unicode coi đ là chữ riêng, không phải d + dấu),
+        // nên "tra den" từng không ra "Trà Đen" trong khi "ca phe" vẫn ra "Cà Phê" — tự đổi đ→d hai phía.
+        return Self.boD(self).range(of: Self.boD(query), options: options) != nil
+    }
+
+    private static func boD(_ s: String) -> String {
+        s.replacingOccurrences(of: "đ", with: "d").replacingOccurrences(of: "Đ", with: "D")
     }
 }
 
