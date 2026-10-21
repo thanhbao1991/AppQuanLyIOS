@@ -355,9 +355,13 @@ private struct CongThucEditSheet: View {
             }
             .buttonStyle(.borderless)
             .tint(.brandPrimary)
-            if let dvt = line.wrappedValue.donViTinh {
-                Text(dvt).font(.caption).foregroundColor(.textMuted)
-            }
+            // Cột đơn vị luôn chiếm đúng 1 bề rộng (kể cả khi trống) để cụm −/SL/+ thẳng hàng giữa
+            // các dòng — để co theo chữ thì "Ml" rộng hơn "G" và dòng không có ĐVT bị lệch hẳn.
+            Text(line.wrappedValue.donViTinh ?? "")
+                .font(.caption).foregroundColor(.textMuted)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .frame(width: 30, alignment: .leading)
         }
         // Xoá dòng bằng vuốt trái thay cho nút ✕ cạnh ô số lượng — nút cũ nằm sát ô SL nên rất
         // dễ chạm nhầm. Xoá hết thì chừa lại 1 dòng trống để còn chỗ chọn nguyên liệu.
