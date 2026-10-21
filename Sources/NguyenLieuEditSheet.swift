@@ -52,7 +52,7 @@ enum PhanLoaiNguyenLieu: Int, CaseIterable, Identifiable {
 /// GET/POST/PUT/DELETE /api/NguyenLieu.
 struct NguyenLieuEditSheet: View {
     let existing: NguyenLieuDto?
-    /// Gọi sau khi lưu HOẶC xoá thành công.
+    /// Gọi sau khi lưu thành công (xoá nằm ở vuốt trái trên danh sách GiaNguyenLieuView).
     let onSaved: () -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -63,7 +63,6 @@ struct NguyenLieuEditSheet: View {
     @State private var phanLoai: Int?
     @State private var saving = false
     @State private var errorMessage: String?
-    @State private var deleting: NguyenLieuDto?
     /// Nối tồn kho: nguyên liệu bán hàng (đơn vị bán, vd lon) + 1 đơn vị nhập = bao nhiêu đơn vị bán.
     @State private var nguyenLieuBanHangId: String?
     @State private var heSoQuyDoi: Double?
@@ -146,16 +145,6 @@ struct NguyenLieuEditSheet: View {
                     Toggle("Ngưng sử dụng", isOn: $ngungSuDung)
                 }
 
-                if let existing {
-                    Section {
-                        Button(role: .destructive) {
-                            deleting = existing
-                        } label: {
-                            Label("Xoá nguyên liệu", systemImage: "trash")
-                        }
-                    }
-                }
-
                 if let errorMessage {
                     Text(errorMessage).foregroundColor(.dangerColor)
                 }
@@ -188,14 +177,6 @@ struct NguyenLieuEditSheet: View {
                 .background(Color(.systemBackground))
                 .overlay(Divider(), alignment: .top)
             }
-            .confirmDelete($deleting, name: { $0.ten }, perform: { nl in
-                let result = await APIClient.shared.deleteNguyenLieu(id: nl.id)
-                if result.success {
-                    onSaved()
-                    dismiss()
-                }
-                return result
-            }, onDone: {})
             .task { dsBanHang = await APIClient.shared.getNguyenLieuBanHangOrNil() ?? [] }
         }
     }

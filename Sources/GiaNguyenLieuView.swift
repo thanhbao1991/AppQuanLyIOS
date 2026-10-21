@@ -12,7 +12,8 @@ import SwiftUI
 /// "Nguyên liệu" để không mất các dòng cũ trước khi có cột PhanLoai/chưa kịp phân loại.
 ///
 /// Đã gộp luôn màn danh mục "Nguyên liệu" (Menu > Cấu hình) vào đây: nút + để thêm, màn chi tiết có
-/// nút "Sửa" (sửa/xoá qua NguyenLieuEditSheet) — 1 mục menu "Nguyên liệu & giá" thay cho 2 mục.
+/// nút "Sửa" (NguyenLieuEditSheet), xoá bằng vuốt trái trên danh sách — 1 mục menu "Nguyên liệu & giá"
+/// thay cho 2 mục.
 struct GiaNguyenLieuView: View {
     /// nil = Tất cả. Truyền sẵn 1 nhóm khi cần mở thẳng vào nhóm đó.
     @State private var phanLoai: PhanLoaiNguyenLieu?
@@ -35,6 +36,7 @@ struct GiaNguyenLieuView: View {
     /// Nguyên liệu đang chờ xác nhận "Ngừng dùng" — chạm nhầm 1 lần là dòng biến khỏi danh sách,
     /// muốn lấy lại phải gõ tìm đúng tên.
     @State private var ngungDungPending: NguyenLieuDto?
+    @State private var xoaPending: NguyenLieuDto?
 
     /// Không chọn nhóm nào (Tất cả) thì lấy hết; chọn nhóm thì lọc đúng nhóm đó (nhóm Nguyên liệu
     /// nhận thêm cả phanLoai == nil).
@@ -186,6 +188,7 @@ struct GiaNguyenLieuView: View {
             note: "Nguyên liệu sẽ ẩn khỏi danh sách; muốn dùng lại thì gõ tìm đúng tên rồi bấm nút hoàn tác.",
             perform: { await ngungSuDung($0) },
             onDone: {})
+        .confirmDelete($xoaPending, name: { $0.ten }, perform: { await APIClient.shared.deleteNguyenLieu(id: $0.id) }, onDone: load)
     }
 
     private func load() async {
@@ -228,16 +231,7 @@ struct GiaNguyenLieuView: View {
                     }
                 }
             }
-            // Nút "Ngừng dùng" cạnh giỏ Shopee: loại nguyên liệu không còn mua khỏi danh sách (đặt NgungSuDung).
-            if !nl.ngungSuDung {
-                Button {
-                    ngungDungPending = nl
-                } label: {
-                    Image(systemName: "nosign").foregroundColor(.textMuted)
-                }
-                .buttonStyle(.borderless)
-                .padding(.leading, 8)
-            } else if !searchText.isEmpty {
+            if nl.ngungSuDung && !searchText.isEmpty {
                 // Nguyên liệu đã ngừng dùng chỉ xuất hiện lại khi tìm kiếm — thêm nút bỏ đánh dấu ngay tại đây.
                 Button {
                     Task { await boNgungSuDung(nl) }
@@ -249,6 +243,16 @@ struct GiaNguyenLieuView: View {
             }
         }
         .listRowInsets(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12))
+        // Xoá / Ngừng dùng bằng vuốt trái (quy ước mọi màn trong Menu) — thay nút ⃠ cạnh dòng và nút
+        // "Xoá nguyên liệu" trong màn Sửa, cả hai đều dễ chạm nhầm. Vẫn qua hộp xác nhận.
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button { xoaPending = nl } label: { Label("Xoá", systemImage: "trash") }
+                .tint(.dangerColor)
+            if !nl.ngungSuDung {
+                Button { ngungDungPending = nl } label: { Label("Ngừng dùng", systemImage: "nosign") }
+                    .tint(.gray)
+            }
+        }
     }
 
     /// Đánh dấu ngừng sử dụng — ẩn dòng ngay (goiYList lọc theo ngungSuDung), lỗi thì hoàn lại.

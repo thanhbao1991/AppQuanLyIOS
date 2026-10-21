@@ -245,14 +245,16 @@ private struct ContactRowEditor: View {
 
                 TextField(placeholder, text: $row.value)
                     .keyboardType(keyboard)
-
+            }
+            // Xoá dòng bằng vuốt trái (quy ước mọi màn trong Menu) — nút thùng rác cũ dễ chạm nhầm.
+            .swipeActions(edge: .trailing) {
                 if allowEmpty || rows.count > 1 {
-                    Button {
+                    Button(role: .destructive) {
                         let wasDefault = row.isDefault
                         rows.removeAll { $0.id == row.id }
                         if wasDefault, !rows.isEmpty { rows[0].isDefault = true }
                     } label: {
-                        Image(systemName: "trash").foregroundColor(.dangerColor)
+                        Label("Xoá", systemImage: "trash")
                     }
                 }
             }
@@ -584,23 +586,23 @@ private struct MergeReviewSheet: View {
 
                 Section("Số điện thoại") {
                     ForEach($phoneRows) { $row in
-                        HStack {
-                            TextField("SĐT", text: $row.value)
-                            Button { phoneRows.removeAll { $0.id == row.id } } label: {
-                                Image(systemName: "trash").foregroundColor(.dangerColor)
+                        TextField("SĐT", text: $row.value)
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) { phoneRows.removeAll { $0.id == row.id } } label: {
+                                    Label("Xoá", systemImage: "trash")
+                                }
                             }
-                        }
                     }
                 }
 
                 Section("Địa chỉ") {
                     ForEach($addressRows) { $row in
-                        HStack {
-                            TextField("Địa chỉ", text: $row.value)
-                            Button { addressRows.removeAll { $0.id == row.id } } label: {
-                                Image(systemName: "trash").foregroundColor(.dangerColor)
+                        TextField("Địa chỉ", text: $row.value)
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) { addressRows.removeAll { $0.id == row.id } } label: {
+                                    Label("Xoá", systemImage: "trash")
+                                }
                             }
-                        }
                     }
                 }
 

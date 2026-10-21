@@ -372,12 +372,6 @@ private struct SanPhamEditSheet: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 TextField("Tên biến thể", text: row.tenBienThe)
-                Spacer()
-                Button {
-                    if bienThe.count > 1 { bienThe.removeAll { $0.id == row.wrappedValue.id } }
-                } label: {
-                    Image(systemName: "trash").foregroundColor(.dangerColor)
-                }
             }
             HStack {
                 TextField("Giá bán", value: row.giaBan, format: .number)
@@ -391,6 +385,17 @@ private struct SanPhamEditSheet: View {
             }
         }
         .padding(.vertical, 2)
+        // Xoá biến thể bằng vuốt trái (quy ước mọi màn trong Menu) — nút thùng rác cũ dễ chạm nhầm.
+        // Luôn giữ lại ít nhất 1 biến thể.
+        .swipeActions(edge: .trailing) {
+            if bienThe.count > 1 {
+                Button(role: .destructive) {
+                    bienThe.removeAll { $0.id == row.wrappedValue.id }
+                } label: {
+                    Label("Xoá", systemImage: "trash")
+                }
+            }
+        }
     }
 
     private func storeActionButton(_ title: String, icon: String, destructive: Bool = false, action: @escaping () async -> Void) -> some View {
