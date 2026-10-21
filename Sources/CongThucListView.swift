@@ -236,25 +236,29 @@ private struct CongThucEditSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Sản phẩm / biến thể") {
-                    if let sanPhamBienTheId, spSearchText.isEmpty {
-                        HStack {
-                            Text(spDisplayName)
-                            Spacer()
-                            Button("Đổi") { self.sanPhamBienTheId = nil; spDisplayName = "" }
-                                .font(.caption)
-                        }
-                        .id(sanPhamBienTheId)
-                    } else {
-                        TextField("Tìm sản phẩm...", text: $spSearchText)
-                        ForEach(matchingSanPham) { sp in
-                            ForEach(sp.bienThe) { bt in
-                                Button {
-                                    sanPhamBienTheId = bt.id
-                                    spDisplayName = [sp.ten, bt.tenBienThe].joined(separator: "  ")
-                                    spSearchText = ""
-                                } label: {
-                                    Text([sp.ten, bt.tenBienThe].joined(separator: "  ")).foregroundColor(.primary)
+                // Sửa công thức có sẵn thì KHÔNG cho đổi món/biến thể — tên món + size lên tiêu đề màn
+                // hình. Chỉ màn Thêm mới cần chọn.
+                if existing == nil {
+                    Section("Sản phẩm / biến thể") {
+                        if let sanPhamBienTheId, spSearchText.isEmpty {
+                            HStack {
+                                Text(spDisplayName)
+                                Spacer()
+                                Button("Đổi") { self.sanPhamBienTheId = nil; spDisplayName = "" }
+                                    .font(.caption)
+                            }
+                            .id(sanPhamBienTheId)
+                        } else {
+                            TextField("Tìm sản phẩm...", text: $spSearchText)
+                            ForEach(matchingSanPham) { sp in
+                                ForEach(sp.bienThe) { bt in
+                                    Button {
+                                        sanPhamBienTheId = bt.id
+                                        spDisplayName = [sp.ten, bt.tenBienThe].joined(separator: "  ")
+                                        spSearchText = ""
+                                    } label: {
+                                        Text([sp.ten, bt.tenBienThe].joined(separator: "  ")).foregroundColor(.primary)
+                                    }
                                 }
                             }
                         }
@@ -278,7 +282,7 @@ private struct CongThucEditSheet: View {
                     Text(errorMessage).foregroundColor(.dangerColor)
                 }
             }
-            .navigationTitle(existing == nil ? "Thêm công thức" : "Sửa công thức")
+            .navigationTitle(existing == nil ? "Thêm công thức" : (spDisplayName.isEmpty ? "Sửa công thức" : spDisplayName))
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Color.brandPrimary, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
@@ -355,13 +359,8 @@ private struct CongThucEditSheet: View {
             }
             .buttonStyle(.borderless)
             .tint(.brandPrimary)
-            // Cột đơn vị luôn chiếm đúng 1 bề rộng (kể cả khi trống) để cụm −/SL/+ thẳng hàng giữa
-            // các dòng — để co theo chữ thì "Ml" rộng hơn "G" và dòng không có ĐVT bị lệch hẳn.
-            Text(line.wrappedValue.donViTinh ?? "")
-                .font(.caption).foregroundColor(.textMuted)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-                .frame(width: 30, alignment: .leading)
+            // Không hiện đơn vị sau ô SL: tên nguyên liệu đã kèm (ĐVT) theo quy định đặt tên NLBH, và
+            // cột đơn vị rộng hẹp khác nhau làm cụm −/SL/+ lệch giữa các dòng.
         }
         // Xoá dòng bằng vuốt trái thay cho nút ✕ cạnh ô số lượng — nút cũ nằm sát ô SL nên rất
         // dễ chạm nhầm. Xoá hết thì chừa lại 1 dòng trống để còn chỗ chọn nguyên liệu.
