@@ -331,10 +331,20 @@ private struct CongThucEditSheet: View {
                     .foregroundColor(line.wrappedValue.tenNguyenLieu == nil ? .textMuted : .primary)
             }
             Spacer()
+            // Nút −/+ sửa nhanh từng 1 đơn vị (không xuống dưới 0). Phải .borderless: trong Form,
+            // nhiều Button chung 1 dòng mà để style mặc định thì chạm đâu cũng kích hoạt CẢ dòng.
+            Button {
+                line.wrappedValue.soLuong = max(0, ((line.wrappedValue.soLuong - 1) * 1000).rounded() / 1000)
+            } label: {
+                Image(systemName: "minus.circle.fill").font(.title3)
+            }
+            .buttonStyle(.borderless)
+            .tint(.brandPrimary)
+            .disabled(line.wrappedValue.soLuong <= 0)
             TextField("SL", value: line.soLuong, format: .number)
                 .keyboardType(.decimalPad)
-                .multilineTextAlignment(.trailing)
-                .frame(width: 70)
+                .multilineTextAlignment(.center)
+                .frame(width: 60)
                 .focused($focusedSoLuongLineId, equals: line.wrappedValue.id)
                 .onChange(of: focusedSoLuongLineId) { newValue in
                     guard newValue == line.wrappedValue.id else { return }
@@ -342,15 +352,28 @@ private struct CongThucEditSheet: View {
                         UIApplication.shared.sendAction(#selector(UIResponder.selectAll(_:)), to: nil, from: nil, for: nil)
                     }
                 }
+            Button {
+                line.wrappedValue.soLuong = ((line.wrappedValue.soLuong + 1) * 1000).rounded() / 1000
+            } label: {
+                Image(systemName: "plus.circle.fill").font(.title3)
+            }
+            .buttonStyle(.borderless)
+            .tint(.brandPrimary)
             if let dvt = line.wrappedValue.donViTinh {
                 Text(dvt).font(.caption).foregroundColor(.textMuted)
             }
-            Button {
-                if lines.count > 1 { lines.removeAll { $0.id == line.wrappedValue.id } }
+        }
+        // Xoá dòng bằng vuốt trái thay cho nút ✕ cạnh ô số lượng — nút cũ nằm sát ô SL nên rất
+        // dễ chạm nhầm. Xoá hết thì chừa lại 1 dòng trống để còn chỗ chọn nguyên liệu.
+        .swipeActions(edge: .trailing) {
+            Button(role: .destructive) {
+                let id = line.wrappedValue.id
+                focusedSoLuongLineId = nil
+                lines.removeAll { $0.id == id }
+                if lines.isEmpty { lines.append(DinhLuongRow()) }
             } label: {
-                Image(systemName: "xmark.circle.fill").foregroundColor(.dangerColor)
+                Label("Xoá", systemImage: "trash")
             }
-            .buttonStyle(.plain)
         }
     }
 
