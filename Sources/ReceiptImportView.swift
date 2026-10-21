@@ -167,10 +167,11 @@ struct ReceiptReviewSheet: View {
     // Mặc định bật — luồng "Thêm từ ảnh"/camera hầu hết dùng cho bill nhà cung cấp cuối tháng, người
     // dùng vẫn tắt được nếu là hoá đơn lẻ trong ngày.
     @State private var billThang = true
-    // Tài khoản ghi nhận — mặc định "ty" (người đi mua hàng/nhận bill), đổi được nếu người khác mua.
-    // nil = tài khoản đang đăng nhập (khi chưa tải được danh sách hoặc không có "ty").
+    // Tài khoản ghi nhận — mặc định "ty" (người đi mua hàng/nhận bill), luồng Shopee mặc định "admin";
+    // đổi được nếu người khác mua. nil = tài khoản đang đăng nhập (chưa tải được danh sách/không có).
     @State private var taiKhoanList: [TaiKhoanDto] = []
     @State private var taiKhoanId: String?
+    private var taiKhoanMacDinh = "ty"
     @State private var saving = false
     @State private var errorMessage: String?
     @State private var warningAlertText: String?
@@ -199,6 +200,8 @@ struct ReceiptReviewSheet: View {
         self.title = title
         self.onSaved = onSaved
         _lines = State(initialValue: lines)
+        // Đơn Shopee do chủ quán đặt → mặc định tài khoản "admin" (bill ảnh/camera vẫn là "ty").
+        taiKhoanMacDinh = "admin"
     }
 
     /// Mọi dòng tự mang ngày riêng (luồng Shopee) — ẩn ô chọn ngày chung.
@@ -312,7 +315,7 @@ struct ReceiptReviewSheet: View {
                 .sorted { $0.tenHienThiHoacDangNhap.localizedCompare($1.tenHienThiHoacDangNhap) == .orderedAscending }
             taiKhoanList = list
             if taiKhoanId == nil {
-                taiKhoanId = list.first { $0.tenDangNhap.caseInsensitiveCompare("ty") == .orderedSame }?.id
+                taiKhoanId = list.first { $0.tenDangNhap.caseInsensitiveCompare(taiKhoanMacDinh) == .orderedSame }?.id
             }
         }
         // Đã lưu thành công nhưng có dòng giá lệch lớn so với lần mua gần nhất — chỉ cảnh báo,
