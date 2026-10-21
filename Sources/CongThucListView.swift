@@ -161,14 +161,10 @@ private struct CongThucRowView: View {
                     .font(.caption).fontWeight(.bold)
                     .foregroundColor(row.soNguyenLieu == 0 ? .dangerColor : .brandPrimary)
             }
-            .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.brandPrimary.pastelBackground(0.9))
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .listRowInsets(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12))
-        .listRowSeparator(.hidden)
         .swipeActions(edge: .trailing) {
             Button(action: onDelete) {
                 Label("Xoá", systemImage: "trash")
