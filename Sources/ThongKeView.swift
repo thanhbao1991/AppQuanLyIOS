@@ -101,6 +101,11 @@ struct ThongKeView: View {
                                             .contentShape(Rectangle())
                                             .onTapGesture { selectedThanhToanTen = "Chuyển khoản" }
                                     }
+                                    if let xu = thanhToan.tongViXu, xu > 0 {
+                                        AmountRow(label: "Xu (ví khách)", value: xu, color: .secondary)
+                                            .contentShape(Rectangle())
+                                            .onTapGesture { selectedThanhToanTen = "Xu (ví khách)" }
+                                    }
                                     if let kiemTien {
                                         AmountRow(label: "Kiểm tiền", value: kiemTien, color: .thongKeBlue)
                                     }

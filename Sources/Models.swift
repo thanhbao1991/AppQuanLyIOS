@@ -718,6 +718,9 @@ struct ThongKeCongNoDto: Decodable {
 struct ThongKeThanhToanDto: Decodable {
     let tongTienMat: Double
     let tongChuyenKhoan: Double
+    /// Phần khách trả bằng Xu (ví) — không phải tiền thật, KHÔNG cộng vào tổng thẻ Thanh toán.
+    /// Optional: backend cũ chưa trả trường này.
+    let tongViXu: Double?
     let danhSachTienMat: [NamedAmountDto]
 }
 
