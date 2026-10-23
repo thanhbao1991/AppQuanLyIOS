@@ -266,6 +266,7 @@ struct CongThucSizeSheet: View {
 }
 
 /// Mục Duyệt: cột Size Chuẩn (lưu, không cần duyệt) + các size L/XL (lưu & duyệt).
+@MainActor
 func duyetCongThucMonSheet(mon: MonDuyetCongThuc, model: DuyetCongThucSizeModel) -> CongThucSizeSheet {
     // Biến thể Size Chuẩn = biến thể không phải L/XL của món, ưu tiên mặc định (khớp backend).
     let sizeIds = Set(mon.sizes.map(\.sanPhamBienTheId))
