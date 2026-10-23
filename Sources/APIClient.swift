@@ -470,6 +470,19 @@ actor APIClient {
         return await executeAction(req)
     }
 
+    /// Màn Duyệt công thức L/XL — nil = tải LỖI.
+    func getCongThucDuyetSizeOrNil() async -> [CongThucDuyetSizeDto]? {
+        let req = makeRequest("/api/CongThuc/duyet-size")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[CongThucDuyetSizeDto]>.self, from: data), env.isSuccess else { return nil }
+        return env.data ?? []
+    }
+
+    func duyetCongThuc(id: String) async -> ActionResult {
+        let req = makeRequest("/api/CongThuc/\(id)/duyet", method: "POST")
+        return await executeAction(req)
+    }
+
     /// nil = tải LỖI, khác với [] = thật sự trống — màn danh sách dùng bản này để không hiện "trống" khi chỉ rớt mạng.
     func getSuDungNguyenLieuListOrNil() async -> [SuDungNguyenLieuDto]? {
         let req = makeRequest("/api/SuDungNguyenLieu")

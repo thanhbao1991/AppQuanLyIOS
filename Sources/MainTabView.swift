@@ -294,6 +294,11 @@ private struct MoreMenuView: View {
                         Label("Công thức", systemImage: "list.clipboard")
                     }
                     NavigationLink {
+                        DuyetCongThucSizeView()
+                    } label: {
+                        Label("Duyệt công thức L/XL", systemImage: "checkmark.seal")
+                    }
+                    NavigationLink {
                         TenDuongListView()
                     } label: {
                         Label("Tên đường", systemImage: "signpost.right")

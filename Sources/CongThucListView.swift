@@ -187,12 +187,19 @@ private struct DinhLuongRow: Identifiable {
     var id: UUID { localId }
 }
 
-private struct CongThucEditSheet: View {
+/// Dùng chung cho màn Công thức và màn Duyệt công thức L/XL. `chuanLines` khác nil = chế độ DUYỆT:
+/// hiện định lượng Size Chuẩn để so, nút "Lưu & duyệt" lưu xong thì đánh dấu đã duyệt.
+struct CongThucEditSheet: View {
     let existing: CongThucDto?
     let existingLines: [SuDungNguyenLieuDto]
     let allSanPham: [SanPhamDto]
     let allNguyenLieu: [NguyenLieuBanHangDto]
+    /// Món + size đã chốt sẵn (màn Duyệt mở món chưa có công thức) — ẩn ô chọn món.
+    var bienTheCoDinhId: String? = nil
+    var chuanLines: [SuDungNguyenLieuDto]? = nil
     let onSaved: () -> Void
+
+    private var cheDoDuyet: Bool { chuanLines != nil }
 
     @Environment(\.dismiss) private var dismiss
     @State private var sanPhamBienTheId: String?
@@ -207,16 +214,19 @@ private struct CongThucEditSheet: View {
     /// lại lần nữa sẽ diff sai (có thể tạo trùng dòng). Phải đóng rồi mở lại công thức.
     @State private var luuDoDang = false
 
-    init(existing: CongThucDto?, existingLines: [SuDungNguyenLieuDto], allSanPham: [SanPhamDto], allNguyenLieu: [NguyenLieuBanHangDto], onSaved: @escaping () -> Void) {
+    init(existing: CongThucDto?, existingLines: [SuDungNguyenLieuDto], allSanPham: [SanPhamDto], allNguyenLieu: [NguyenLieuBanHangDto], bienTheCoDinhId: String? = nil, chuanLines: [SuDungNguyenLieuDto]? = nil, onSaved: @escaping () -> Void) {
         self.existing = existing
         self.existingLines = existingLines
         self.allSanPham = allSanPham
         self.allNguyenLieu = allNguyenLieu
+        self.bienTheCoDinhId = bienTheCoDinhId
+        self.chuanLines = chuanLines
         self.onSaved = onSaved
 
-        _sanPhamBienTheId = State(initialValue: existing?.sanPhamBienTheId)
-        if let existing, let sp = allSanPham.first(where: { sp in sp.bienThe.contains { $0.id == existing.sanPhamBienTheId } }) {
-            let bt = sp.bienThe.first { $0.id == existing.sanPhamBienTheId }
+        let bienTheId = existing?.sanPhamBienTheId ?? bienTheCoDinhId
+        _sanPhamBienTheId = State(initialValue: bienTheId)
+        if let bienTheId, let sp = allSanPham.first(where: { sp in sp.bienThe.contains { $0.id == bienTheId } }) {
+            let bt = sp.bienThe.first { $0.id == bienTheId }
             _spDisplayName = State(initialValue: [sp.ten, bt?.tenBienThe].compactMap { $0 }.joined(separator: "  "))
         } else {
             _spDisplayName = State(initialValue: "")
@@ -225,7 +235,18 @@ private struct CongThucEditSheet: View {
         let initialLines = existingLines
             .sorted { $0.tenNguyenLieu ?? "" < $1.tenNguyenLieu ?? "" }
             .map { DinhLuongRow(serverId: $0.id, nguyenLieuId: $0.nguyenLieuId, tenNguyenLieu: $0.tenNguyenLieu, donViTinh: $0.donViTinh, soLuong: $0.soLuong) }
-        _lines = State(initialValue: initialLines.isEmpty ? [DinhLuongRow()] : initialLines)
+        // Size L/XL chưa có công thức: chép sẵn nguyên liệu của Size Chuẩn làm điểm xuất phát (dòng
+        // MỚI, chưa có serverId) — nhân viên chỉ việc sửa số.
+        let chepTuChuan = (chuanLines ?? [])
+            .sorted { $0.tenNguyenLieu ?? "" < $1.tenNguyenLieu ?? "" }
+            .map { DinhLuongRow(nguyenLieuId: $0.nguyenLieuId, tenNguyenLieu: $0.tenNguyenLieu, donViTinh: $0.donViTinh, soLuong: $0.soLuong) }
+        let lines = initialLines.isEmpty ? chepTuChuan : initialLines
+        _lines = State(initialValue: lines.isEmpty ? [DinhLuongRow()] : lines)
+    }
+
+    private func soLuongChuan(_ nguyenLieuId: String?) -> Double? {
+        guard let nguyenLieuId else { return nil }
+        return chuanLines?.first { $0.nguyenLieuId == nguyenLieuId }?.soLuong
     }
 
     private var matchingSanPham: [SanPhamDto] {
@@ -238,7 +259,7 @@ private struct CongThucEditSheet: View {
             Form {
                 // Sửa công thức có sẵn thì KHÔNG cho đổi món/biến thể — tên món + size lên tiêu đề màn
                 // hình. Chỉ màn Thêm mới cần chọn.
-                if existing == nil {
+                if existing == nil && bienTheCoDinhId == nil {
                     Section("Sản phẩm / biến thể") {
                         if let sanPhamBienTheId, spSearchText.isEmpty {
                             HStack {
@@ -276,13 +297,33 @@ private struct CongThucEditSheet: View {
                     }
                 } header: {
                     Text("Nguyên liệu / định lượng")
+                } footer: {
+                    if cheDoDuyet {
+                        Text("Số nhỏ màu xám dưới tên nguyên liệu là định lượng Size Chuẩn để so.")
+                    }
+                }
+
+                if let chuanLines {
+                    Section("Size Chuẩn (để so)") {
+                        if chuanLines.isEmpty {
+                            Text("Size Chuẩn chưa có công thức").foregroundColor(.textMuted)
+                        }
+                        ForEach(chuanLines.sorted { $0.tenNguyenLieu ?? "" < $1.tenNguyenLieu ?? "" }) { dl in
+                            HStack {
+                                Text(dl.tenNguyenLieu ?? "?").foregroundColor(.textMuted)
+                                Spacer()
+                                Text(dl.soLuong.formatted()).foregroundColor(.textMuted)
+                            }
+                            .font(.subheadline)
+                        }
+                    }
                 }
 
                 if let errorMessage {
                     Text(errorMessage).foregroundColor(.dangerColor)
                 }
             }
-            .navigationTitle(existing == nil ? "Thêm công thức" : (spDisplayName.isEmpty ? "Sửa công thức" : spDisplayName))
+            .navigationTitle(existing == nil && bienTheCoDinhId == nil ? "Thêm công thức" : (spDisplayName.isEmpty ? "Sửa công thức" : spDisplayName))
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Color.brandPrimary, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
@@ -296,7 +337,7 @@ private struct CongThucEditSheet: View {
                 Button {
                     Task { await save() }
                 } label: {
-                    Text(saving ? "Đang lưu..." : "Lưu")
+                    Text(saving ? "Đang lưu..." : (cheDoDuyet ? "Lưu & duyệt" : "Lưu"))
                         .fontWeight(.bold)
                         .frame(maxWidth: .infinity)
                 }
@@ -327,8 +368,19 @@ private struct CongThucEditSheet: View {
             Button {
                 pickingLine = line.wrappedValue.id
             } label: {
-                Text(line.wrappedValue.tenNguyenLieu ?? "Chọn nguyên liệu")
-                    .foregroundColor(line.wrappedValue.tenNguyenLieu == nil ? .textMuted : .primary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(line.wrappedValue.tenNguyenLieu ?? "Chọn nguyên liệu")
+                        .foregroundColor(line.wrappedValue.tenNguyenLieu == nil ? .textMuted : .primary)
+                    if cheDoDuyet, line.wrappedValue.nguyenLieuId != nil {
+                        if let chuan = soLuongChuan(line.wrappedValue.nguyenLieuId) {
+                            Text("Chuẩn: \(chuan.formatted())")
+                                .font(.caption).foregroundColor(.textMuted)
+                        } else {
+                            Text("Size Chuẩn không có")
+                                .font(.caption).foregroundColor(.textMuted)
+                        }
+                    }
+                }
             }
             Spacer()
             // Nút −/+ sửa nhanh từng 1 đơn vị (không xuống dưới 0). Phải .borderless: trong Form,
@@ -450,6 +502,17 @@ private struct CongThucEditSheet: View {
             luuDoDang = true
             errorMessage = "Có \(loiDong) thao tác trên dòng nguyên liệu CHƯA lưu được. Bấm Huỷ rồi mở lại công thức này để kiểm tra và sửa lại."
             return
+        }
+        if cheDoDuyet {
+            let duyet = await APIClient.shared.duyetCongThuc(id: congThucId)
+            guard duyet.success else {
+                // Định lượng đã lưu xong, chỉ chưa đánh dấu duyệt. KHÔNG cho bấm lại ở sheet này:
+                // existing/existingLines đã cũ — công thức mới sẽ bị tạo trùng, dòng mới bị thêm trùng.
+                luuDoDang = true
+                errorMessage = "Đã lưu định lượng nhưng CHƯA duyệt được. Bấm Huỷ rồi mở lại món này để duyệt."
+                return
+            }
+            onSaved()
         }
         dismiss()
     }
