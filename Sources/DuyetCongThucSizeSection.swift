@@ -101,7 +101,7 @@ extension View {
     /// bị SwiftUI đóng ngay khi List vẽ lại (gặp thật 23/10 — mở sửa rồi tự đóng).
     func duyetCongThucSheet(_ model: DuyetCongThucSizeModel) -> some View {
         sheet(item: Binding(get: { model.dangSua }, set: { model.dangSua = $0 })) { mon in
-            DuyetCongThucMonSheet(mon: mon, model: model)
+            duyetCongThucMonSheet(mon: mon, model: model)
         }
     }
 }

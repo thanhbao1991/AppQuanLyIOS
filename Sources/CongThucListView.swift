@@ -16,35 +16,52 @@ struct CongThucListView: View {
     @State private var hasLoaded = false
     @State private var searchText = ""
     @State private var showAdd = false
-    @State private var editing: CongThucRow?
+    /// Công thức mồ côi (biến thể đã xoá) — không ghép được vào món nào, sửa riêng bằng CongThucEditSheet.
+    @State private var editing: CongThucDto?
+    @State private var editingMon: CongThucRow?
     @State private var deleting: CongThucRow?
     @State private var loadFailed = false
 
+    /// 1 dòng = 1 MÓN, gom mọi size (user 23/10: "tìm kiếm chỉ cần ra 1 dòng, sửa thì tương tự" mục
+    /// Duyệt L/XL) — chạm mở bảng Size Chuẩn | L | XL. `sanPham` nil = công thức mồ côi, 1 dòng riêng.
     struct CongThucRow: Identifiable {
-        let dto: CongThucDto
-        let tenSanPham: String?
-        let tenBienThe: String?
-        let soNguyenLieu: Int
-        var id: String { dto.id }
+        let id: String
+        let sanPham: SanPhamDto?
+        let congThucs: [CongThucDto]
+        /// Tên ngắn các size đã có công thức, theo thứ tự cột ("Chuẩn · L · XL").
+        let tenSizes: [String]
+        let coCongThucRong: Bool
+        var tenHienThi: String { sanPham?.ten ?? congThucs.first?.ten ?? "?" }
     }
 
     private var rows: [CongThucRow] {
-        var out = congThucs.map { ct -> CongThucRow in
-            var tenSanPham: String?
-            var tenBienThe: String?
-            for sp in allSanPham {
-                if let bt = sp.bienThe.first(where: { $0.id == ct.sanPhamBienTheId }) {
-                    tenSanPham = sp.ten
-                    tenBienThe = bt.tenBienThe
-                    break
-                }
+        var theoSanPham: [String: [CongThucDto]] = [:]
+        var moCoi: [CongThucDto] = []
+        let sanPhamCuaBienThe = Dictionary(
+            allSanPham.flatMap { sp in sp.bienThe.map { ($0.id, sp) } }, uniquingKeysWith: { a, _ in a })
+        for ct in congThucs {
+            if let sp = sanPhamCuaBienThe[ct.sanPhamBienTheId] {
+                theoSanPham[sp.id, default: []].append(ct)
+            } else {
+                moCoi.append(ct)
             }
-            let soNguyenLieu = dinhLuongAll.filter { $0.congThucId == ct.id }.count
-            return CongThucRow(dto: ct, tenSanPham: tenSanPham, tenBienThe: tenBienThe, soNguyenLieu: soNguyenLieu)
         }
-        out.sort { ($0.tenSanPham ?? "").localizedStandardCompare($1.tenSanPham ?? "") == .orderedAscending }
+        let soNguyenLieu = Dictionary(grouping: dinhLuongAll, by: \.congThucId).mapValues(\.count)
+        var out = theoSanPham.compactMap { spId, cts -> CongThucRow? in
+            guard let sp = allSanPham.first(where: { $0.id == spId }) else { return nil }
+            let tenSizes = CongThucSizeSheet.cots(of: sp, congThucs: cts)
+                .filter { $0.congThucId != nil }
+                .map { MonDuyetCongThuc.tenNgan($0.ten) }
+            return CongThucRow(id: spId, sanPham: sp, congThucs: cts, tenSizes: tenSizes,
+                               coCongThucRong: cts.contains { (soNguyenLieu[$0.id] ?? 0) == 0 })
+        }
+        out += moCoi.map {
+            CongThucRow(id: $0.id, sanPham: nil, congThucs: [$0], tenSizes: [],
+                        coCongThucRong: (soNguyenLieu[$0.id] ?? 0) == 0)
+        }
+        out.sort { $0.tenHienThi.localizedStandardCompare($1.tenHienThi) == .orderedAscending }
         guard !searchText.isEmpty else { return out }
-        return out.filter { anyMatchesSearch(searchText, $0.tenSanPham, $0.tenBienThe) }
+        return out.filter { anyMatchesSearch(searchText, $0.tenHienThi) }
     }
 
     var body: some View {
@@ -62,7 +79,7 @@ struct CongThucListView: View {
                 List {
                     ForEach(rows) { row in
                         CongThucRowView(row: row) {
-                            editing = row
+                            if row.sanPham != nil { editingMon = row } else { editing = row.congThucs.first }
                         } onDelete: {
                             deleting = row
                         }
@@ -86,9 +103,9 @@ struct CongThucListView: View {
         .task { await load() }
         .confirmDelete(
             $deleting,
-            name: { [$0.tenSanPham, $0.tenBienThe].compactMap { $0 }.joined(separator: " ") },
-            note: "Xoá cả \(deleting?.soNguyenLieu ?? 0) dòng nguyên liệu — món này sẽ KHÔNG còn tự trừ tồn kho khi bán.",
-            perform: { await delete($0.dto) },
+            name: { $0.tenHienThi },
+            note: "Xoá công thức \((deleting?.congThucs.count ?? 0) > 1 ? "cả \(deleting?.congThucs.count ?? 0) size" : "món này") — sẽ KHÔNG còn tự trừ tồn kho khi bán.",
+            perform: { await delete($0.congThucs) },
             onDone: load
         )
         .sheet(isPresented: $showAdd) {
@@ -96,14 +113,25 @@ struct CongThucListView: View {
                 Task { await load() }
             }
         }
-        .sheet(item: $editing) { row in
+        .sheet(item: $editing) { dto in
             CongThucEditSheet(
-                existing: row.dto,
-                existingLines: dinhLuongAll.filter { $0.congThucId == row.dto.id },
+                existing: dto,
+                existingLines: dinhLuongAll.filter { $0.congThucId == dto.id },
                 allSanPham: allSanPham,
                 allNguyenLieu: allNguyenLieu
             ) {
                 Task { await load() }
+            }
+        }
+        .sheet(item: $editingMon) { row in
+            if let sp = row.sanPham {
+                CongThucSizeSheet(
+                    tenSanPham: sp.ten,
+                    cots: CongThucSizeSheet.cots(of: sp, congThucs: row.congThucs),
+                    dinhLuongAll: dinhLuongAll,
+                    allNguyenLieu: allNguyenLieu,
+                    dienSanTuCotDau: false,
+                    onSaved: { await load() })
             }
         }
     }
@@ -134,8 +162,13 @@ struct CongThucListView: View {
     /// liệu con trong cùng 1 transaction — hoặc xoá hết, hoặc không xoá gì. Trước đây app phải tự xoá
     /// từng dòng rồi mới xoá công thức (FK Restrict), rớt mạng giữa chừng là công thức nằm lại với
     /// một phần nguyên liệu.
-    private func delete(_ dto: CongThucDto) async -> ActionResult {
-        await APIClient.shared.deleteCongThuc(id: dto.id)
+    /// Xoá cả món = xoá lần lượt công thức từng size; dừng ở size lỗi đầu tiên.
+    private func delete(_ dtos: [CongThucDto]) async -> ActionResult {
+        for dto in dtos {
+            let result = await APIClient.shared.deleteCongThuc(id: dto.id)
+            if !result.success { return result }
+        }
+        return ActionResult(success: true, message: nil)
     }
 }
 
@@ -148,18 +181,19 @@ private struct CongThucRowView: View {
         Button(action: onEdit) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text([row.tenSanPham, row.tenBienThe].compactMap { $0 }.joined(separator: "  "))
+                    Text(row.tenHienThi)
                         .font(.subheadline).fontWeight(.semibold)
                         .foregroundColor(.primary)
-                    if row.tenSanPham == nil {
+                    if row.sanPham == nil {
                         Text("Biến thể không còn tồn tại")
                             .font(.caption2).foregroundColor(.dangerColor)
                     }
                 }
                 Spacer()
-                Text("\(row.soNguyenLieu) nguyên liệu")
+                // Đỏ = có size công thức rỗng (0 nguyên liệu, bán không trừ kho).
+                Text(row.tenSizes.joined(separator: " · "))
                     .font(.caption).fontWeight(.bold)
-                    .foregroundColor(row.soNguyenLieu == 0 ? .dangerColor : .brandPrimary)
+                    .foregroundColor(row.coCongThucRong ? .dangerColor : .brandPrimary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
