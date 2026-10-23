@@ -91,7 +91,7 @@ struct TroLyView: View {
     @State private var daXuLy: [CanhBaoHeThong] = []
     @State private var xemDaXuLy = false
     @State private var moCanhBao: Set<String> = []
-    @State private var lamMoiDuyet = 0
+    @StateObject private var duyetCongThuc = DuyetCongThucSizeModel()
 
     var body: some View {
         List {
@@ -123,7 +123,7 @@ struct TroLyView: View {
                 }
             }
 
-            DuyetCongThucSizeSection(lamMoi: lamMoiDuyet)
+            DuyetCongThucSizeSection(model: duyetCongThuc)
 
             Section {
                 theTinhTrang
@@ -176,10 +176,7 @@ struct TroLyView: View {
         .toolbarBackground(Color.brandPrimary, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
-        .refreshable {
-            lamMoiDuyet += 1
-            await taiLai()
-        }
+        .refreshable { await taiLai() }
         .task { if cauHoi.isEmpty { await taiLai() } }
     }
 
@@ -208,7 +205,8 @@ struct TroLyView: View {
         async let tq = APIClient.shared.getTroLyTongQuan()
         async let ds = APIClient.shared.getTroLyCauHoi()
         async let cbs = APIClient.shared.getCanhBao()
-        let (t, d, c) = await (tq, ds, cbs)
+        async let duyet: Void = duyetCongThuc.load()
+        let (t, d, c, _) = await (tq, ds, cbs, duyet)
         tongQuan = t
         if let c {
             canhBao = c
