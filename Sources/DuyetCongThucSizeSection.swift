@@ -10,6 +10,7 @@ final class DuyetCongThucSizeModel: ObservableObject {
     @Published var dinhLuongAll: [SuDungNguyenLieuDto] = []
     @Published var allSanPham: [SanPhamDto] = []
     @Published var allNguyenLieu: [NguyenLieuBanHangDto] = []
+    @Published var dangSua: CongThucDuyetSizeDto?
 
     var chuaDuyet: [CongThucDuyetSizeDto] { items.filter { $0.ngayDuyet == nil } }
 
@@ -37,74 +38,48 @@ final class DuyetCongThucSizeModel: ObservableObject {
 }
 
 /// Mục "Duyệt công thức L/XL" trong Trợ lý ảo — đa số công thức L/XL đang chép y nguyên Size
-/// Chuẩn nên trừ tồn kho thấp hơn thực tế. Hiện 10 size CHƯA duyệt vừa bán gần nhất (nhân viên đang
-/// pha món đó, xem lại định lượng ngay lúc còn nhớ). Chạm 1 món → so với Size Chuẩn, sửa số rồi
-/// "Lưu & duyệt" (POST /api/CongThuc/{id}/duyet ghi NgayDuyet + NguoiDuyet), món kế tiếp tự lên.
+/// Chuẩn nên trừ tồn kho thấp hơn thực tế. Hiện 5 size CHƯA duyệt vừa bán gần nhất, mỗi dòng chỉ
+/// tên + size (user 23/10). Chạm → `model.dangSua` → TroLyView mở CongThucEditSheet chế độ duyệt.
 struct DuyetCongThucSizeSection: View {
     @ObservedObject var model: DuyetCongThucSizeModel
 
-    private static let soMonHien = 10
-
-    @State private var dangSua: CongThucDuyetSizeDto?
+    private static let soMonHien = 5
 
     var body: some View {
         // Backend đã xếp món vừa bán lên đầu. Hết món chưa duyệt (hoặc tải lỗi) thì ẩn cả mục.
         let chuaDuyet = model.chuaDuyet
         if !chuaDuyet.isEmpty {
-            Section {
+            Section("Duyệt công thức L/XL (còn \(chuaDuyet.count))") {
                 ForEach(chuaDuyet.prefix(Self.soMonHien)) { item in
-                    Button { dangSua = item } label: { row(item) }
-                        .buttonStyle(.plain)
-                }
-            } header: {
-                Text("Duyệt công thức L/XL (còn \(chuaDuyet.count))")
-            } footer: {
-                Text("Món vừa bán lên đầu. Chạm để so với Size Chuẩn, sửa định lượng rồi Lưu & duyệt.")
-            }
-            .sheet(item: $dangSua) { item in
-                CongThucEditSheet(
-                    existing: item.congThucId.flatMap { id in model.congThucs.first { $0.id == id } },
-                    existingLines: model.lines(of: item.congThucId),
-                    allSanPham: model.allSanPham,
-                    allNguyenLieu: model.allNguyenLieu,
-                    bienTheCoDinhId: item.sanPhamBienTheId,
-                    chuanLines: model.lines(of: item.congThucChuanId)
-                ) {
-                    Task { await model.load() }
+                    Button { model.dangSua = item } label: {
+                        Text("\(item.tenSanPham)  \(item.tenBienThe)")
+                            .font(.subheadline).fontWeight(.semibold)
+                            .foregroundColor(.primary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
     }
+}
 
-    private func row(_ item: CongThucDuyetSizeDto) -> some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("\(item.tenSanPham)  \(item.tenBienThe)")
-                    .font(.subheadline).fontWeight(.semibold)
-                    .foregroundColor(.primary)
-                Text([item.lanBanCuoi.map { "bán \(ThongBaoNoiBoFormatting.thoiGian($0))" }, "\(item.soLyBan30Ngay) ly / 30 ngày"]
-                        .compactMap { $0 }.joined(separator: " · "))
-                    .font(.caption).foregroundColor(.textMuted)
+extension View {
+    /// Gắn ở cấp màn hình (TroLyView), KHÔNG gắn trong Section của List: sheet gắn vào nội dung List
+    /// bị SwiftUI đóng ngay khi List vẽ lại (gặp thật 23/10 — mở sửa rồi tự đóng).
+    func duyetCongThucSheet(_ model: DuyetCongThucSizeModel) -> some View {
+        sheet(item: Binding(get: { model.dangSua }, set: { model.dangSua = $0 })) { item in
+            CongThucEditSheet(
+                existing: item.congThucId.flatMap { id in model.congThucs.first { $0.id == id } },
+                existingLines: model.lines(of: item.congThucId),
+                allSanPham: model.allSanPham,
+                allNguyenLieu: model.allNguyenLieu,
+                bienTheCoDinhId: item.sanPhamBienTheId,
+                chuanLines: model.lines(of: item.congThucChuanId)
+            ) {
+                Task { await model.load() }
             }
-            Spacer()
-            nhan(item)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
-    }
-
-    @ViewBuilder private func nhan(_ item: CongThucDuyetSizeDto) -> some View {
-        let l = model.lines(of: item.congThucId)
-        if l.isEmpty {
-            Text("Chưa có CT").font(.caption).fontWeight(.bold).foregroundColor(.dangerColor)
-        } else if key(l) == key(model.lines(of: item.congThucChuanId)) {
-            Text("Giống Chuẩn").font(.caption).fontWeight(.bold).foregroundColor(.orange)
-        } else {
-            Text("Đã khác Chuẩn").font(.caption).fontWeight(.bold).foregroundColor(.brandPrimary)
-        }
-    }
-
-    private func key(_ x: [SuDungNguyenLieuDto]) -> [String] {
-        x.map { "\($0.nguyenLieuId)|\($0.soLuong)" }.sorted()
     }
 }

@@ -177,6 +177,7 @@ struct TroLyView: View {
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .refreshable { await taiLai() }
+        .duyetCongThucSheet(duyetCongThuc)
         .task { if cauHoi.isEmpty { await taiLai() } }
     }
 
