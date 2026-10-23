@@ -23,7 +23,7 @@ struct CongNoListView: View {
         items
             // Bắt buộc gõ ĐÚNG dấu — khác mọi tab khác (tìm không dấu vẫn khớp) — vì đây là danh sách
             // nợ, khớp nhầm 2 khách tên gần giống nhau (khác dấu) có thể thu/gửi bill nhầm người.
-            .filter { anyMatchesSearch(searchText, diacriticInsensitive: false, $0.tenKhachHangText, $0.tenBan, $0.ghiChu, $0.tenMonSummary) }
+            .filter { anyMatchesSearch(searchText, diacriticInsensitive: false, $0.tenKhachHangText, $0.soDienThoaiText, $0.tenBan, $0.ghiChu, $0.tenMonSummary) }
             .filter { item in
                 guard let selectedDate else { return true }
                 let dayStr = DateNavFormat.queryDate.string(from: selectedDate)

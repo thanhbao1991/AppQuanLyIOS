@@ -47,7 +47,8 @@ struct HoaDonListView: View {
     /// Danh sách đã áp search nhưng CHƯA áp activeFilter — dùng để đếm số dòng theo từng filter
     /// trong menu (đếm trên tập đang xem, không phải đếm trên tập đã bị 1 filter khác thu hẹp).
     private var searchFilteredItems: [HoaDonListDto] {
-        items.filter { anyMatchesSearch(searchText, $0.tenKhachHangText, $0.tenBan, $0.ghiChu, $0.ghiChuShipper, $0.tenMonSummary, $0.nguoiShip) }
+        // soDienThoaiText: hoá đơn khách app giờ in tên khách tự đặt thay vì SĐT — vẫn tìm được bằng số.
+        items.filter { anyMatchesSearch(searchText, $0.tenKhachHangText, $0.soDienThoaiText, $0.tenBan, $0.ghiChu, $0.ghiChuShipper, $0.tenMonSummary, $0.nguoiShip) }
     }
 
     /// sortedItems là computed property nên MỖI LẦN được đọc lại chạy lại toàn bộ filter+search+sort —
