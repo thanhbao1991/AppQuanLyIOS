@@ -76,10 +76,9 @@ struct DuyetCongThucMonSheet: View {
                     ForEach($dongs) { $dong in
                         VStack(alignment: .leading, spacing: 8) {
                             Text(dong.ten).font(.subheadline.weight(.semibold))
-                            HStack(spacing: 0) {
+                            HStack(spacing: Self.khoangCot) {
                                 ForEach(cots.indices, id: \.self) { i in
                                     oSoLuong($dong.soLuong[i], tat: cots[i].bienTheId == nil)
-                                        .frame(maxWidth: .infinity)
                                 }
                             }
                         }
@@ -91,7 +90,7 @@ struct DuyetCongThucMonSheet: View {
                         Label("Thêm nguyên liệu", systemImage: "plus")
                     }
                 } header: {
-                    HStack(spacing: 0) {
+                    HStack(spacing: Self.khoangCot) {
                         ForEach(cots.indices, id: \.self) { i in
                             Text(cots[i].ten).frame(maxWidth: .infinity)
                         }
@@ -142,32 +141,40 @@ struct DuyetCongThucMonSheet: View {
         }
     }
 
-    /// − sl + giống CongThucEditSheet. Nút phải .borderless: trong List, nhiều Button chung 1 dòng
-    /// để style mặc định thì chạm đâu cũng kích hoạt cả dòng.
+    /// Khoảng trống giữa 2 cột size — bản đầu để 0, nút + cột này dính nút − cột kế (user 23/10: "sát quá").
+    private static let khoangCot: CGFloat = 10
+
+    /// − sl + giống CongThucEditSheet, mỗi size 1 ô nền xám riêng cho tách cột. Nút phải .borderless:
+    /// trong List, nhiều Button chung 1 dòng để style mặc định thì chạm đâu cũng kích hoạt cả dòng.
     private func oSoLuong(_ value: Binding<Double>, tat: Bool) -> some View {
-        HStack(spacing: 2) {
+        HStack(spacing: 0) {
             Button {
                 value.wrappedValue = max(0, ((value.wrappedValue - 1) * 1000).rounded() / 1000)
             } label: {
-                Image(systemName: "minus.circle.fill").font(.title3)
+                Image(systemName: "minus.circle.fill").font(.body)
             }
             .buttonStyle(.borderless)
             .disabled(tat || value.wrappedValue <= 0)
             TextField("0", value: value, format: .number)
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.center)
-                .font(.subheadline)
-                .frame(minWidth: 34)
+                .font(.subheadline.weight(.semibold))
+                .frame(maxWidth: .infinity)
                 .disabled(tat)
             Button {
                 value.wrappedValue = ((value.wrappedValue + 1) * 1000).rounded() / 1000
             } label: {
-                Image(systemName: "plus.circle.fill").font(.title3)
+                Image(systemName: "plus.circle.fill").font(.body)
             }
             .buttonStyle(.borderless)
             .disabled(tat)
         }
         .tint(.brandPrimary)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 6)
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .frame(maxWidth: .infinity)
     }
 
     private func save() async {
