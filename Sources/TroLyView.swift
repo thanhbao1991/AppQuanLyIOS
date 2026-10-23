@@ -91,6 +91,7 @@ struct TroLyView: View {
     @State private var daXuLy: [CanhBaoHeThong] = []
     @State private var xemDaXuLy = false
     @State private var moCanhBao: Set<String> = []
+    @State private var lamMoiDuyet = 0
 
     var body: some View {
         List {
@@ -121,6 +122,8 @@ struct TroLyView: View {
                     }
                 }
             }
+
+            DuyetCongThucSizeSection(lamMoi: lamMoiDuyet)
 
             Section {
                 theTinhTrang
@@ -173,7 +176,10 @@ struct TroLyView: View {
         .toolbarBackground(Color.brandPrimary, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
-        .refreshable { await taiLai() }
+        .refreshable {
+            lamMoiDuyet += 1
+            await taiLai()
+        }
         .task { if cauHoi.isEmpty { await taiLai() } }
     }
 

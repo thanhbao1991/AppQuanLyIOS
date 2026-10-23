@@ -391,7 +391,7 @@ struct CongThucDto: Codable, Identifiable {
     var tenBienThe: String?
 }
 
-/// Một dòng màn Duyệt công thức L/XL — GET /api/CongThuc/duyet-size. Ngày duyệt để String (chỉ cần
+/// Một dòng mục Duyệt công thức L/XL (Trợ lý ảo) — GET /api/CongThuc/duyet-size. Ngày duyệt để String (chỉ cần
 /// biết có/không + hiện ra), tránh lệch định dạng ngày của backend.
 struct CongThucDuyetSizeDto: Decodable, Identifiable {
     let sanPhamBienTheId: String
@@ -404,6 +404,8 @@ struct CongThucDuyetSizeDto: Decodable, Identifiable {
     let nguoiDuyet: String?
     let congThucChuanId: String?
     let soLyBan30Ngay: Int
+    /// Giờ hoá đơn gần nhất trong 30 ngày — nil = không bán trong 30 ngày.
+    let lanBanCuoi: String?
     var id: String { sanPhamBienTheId }
 }
 
