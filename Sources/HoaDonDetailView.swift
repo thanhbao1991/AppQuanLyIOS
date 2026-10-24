@@ -877,6 +877,19 @@ enum BillTextBuilder {
 
 /// Layout riêng để render ảnh "Gửi Bill" — nền trắng cố định để ảnh dán vào chat luôn đọc được bất
 /// kể theme máy, độc lập với ScrollView (không rasterize hết nội dung ngoài viewport).
+/// Dòng nhắc NGAY DƯỚI mã QR trong ảnh bill gửi khách (Gửi Bill / Gửi Bill nợ) — cùng câu với
+/// BankQrConfig.NhacGiuNoiDungCk (backend/Desktop): khách sửa nội dung CK thì SePay không tự thu được.
+struct NhacGiuNoiDungCkText: View {
+    var body: some View {
+        Text("Quý khách vui lòng không thay đổi nội dung chuyển khoản (ghi chú)!")
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundColor(Color(red: 0.73, green: 0.11, blue: 0.11))
+            .multilineTextAlignment(.center)
+            .frame(width: 220)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
 private struct BillDetailSnapshotView: View {
     let d: HoaDonDetailDto
     let qrImage: UIImage?
@@ -893,6 +906,7 @@ private struct BillDetailSnapshotView: View {
                     .resizable()
                     .interpolation(.none)
                     .frame(width: 200, height: 200)
+                NhacGiuNoiDungCkText()
             }
         }
         .padding(16)

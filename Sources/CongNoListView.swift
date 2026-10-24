@@ -572,6 +572,7 @@ private struct BillSnapshotView: View {
                     .resizable()
                     .interpolation(.none)
                     .frame(width: 200, height: 200)
+                NhacGiuNoiDungCkText()
                     .padding(.bottom, 16)
             }
         }
