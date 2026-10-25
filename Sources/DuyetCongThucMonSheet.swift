@@ -38,6 +38,9 @@ struct CongThucSizeSheet: View {
     @State private var errorMessage: String?
     /// Lưu dở — dữ liệu gốc của sheet đã cũ, lưu lại sẽ diff sai (tạo trùng). Phải đóng mở lại.
     @State private var luuDoDang = false
+    /// Dòng nguyên liệu đang chờ xác nhận xoá; xoá khỏi bảng ngay, công thức trên server đổi khi bấm Lưu.
+    @State private var dongCanXoa: Dong?
+    @State private var xacNhanLuu = false
 
     private var coDuyet: Bool { cots.contains { $0.canDuyet } }
 
@@ -97,7 +100,16 @@ struct CongThucSizeSheet: View {
                 Section {
                     ForEach($dongs) { $dong in
                         VStack(alignment: .leading, spacing: 8) {
-                            Text(dong.ten).font(.subheadline.weight(.semibold))
+                            HStack {
+                                Text(dong.ten).font(.subheadline.weight(.semibold))
+                                Spacer()
+                                Button {
+                                    dongCanXoa = dong
+                                } label: {
+                                    Image(systemName: "trash").font(.subheadline).foregroundColor(.dangerColor)
+                                }
+                                .buttonStyle(.borderless)
+                            }
                             HStack(spacing: Self.khoangCot) {
                                 ForEach(cots.indices, id: \.self) { i in
                                     oSoLuong($dong.soLuong[i], tat: cots[i].bienTheId == nil)
@@ -137,7 +149,7 @@ struct CongThucSizeSheet: View {
             }
             .safeAreaInset(edge: .bottom) {
                 Button {
-                    Task { await save() }
+                    if coDuyet { xacNhanLuu = true } else { Task { await save() } }
                 } label: {
                     Text(saving ? "Đang lưu..." : (coDuyet ? "Lưu & duyệt" : "Lưu"))
                         .fontWeight(.bold)
@@ -152,6 +164,21 @@ struct CongThucSizeSheet: View {
                 .padding(.bottom, 8)
                 .background(Color(.systemBackground))
                 .overlay(Divider(), alignment: .top)
+            }
+            .confirmationDialog("Xoá \(dongCanXoa?.ten ?? "nguyên liệu") khỏi công thức?",
+                                isPresented: Binding(get: { dongCanXoa != nil }, set: { if !$0 { dongCanXoa = nil } }),
+                                titleVisibility: .visible) {
+                Button("Xoá", role: .destructive) {
+                    if let d = dongCanXoa { dongs.removeAll { $0.id == d.id } }
+                    dongCanXoa = nil
+                }
+                Button("Không", role: .cancel) { dongCanXoa = nil }
+            } message: {
+                Text("Xoá khỏi mọi size, có hiệu lực khi bấm Lưu.")
+            }
+            .confirmationDialog("Lưu và duyệt công thức \(tenSanPham)?", isPresented: $xacNhanLuu, titleVisibility: .visible) {
+                Button("Lưu & duyệt") { Task { await save() } }
+                Button("Không", role: .cancel) {}
             }
             .sheet(isPresented: $dangChonNguyenLieu) {
                 NguyenLieuBanHangPickerSheet(items: allNguyenLieu) { picked in
