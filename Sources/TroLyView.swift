@@ -18,6 +18,10 @@ struct TroLyTraLoi: Codable, Equatable {
         /// "het" | "thap" | "sapHet" | nil
         let mucDo: String?
         let hang: Int?
+        /// Chỉ dòng TỒN KHO mới có 3 trường này — bấm vào dòng để sửa nhanh tồn kho (SuaTonNhanhSheet).
+        let nguyenLieuBanHangId: String?
+        let ton: Double?
+        let donVi: String?
         var id: String { ten }
     }
 
@@ -93,6 +97,8 @@ struct TroLyView: View {
     @State private var xemDaXuLy = false
     @State private var moCanhBao: Set<String> = []
     @StateObject private var duyetCongThuc = DuyetCongThucSizeModel()
+    /// Dòng tồn kho đang được sửa nhanh (bấm vào dòng trong thẻ tình trạng hoặc câu trả lời).
+    @State private var suaTon: TroLyTraLoi.Dong?
 
     var body: some View {
         List {
@@ -159,7 +165,7 @@ struct TroLyView: View {
                                 // Có màn tương tác riêng (chọn đại lý, sửa đơn tối thiểu) — không qua chi-tiet.
                                 LayHangView()
                             } else if let tl = traLoi[c.ma] {
-                                TroLyTraLoiView(traLoi: tl)
+                                TroLyTraLoiView(traLoi: tl, onSua: { suaTon = $0 })
                             } else if !dangHoi.contains(c.ma) {
                                 Text("Không tải được, chạm lại để thử.").font(.subheadline).foregroundColor(.textMuted)
                             }
@@ -182,6 +188,9 @@ struct TroLyView: View {
         .toolbarColorScheme(.dark, for: .navigationBar)
         .refreshable { await taiLai() }
         .duyetCongThucSheet(duyetCongThuc)
+        .sheet(item: $suaTon) { d in
+            SuaTonNhanhSheet(dong: d) { Task { await taiLai() } }
+        }
         .task { if cauHoi.isEmpty { await taiLai() } }
     }
 
@@ -199,7 +208,7 @@ struct TroLyView: View {
                 Text("Không tải được tồn kho.").foregroundColor(.textMuted)
             }
             if let tq = tongQuan, !tq.dong.isEmpty {
-                TroLyDongList(dong: tq.dong)
+                TroLyDongList(dong: tq.dong, onSua: { suaTon = $0 })
             }
         }
         .padding(.vertical, 6)
@@ -384,6 +393,8 @@ struct TroLyView: View {
 /// Nội dung 1 câu trả lời: số lớn + so sánh, biểu đồ, các dòng.
 struct TroLyTraLoiView: View {
     let traLoi: TroLyTraLoi
+    /// Có thì dòng tồn kho bấm vào được để sửa nhanh.
+    var onSua: ((TroLyTraLoi.Dong) -> Void)? = nil
 
     /// Món bán chạy: biểu đồ cột đã ghi số trên cột, khỏi lặp lại danh sách.
     private var anDong: Bool {
@@ -407,7 +418,7 @@ struct TroLyTraLoiView: View {
             }
 
             if !traLoi.dong.isEmpty && !anDong {
-                TroLyDongList(dong: traLoi.dong)
+                TroLyDongList(dong: traLoi.dong, onSua: onSua)
             } else if traLoi.dong.isEmpty, let tdiep = traLoi.thongDiep {
                 Label(tdiep, systemImage: traLoi.trangThai == "ok" ? "checkmark.circle.fill" : "info.circle")
                     .font(.subheadline)
@@ -432,6 +443,8 @@ enum TroLyMau {
 /// Danh sách dòng: chấm màu mức độ (hoặc thứ hạng) · tên + dòng phụ · giá trị canh phải.
 struct TroLyDongList: View {
     let dong: [TroLyTraLoi.Dong]
+    /// Có thì dòng tồn kho (có nguyenLieuBanHangId) bấm vào được, hiện bút chì nhỏ bên phải.
+    var onSua: ((TroLyTraLoi.Dong) -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -455,8 +468,13 @@ struct TroLyDongList: View {
                         .font(.subheadline.weight(.semibold))
                         .monospacedDigit()
                         .foregroundColor(d.mucDo == "het" || d.mucDo == "thap" ? TroLyMau.theoMucDo(d.mucDo) : .primary)
+                    if d.nguyenLieuBanHangId != nil, onSua != nil {
+                        Image(systemName: "pencil").font(.caption).foregroundColor(.textMuted)
+                    }
                 }
                 .padding(.vertical, 8)
+                .contentShape(Rectangle())
+                .onTapGesture { if d.nguyenLieuBanHangId != nil { onSua?(d) } }
             }
         }
     }

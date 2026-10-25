@@ -70,6 +70,31 @@ final class LayHangTests: XCTestCase {
         let kq = LayHang(nhaCungCapId: "x", tenDaiLy: "Mini Mart K7", soLuongToiThieu: 4, tongSoLuong: 4, tongTien: 671_000,
                          datToiThieu: true, dong: [dong], uocLuongAi: [ai], boQua: [])
         XCTAssertEqual(LayHangFormat.vanBanDon(kq),
-                       "Đơn lấy hàng — Mini Mart K7\n- Revive (Thùng) x3\n- Hạt Dưa (Lốc 20) x1\nTổng: 4 thùng — 671.000đ")
+                       "Đơn lấy hàng — Mini Mart K7\n- Revive (Thùng) x3\n- Hạt Dưa (Lốc 20) x1\nTổng: 4 — 671.000đ")
+    }
+
+    // MARK: - Sửa nhanh tồn kho (Trợ lý ảo)
+
+    func test_suaTonNhanh_doiSoVaDinhDang() {
+        XCTAssertEqual(SuaTonNhanhFormat.doiSo("500"), 500)
+        XCTAssertEqual(SuaTonNhanhFormat.doiSo("12,5"), 12.5)
+        XCTAssertEqual(SuaTonNhanhFormat.doiSo(" 7.25 "), 7.25)
+        XCTAssertNil(SuaTonNhanhFormat.doiSo(""))
+        XCTAssertNil(SuaTonNhanhFormat.doiSo("abc"))
+        XCTAssertEqual(SuaTonNhanhFormat.soChu(500), "500")
+        XCTAssertEqual(SuaTonNhanhFormat.soChu(12.5), "12.50")
+    }
+
+    func test_giaiMa_dongTonKho_coMaNguyenLieuTonVaDonVi_dongKhacThiNil() throws {
+        let tonKho = #"{"ten":"Ly Giấy 240Ml","giaTri":"53","phu":"~53 ly","mucDo":"thap","hang":null,"nguyenLieuBanHangId":"c7e4dd45","ton":53,"donVi":"Ly"}"#
+        let d1 = try JSONDecoder().decode(TroLyTraLoi.Dong.self, from: Data(tonKho.utf8))
+        XCTAssertEqual(d1.nguyenLieuBanHangId, "c7e4dd45")
+        XCTAssertEqual(d1.ton, 53)
+        XCTAssertEqual(d1.donVi, "Ly")
+
+        let banChay = #"{"ten":"Cà phê","giaTri":"12","hang":1}"#
+        let d2 = try JSONDecoder().decode(TroLyTraLoi.Dong.self, from: Data(banChay.utf8))
+        XCTAssertNil(d2.nguyenLieuBanHangId)
+        XCTAssertNil(d2.ton)
     }
 }

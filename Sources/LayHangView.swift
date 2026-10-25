@@ -89,7 +89,7 @@ enum LayHangFormat {
     static func vanBanDon(_ kq: LayHang) -> String {
         var dong = kq.dong.map { "- \($0.ten) x\($0.soLuong)" }
         dong += kq.uocLuongAi.map { "- \($0.ten) x\($0.soLuong)" }
-        return (["Đơn lấy hàng — \(kq.tenDaiLy)"] + dong + ["Tổng: \(kq.tongSoLuong) thùng — \(HoaDonFormatting.money(kq.tongTien))"]).joined(separator: "\n")
+        return (["Đơn lấy hàng — \(kq.tenDaiLy)"] + dong + ["Tổng: \(kq.tongSoLuong) — \(HoaDonFormatting.money(kq.tongTien))"]).joined(separator: "\n")
     }
 }
 
@@ -165,7 +165,7 @@ final class LayHangModel: ObservableObject {
 
 // MARK: - Màn "Lên đơn lấy hàng" (mở ngay trong Trợ lý ảo)
 
-/// Chọn đại lý → hàng nên lấy sao cho đủ SỐ LƯỢNG tối thiểu (mặc định 4 thùng, sửa được, lưu được) và các món hết đều
+/// Chọn đại lý → hàng nên lấy sao cho đủ SỐ LƯỢNG tối thiểu (mặc định 4, thùng/cây/bao tính như nhau, sửa được, lưu được) và các món hết đều
 /// nhau. Món có công thức tính bằng code; món không có công thức do AI ước theo lịch sử mua (có nhãn "AI ước").
 struct LayHangView: View {
     @StateObject private var model = LayHangModel()
@@ -207,7 +207,7 @@ struct LayHangView: View {
                 Task { thongBao = await model.taoDaiLy(ten: ten) }
             }
         } message: {
-            Text("Số lượng tối thiểu mặc định 4 thùng, sửa được sau. Thêm xong chọn mặt hàng đại lý đó bán.")
+            Text("Số lượng tối thiểu mặc định 4 (thùng, cây, bao… tính như nhau), sửa được sau. Thêm xong chọn mặt hàng đại lý đó bán.")
         }
         .navigationDestination(isPresented: $hienMatHang) {
             if let d = model.daiLyDangChon {
@@ -251,7 +251,7 @@ struct LayHangView: View {
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: 80)
                     .onSubmit { Task { await model.tinh() } }
-                Text("thùng").foregroundColor(.textMuted)
+                Text("(thùng, cây, bao… như nhau)").font(.caption).foregroundColor(.textMuted)
                 Button("Tính lại") { Task { await model.tinh() } }
                     .buttonStyle(.borderless)
                     .font(.subheadline.weight(.semibold))
@@ -298,7 +298,7 @@ struct LayHangView: View {
     private func tongKet(_ kq: LayHang) -> some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("\(kq.tongSoLuong) thùng").font(.title2.weight(.bold)).monospacedDigit()
+                Text("\(kq.tongSoLuong) đơn vị").font(.title2.weight(.bold)).monospacedDigit()
                 Text(HoaDonFormatting.money(kq.tongTien)).font(.subheadline).foregroundColor(.textMuted).monospacedDigit()
             }
             Spacer()
