@@ -76,9 +76,10 @@ final class CanhBaoBadge: ObservableObject {
 /// Trợ lý ảo (Menu > Trợ lý ảo) — KHÔNG dùng AI. Đầu màn là thẻ tình trạng tồn kho, bên dưới các câu hỏi bấm
 /// sẵn THU GỌN — chạm câu nào mới mở + tải câu trả lời câu đó (server tính thẳng từ DB, kèm biểu đồ); user
 /// không muốn phải đọc hết mọi câu. Kéo xuống để làm mới; nhấn giữ rồi kéo 1 câu để đổi thứ tự — lưu trên máy
-/// (AppStorage), câu hỏi mới server thêm sẽ nằm cuối.
+/// (AppStorage), câu hỏi mới server thêm sẽ nằm cuối. Thứ tự mặc định do server xếp theo nhóm liên quan (hàng hoá →
+/// bán hàng → Xu); khoá lưu đổi sang ".v2" (25/10/2026) để mọi máy về đúng thứ tự nhóm mới, kéo lại thì lưu lại bình thường.
 struct TroLyView: View {
-    @AppStorage("troLy.thuTu") private var thuTuRaw = ""
+    @AppStorage("troLy.thuTu.v2") private var thuTuRaw = ""
     @State private var tongQuan: TroLyTraLoi?
     @State private var cauHoi: [TroLyCauHoi] = []
     @State private var traLoi: [String: TroLyTraLoi] = [:]
@@ -154,7 +155,10 @@ struct TroLyView: View {
                         .buttonStyle(.plain)
 
                         if moRa.contains(c.ma) {
-                            if let tl = traLoi[c.ma] {
+                            if c.ma == Self.maLayHang {
+                                // Có màn tương tác riêng (chọn đại lý, sửa đơn tối thiểu) — không qua chi-tiet.
+                                LayHangView()
+                            } else if let tl = traLoi[c.ma] {
                                 TroLyTraLoiView(traLoi: tl)
                             } else if !dangHoi.contains(c.ma) {
                                 Text("Không tải được, chạm lại để thử.").font(.subheadline).foregroundColor(.textMuted)
@@ -219,7 +223,7 @@ struct TroLyView: View {
         dangTai = false
         // Câu nào đang mở thì làm mới luôn; câu đã tải mà đang đóng thì bỏ để lần mở sau tải số mới.
         traLoi = traLoi.filter { moRa.contains($0.key) }
-        for ma in moRa { Task { await hoi(ma) } }
+        for ma in moRa where ma != Self.maLayHang { Task { await hoi(ma) } }
     }
 
     private func taiDaXuLy() async {
@@ -338,11 +342,16 @@ struct TroLyView: View {
         return parts.joined(separator: " · ")
     }
 
+    private static let maLayHang = "lay-hang"
+
     private static let icon: [String: String] = [
         "can-nhap": "cart",
+        "lay-hang": "list.clipboard",
         "ton-kho": "shippingbox",
         "doanh-thu": "chart.line.uptrend.xyaxis",
         "ban-chay": "trophy",
+        "ban-chay-30-ngay": "calendar",
+        "nap-xu": "banknote",
     ]
 
     private func bamCauHoi(_ ma: String) {
@@ -352,7 +361,7 @@ struct TroLyView: View {
                 _ = moRa.remove(ma)
             } else {
                 _ = moRa.insert(ma)
-                if traLoi[ma] == nil { Task { await hoi(ma) } }
+                if traLoi[ma] == nil && ma != Self.maLayHang { Task { await hoi(ma) } }
             }
         }
     }

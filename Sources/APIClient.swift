@@ -704,6 +704,53 @@ actor APIClient {
         return env.data
     }
 
+    // ===== Trợ lý ảo: Lên đơn lấy hàng (đại lý + đề xuất hàng nên lấy) =====
+
+    /// Các đại lý lấy hàng + đơn tối thiểu đã lưu — nil nếu lỗi mạng.
+    func getLayHangDaiLy() async -> [LayHangDaiLy]? {
+        let req = makeRequest("/api/TroLy/lay-hang/dai-ly")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[LayHangDaiLy]>.self, from: data), env.isSuccess else { return nil }
+        return env.data ?? []
+    }
+
+    /// Đề xuất hàng nên lấy ở 1 đại lý. donToiThieu nil = dùng mức đã lưu của đại lý. Trả (kết quả, thông báo lỗi).
+    /// Món không có công thức hỏi AI nên có thể mất vài giây.
+    func getLayHang(daiLyId: String, donToiThieu: Double?) async -> (LayHang?, String?) {
+        var path = "/api/TroLy/lay-hang/\(daiLyId)"
+        if let donToiThieu { path += "?donToiThieu=\(Int(donToiThieu))" }
+        let (data, _) = await send(makeRequest(path))
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<LayHang>.self, from: data) else {
+            return (nil, "Không kết nối được máy chủ.")
+        }
+        return env.isSuccess ? (env.data, nil) : (nil, env.message ?? "Không tính được đơn.")
+    }
+
+    func datDonToiThieu(daiLyId: String, donToiThieu: Double) async -> ActionResult {
+        let req = makeRequest("/api/TroLy/lay-hang/dai-ly/\(daiLyId)/don-toi-thieu", method: "PUT",
+                              body: jsonBody(["donToiThieu": donToiThieu]))
+        return await executeAction(req)
+    }
+
+    func taoDaiLyLayHang(ten: String) async -> ActionResult {
+        let req = makeRequest("/api/TroLy/lay-hang/dai-ly", method: "POST", body: jsonBody(["ten": ten]))
+        return await executeAction(req)
+    }
+
+    /// Mọi nguyên liệu + cái nào đại lý này lấy được — nil nếu lỗi.
+    func getLayHangMatHang(daiLyId: String) async -> [LayHangMatHang]? {
+        let (data, _) = await send(makeRequest("/api/TroLy/lay-hang/dai-ly/\(daiLyId)/mat-hang"))
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[LayHangMatHang]>.self, from: data), env.isSuccess else { return nil }
+        return env.data ?? []
+    }
+
+    /// Đặt lại TOÀN BỘ mặt hàng của đại lý.
+    func datLayHangMatHang(daiLyId: String, nguyenLieuIds: [String]) async -> ActionResult {
+        let req = makeRequest("/api/TroLy/lay-hang/dai-ly/\(daiLyId)/mat-hang", method: "PUT",
+                              body: jsonBody(["nguyenLieuIds": nguyenLieuIds]))
+        return await executeAction(req)
+    }
+
     /// Trợ lý ảo: việc cần xử lý (lỗi, VPS, lệch ví, backup — thay Discord). nil nếu lỗi mạng hoặc không
     /// phải tài khoản Admin (server trả 403) — màn trợ lý ẩn hẳn mục này.
     func getCanhBao(daXuLy: Bool = false) async -> [CanhBaoHeThong]? {
