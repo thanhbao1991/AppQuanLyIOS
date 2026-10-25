@@ -714,11 +714,11 @@ actor APIClient {
         return env.data ?? []
     }
 
-    /// Đề xuất hàng nên lấy ở 1 đại lý. donToiThieu nil = dùng mức đã lưu của đại lý. Trả (kết quả, thông báo lỗi).
+    /// Đề xuất hàng nên lấy ở 1 đại lý. soLuongToiThieu nil = dùng mức đã lưu của đại lý. Trả (kết quả, thông báo lỗi).
     /// Món không có công thức hỏi AI nên có thể mất vài giây.
-    func getLayHang(daiLyId: String, donToiThieu: Double?) async -> (LayHang?, String?) {
+    func getLayHang(daiLyId: String, soLuongToiThieu: Int?) async -> (LayHang?, String?) {
         var path = "/api/TroLy/lay-hang/\(daiLyId)"
-        if let donToiThieu { path += "?donToiThieu=\(Int(donToiThieu))" }
+        if let soLuongToiThieu { path += "?soLuongToiThieu=\(soLuongToiThieu)" }
         let (data, _) = await send(makeRequest(path))
         guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<LayHang>.self, from: data) else {
             return (nil, "Không kết nối được máy chủ.")
@@ -726,9 +726,9 @@ actor APIClient {
         return env.isSuccess ? (env.data, nil) : (nil, env.message ?? "Không tính được đơn.")
     }
 
-    func datDonToiThieu(daiLyId: String, donToiThieu: Double) async -> ActionResult {
-        let req = makeRequest("/api/TroLy/lay-hang/dai-ly/\(daiLyId)/don-toi-thieu", method: "PUT",
-                              body: jsonBody(["donToiThieu": donToiThieu]))
+    func datSoLuongToiThieu(daiLyId: String, soLuongToiThieu: Int) async -> ActionResult {
+        let req = makeRequest("/api/TroLy/lay-hang/dai-ly/\(daiLyId)/so-luong-toi-thieu", method: "PUT",
+                              body: jsonBody(["soLuongToiThieu": soLuongToiThieu]))
         return await executeAction(req)
     }
 

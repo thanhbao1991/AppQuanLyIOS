@@ -6,7 +6,8 @@ import UIKit
 struct LayHangDaiLy: Codable, Identifiable, Equatable {
     let id: String
     let ten: String
-    let donToiThieu: Double
+    /// Số lượng tối thiểu (tổng đơn vị nhập: thùng/lốc…) của 1 đơn ở đại lý này, mặc định 4.
+    let soLuongToiThieu: Int
     let soMatHang: Int
 }
 
@@ -41,7 +42,8 @@ struct LayHangAiDong: Codable, Identifiable, Equatable {
 struct LayHang: Codable, Equatable {
     let nhaCungCapId: String
     let tenDaiLy: String
-    let donToiThieu: Double
+    let soLuongToiThieu: Int
+    let tongSoLuong: Int
     let tongTien: Double
     let datToiThieu: Bool
     let dong: [LayHangDong]
@@ -61,10 +63,10 @@ struct LayHangMatHang: Codable, Identifiable, Equatable {
 // MARK: - Logic hiển thị (tách riêng để test)
 
 enum LayHangFormat {
-    /// "1.500.000" / "1500000" / "1,5tr" không hiểu → chỉ lấy chữ số. Rỗng → nil.
-    static func doiSo(_ s: String) -> Double? {
+    /// "4" / " 12 " → chỉ lấy chữ số. Rỗng → nil.
+    static func doiSo(_ s: String) -> Int? {
         let so = s.filter(\.isNumber)
-        return so.isEmpty ? nil : Double(so)
+        return so.isEmpty ? nil : Int(so)
     }
 
     static func soNguyen(_ v: Double) -> String {
@@ -87,7 +89,7 @@ enum LayHangFormat {
     static func vanBanDon(_ kq: LayHang) -> String {
         var dong = kq.dong.map { "- \($0.ten) x\($0.soLuong)" }
         dong += kq.uocLuongAi.map { "- \($0.ten) x\($0.soLuong)" }
-        return (["Đơn lấy hàng — \(kq.tenDaiLy)"] + dong + ["Tổng: \(HoaDonFormatting.money(kq.tongTien))"]).joined(separator: "\n")
+        return (["Đơn lấy hàng — \(kq.tenDaiLy)"] + dong + ["Tổng: \(kq.tongSoLuong) thùng — \(HoaDonFormatting.money(kq.tongTien))"]).joined(separator: "\n")
     }
 }
 
@@ -97,18 +99,18 @@ enum LayHangFormat {
 final class LayHangModel: ObservableObject {
     @Published var daiLy: [LayHangDaiLy] = []
     @Published var chon: String?
-    @Published var donToiThieuText = ""
+    @Published var soLuongToiThieuText = ""
     @Published var ketQua: LayHang?
     @Published var dangTai = false
     @Published var loi: String?
     @Published var daTaiDanhSach = false
 
     var daiLyDangChon: LayHangDaiLy? { daiLy.first { $0.id == chon } }
-    var mucDangNhap: Double? { LayHangFormat.doiSo(donToiThieuText) }
-    /// Mức đang gõ khác mức đã lưu của đại lý → hiện nút "Lưu làm mặc định".
+    var mucDangNhap: Int? { LayHangFormat.doiSo(soLuongToiThieuText) }
+    /// Mức đang gõ khác mức đã lưu của đại lý → hiện nút "Lưu mặc định".
     var daDoiMuc: Bool {
         guard let d = daiLyDangChon, let m = mucDangNhap else { return false }
-        return m != d.donToiThieu
+        return m != d.soLuongToiThieu
     }
 
     func taiDanhSach() async {
@@ -121,13 +123,13 @@ final class LayHangModel: ObservableObject {
         daTaiDanhSach = true
         loi = nil
         if chon == nil || !ds.contains(where: { $0.id == chon }) { chon = ds.first?.id }
-        if let d = daiLyDangChon { donToiThieuText = String(Int(d.donToiThieu)) }
+        if let d = daiLyDangChon { soLuongToiThieuText = String(d.soLuongToiThieu) }
         await tinh(dungMucDaLuu: true)
     }
 
     func chonDaiLy(_ id: String) async {
         chon = id
-        if let d = daiLyDangChon { donToiThieuText = String(Int(d.donToiThieu)) }
+        if let d = daiLyDangChon { soLuongToiThieuText = String(d.soLuongToiThieu) }
         await tinh(dungMucDaLuu: true)
     }
 
@@ -136,15 +138,15 @@ final class LayHangModel: ObservableObject {
         guard let id = chon else { ketQua = nil; return }
         dangTai = true
         loi = nil
-        let (kq, err) = await APIClient.shared.getLayHang(daiLyId: id, donToiThieu: dungMucDaLuu ? nil : mucDangNhap)
+        let (kq, err) = await APIClient.shared.getLayHang(daiLyId: id, soLuongToiThieu: dungMucDaLuu ? nil : mucDangNhap)
         dangTai = false
         if let kq { ketQua = kq } else { ketQua = nil; loi = err }
     }
 
-    /// Lưu mức đang gõ làm mặc định của đại lý. Trả thông báo lỗi (nil = thành công).
+    /// Lưu số lượng đang gõ làm mặc định của đại lý. Trả thông báo lỗi (nil = thành công).
     func luuMuc() async -> String? {
-        guard let id = chon, let muc = mucDangNhap else { return "Nhập số tiền hợp lệ." }
-        let kq = await APIClient.shared.datDonToiThieu(daiLyId: id, donToiThieu: muc)
+        guard let id = chon, let muc = mucDangNhap else { return "Nhập số lượng hợp lệ." }
+        let kq = await APIClient.shared.datSoLuongToiThieu(daiLyId: id, soLuongToiThieu: muc)
         guard kq.success else { return kq.message ?? "Không lưu được." }
         if let ds = await APIClient.shared.getLayHangDaiLy() { daiLy = ds }
         return nil
@@ -163,7 +165,7 @@ final class LayHangModel: ObservableObject {
 
 // MARK: - Màn "Lên đơn lấy hàng" (mở ngay trong Trợ lý ảo)
 
-/// Chọn đại lý → hàng nên lấy sao cho đủ đơn tối thiểu (mặc định 1 triệu, sửa được, lưu được) và các món hết đều
+/// Chọn đại lý → hàng nên lấy sao cho đủ SỐ LƯỢNG tối thiểu (mặc định 4 thùng, sửa được, lưu được) và các món hết đều
 /// nhau. Món có công thức tính bằng code; món không có công thức do AI ước theo lịch sử mua (có nhãn "AI ước").
 struct LayHangView: View {
     @StateObject private var model = LayHangModel()
@@ -205,7 +207,7 @@ struct LayHangView: View {
                 Task { thongBao = await model.taoDaiLy(ten: ten) }
             }
         } message: {
-            Text("Đơn tối thiểu mặc định 1.000.000đ, sửa được sau. Thêm xong chọn mặt hàng đại lý đó bán.")
+            Text("Số lượng tối thiểu mặc định 4 thùng, sửa được sau. Thêm xong chọn mặt hàng đại lý đó bán.")
         }
         .navigationDestination(isPresented: $hienMatHang) {
             if let d = model.daiLyDangChon {
@@ -242,14 +244,14 @@ struct LayHangView: View {
 
     private var donToiThieuRow: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Đơn tối thiểu").font(.caption).foregroundColor(.textMuted)
+            Text("Số lượng tối thiểu").font(.caption).foregroundColor(.textMuted)
             HStack(spacing: 8) {
-                TextField("1000000", text: $model.donToiThieuText)
+                TextField("4", text: $model.soLuongToiThieuText)
                     .keyboardType(.numberPad)
                     .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: 160)
+                    .frame(maxWidth: 80)
                     .onSubmit { Task { await model.tinh() } }
-                Text("đ").foregroundColor(.textMuted)
+                Text("thùng").foregroundColor(.textMuted)
                 Button("Tính lại") { Task { await model.tinh() } }
                     .buttonStyle(.borderless)
                     .font(.subheadline.weight(.semibold))
@@ -261,9 +263,6 @@ struct LayHangView: View {
                     .buttonStyle(.borderless)
                     .font(.subheadline.weight(.semibold))
                 }
-            }
-            if let m = model.mucDangNhap {
-                Text(HoaDonFormatting.money(m)).font(.caption2).foregroundColor(.textMuted)
             }
         }
     }
@@ -298,10 +297,13 @@ struct LayHangView: View {
 
     private func tongKet(_ kq: LayHang) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(HoaDonFormatting.money(kq.tongTien)).font(.title2.weight(.bold)).monospacedDigit()
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(kq.tongSoLuong) thùng").font(.title2.weight(.bold)).monospacedDigit()
+                Text(HoaDonFormatting.money(kq.tongTien)).font(.subheadline).foregroundColor(.textMuted).monospacedDigit()
+            }
             Spacer()
             if !(kq.dong.isEmpty && kq.uocLuongAi.isEmpty) {
-                Label(kq.datToiThieu ? "Đủ đơn tối thiểu" : "Chưa đủ tối thiểu",
+                Label(kq.datToiThieu ? "Đủ số lượng tối thiểu" : "Chưa đủ tối thiểu",
                       systemImage: kq.datToiThieu ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                     .font(.footnote.weight(.semibold))
                     .foregroundColor(kq.datToiThieu ? .green : .orange)

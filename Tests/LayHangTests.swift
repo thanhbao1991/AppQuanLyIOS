@@ -9,7 +9,7 @@ final class LayHangTests: XCTestCase {
         let json = """
         {"isSuccess":true,"message":null,"warnings":null,"data":{
           "nhaCungCapId":"11111111-1111-1111-1111-111111111111","tenDaiLy":"Mini Mart K7",
-          "donToiThieu":1000000,"tongTien":1086000,"datToiThieu":true,
+          "soLuongToiThieu":4,"tongSoLuong":4,"tongTien":671000,"datToiThieu":true,
           "dong":[{"nguyenLieuId":"a","ten":"Revive (Thùng)","donViTinh":"Thùng","soLuong":3,"donGia":167000,
                    "thanhTien":501000,"donViBan":"Chai","tonHienTai":4,"tonSau":76,"ngayConTruoc":0.8,"ngayConSau":22.2}],
           "uocLuongAi":[{"nguyenLieuId":"b","ten":"Hạt Dưa (Lốc 20)","donViTinh":"Lốc","soLuong":1,"donGia":170000,
@@ -21,7 +21,8 @@ final class LayHangTests: XCTestCase {
 
         XCTAssertTrue(env.isSuccess)
         XCTAssertEqual(kq.tenDaiLy, "Mini Mart K7")
-        XCTAssertEqual(kq.donToiThieu, 1_000_000)
+        XCTAssertEqual(kq.soLuongToiThieu, 4)
+        XCTAssertEqual(kq.tongSoLuong, 4)
         XCTAssertTrue(kq.datToiThieu)
         XCTAssertEqual(kq.dong.first?.soLuong, 3)
         XCTAssertEqual(kq.dong.first?.ngayConSau, 22.2)
@@ -42,9 +43,9 @@ final class LayHangTests: XCTestCase {
     }
 
     func test_doiSo_chiLayChuSo() {
-        XCTAssertEqual(LayHangFormat.doiSo("1.500.000"), 1_500_000)
-        XCTAssertEqual(LayHangFormat.doiSo(" 2 000 "), 2_000)
-        XCTAssertEqual(LayHangFormat.doiSo("1000000"), 1_000_000)
+        XCTAssertEqual(LayHangFormat.doiSo("4"), 4)
+        XCTAssertEqual(LayHangFormat.doiSo(" 12 "), 12)
+        XCTAssertEqual(LayHangFormat.doiSo("1.5"), 15)
         XCTAssertNil(LayHangFormat.doiSo(""))
         XCTAssertNil(LayHangFormat.doiSo("abc"))
     }
@@ -66,9 +67,9 @@ final class LayHangTests: XCTestCase {
                                thanhTien: 501_000, donViBan: "Chai", tonHienTai: 4, tonSau: 76, ngayConTruoc: 0.8, ngayConSau: 22.2)
         let ai = LayHangAiDong(nguyenLieuId: "b", ten: "Hạt Dưa (Lốc 20)", donViTinh: "Lốc", soLuong: 1, donGia: 170_000,
                                thanhTien: 170_000, lyDo: "tới nhịp mua")
-        let kq = LayHang(nhaCungCapId: "x", tenDaiLy: "Mini Mart K7", donToiThieu: 1_000_000, tongTien: 671_000,
-                         datToiThieu: false, dong: [dong], uocLuongAi: [ai], boQua: [])
+        let kq = LayHang(nhaCungCapId: "x", tenDaiLy: "Mini Mart K7", soLuongToiThieu: 4, tongSoLuong: 4, tongTien: 671_000,
+                         datToiThieu: true, dong: [dong], uocLuongAi: [ai], boQua: [])
         XCTAssertEqual(LayHangFormat.vanBanDon(kq),
-                       "Đơn lấy hàng — Mini Mart K7\n- Revive (Thùng) x3\n- Hạt Dưa (Lốc 20) x1\nTổng: 671.000đ")
+                       "Đơn lấy hàng — Mini Mart K7\n- Revive (Thùng) x3\n- Hạt Dưa (Lốc 20) x1\nTổng: 4 thùng — 671.000đ")
     }
 }
