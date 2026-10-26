@@ -79,10 +79,10 @@ enum LayHangFormat {
         return d < 1 ? "<1 ngày" : "~\(Int(d.rounded())) ngày"
     }
 
-    /// Dòng phụ của món tính bằng công thức: "Tồn 4 chai (<1 ngày) → 76 (~22 ngày)".
+    /// Dòng phụ của món tính bằng công thức: "Tồn 4 chai · <1 ngày → ~22 ngày".
     static func dongPhu(_ d: LayHangDong) -> String {
         let donVi = d.donViBan.map { " \($0.lowercased())" } ?? ""
-        return "Tồn \(soNguyen(d.tonHienTai))\(donVi) (\(ngay(d.ngayConTruoc))) → \(soNguyen(d.tonSau)) (\(ngay(d.ngayConSau)))"
+        return "Tồn \(soNguyen(d.tonHienTai))\(donVi) · \(ngay(d.ngayConTruoc)) → \(ngay(d.ngayConSau))"
     }
 
     /// Nội dung đơn để dán gửi đại lý (Zalo/tin nhắn).
@@ -125,6 +125,19 @@ final class LayHangModel: ObservableObject {
         if chon == nil || !ds.contains(where: { $0.id == chon }) { chon = ds.first?.id }
         if let d = daiLyDangChon { soLuongToiThieuText = String(d.soLuongToiThieu) }
         await tinh(dungMucDaLuu: true)
+    }
+
+    private var tinhTreo: Task<Void, Never>?
+
+    /// Bấm +/− số lượng tối thiểu: tự tính lại sau 0,5 giây (bấm liền nhiều lần chỉ gọi server 1 lần).
+    func doiMuc(_ v: Int) {
+        soLuongToiThieuText = String(v)
+        tinhTreo?.cancel()
+        tinhTreo = Task {
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            guard !Task.isCancelled else { return }
+            await tinh()
+        }
     }
 
     func chonDaiLy(_ id: String) async {
@@ -225,6 +238,7 @@ struct LayHangView: View {
         .buttonStyle(.borderless)
     }
 
+    /// Đại lý (chỉ tên) + menu "…" gom các thao tác ít dùng.
     private var chonDaiLyRow: some View {
         HStack(spacing: 10) {
             Picker("Đại lý", selection: Binding(
@@ -232,38 +246,41 @@ struct LayHangView: View {
                 set: { id in Task { await model.chonDaiLy(id) } }
             )) {
                 ForEach(model.daiLy) { d in
-                    Text("\(d.ten) · \(d.soMatHang) mặt hàng").tag(d.id)
+                    Text(d.ten).tag(d.id)
                 }
             }
             .pickerStyle(.menu)
             .labelsHidden()
             Spacer(minLength: 0)
-            themDaiLyButton
+            Menu {
+                Button { hienMatHang = true } label: {
+                    Label("Mặt hàng của đại lý (\(model.daiLyDangChon?.soMatHang ?? 0))", systemImage: "list.bullet")
+                }
+                Button { hienTaoDaiLy = true } label: {
+                    Label("Thêm đại lý", systemImage: "plus")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle").font(.title3)
+            }
         }
     }
 
+    /// Tối thiểu (thùng, cây, bao… tính như nhau): bấm +/− là tự tính lại, không cần nút "Tính lại".
     private var donToiThieuRow: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Số lượng tối thiểu").font(.caption).foregroundColor(.textMuted)
-            HStack(spacing: 8) {
-                TextField("4", text: $model.soLuongToiThieuText)
-                    .keyboardType(.numberPad)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: 80)
-                    .onSubmit { Task { await model.tinh() } }
-                Text("(thùng, cây, bao… như nhau)").font(.caption).foregroundColor(.textMuted)
-                Button("Tính lại") { Task { await model.tinh() } }
+        HStack(spacing: 10) {
+            Text("Tối thiểu").font(.subheadline).foregroundColor(.textMuted)
+            Text("\(model.mucDangNhap ?? 0) đơn vị").font(.subheadline.weight(.semibold)).monospacedDigit()
+            if model.daDoiMuc {
+                Button("Lưu") { Task { thongBao = await model.luuMuc() } }
                     .buttonStyle(.borderless)
                     .font(.subheadline.weight(.semibold))
-                    .disabled(model.mucDangNhap == nil || model.dangTai)
-                if model.daDoiMuc {
-                    Button("Lưu mặc định") {
-                        Task { thongBao = await model.luuMuc() }
-                    }
-                    .buttonStyle(.borderless)
-                    .font(.subheadline.weight(.semibold))
-                }
             }
+            Spacer(minLength: 0)
+            Stepper("Tối thiểu", value: Binding(
+                get: { model.mucDangNhap ?? 4 },
+                set: { model.doiMuc($0) }
+            ), in: 1...50)
+            .labelsHidden()
         }
     }
 
@@ -297,38 +314,44 @@ struct LayHangView: View {
 
     private func tongKet(_ kq: LayHang) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("\(kq.tongSoLuong) đơn vị").font(.title2.weight(.bold)).monospacedDigit()
-                Text(HoaDonFormatting.money(kq.tongTien)).font(.subheadline).foregroundColor(.textMuted).monospacedDigit()
-            }
+            Text(HoaDonFormatting.money(kq.tongTien)).font(.title2.weight(.bold)).monospacedDigit()
             Spacer()
             if !(kq.dong.isEmpty && kq.uocLuongAi.isEmpty) {
-                Label(kq.datToiThieu ? "Đủ số lượng tối thiểu" : "Chưa đủ tối thiểu",
+                Label("\(kq.tongSoLuong)/\(kq.soLuongToiThieu)",
                       systemImage: kq.datToiThieu ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                    .font(.footnote.weight(.semibold))
+                    .font(.subheadline.weight(.semibold)).monospacedDigit()
                     .foregroundColor(kq.datToiThieu ? .green : .orange)
             }
         }
     }
 
+    /// "2×" đứng đầu dòng, cột cố định cho thẳng hàng.
+    private func soLuongCot(_ n: Int) -> some View {
+        Text("\(n)×").font(.subheadline.weight(.bold)).monospacedDigit()
+            .foregroundColor(.brandPrimary)
+            .frame(minWidth: 26, alignment: .leading)
+    }
+
     private func dongCongThuc(_ d: LayHangDong) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            soLuongCot(d.soLuong)
             VStack(alignment: .leading, spacing: 2) {
-                Text("\(d.ten) × \(d.soLuong)").font(.subheadline.weight(.medium))
+                Text(d.ten).font(.subheadline.weight(.medium))
                 Text(LayHangFormat.dongPhu(d)).font(.caption).foregroundColor(.textMuted)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 8)
-            Text(HoaDonFormatting.money(d.thanhTien)).font(.subheadline.weight(.semibold)).monospacedDigit()
+            Text(HoaDonFormatting.money(d.thanhTien)).font(.subheadline).monospacedDigit()
         }
         .padding(.vertical, 8)
     }
 
     private func dongAi(_ d: LayHangAiDong) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            soLuongCot(d.soLuong)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
-                    Text("\(d.ten) × \(d.soLuong)").font(.subheadline.weight(.medium))
+                    Text(d.ten).font(.subheadline.weight(.medium))
                     Text("AI ước")
                         .font(.caption2.weight(.bold)).foregroundColor(.white)
                         .padding(.horizontal, 6).padding(.vertical, 2)
@@ -338,7 +361,7 @@ struct LayHangView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 8)
-            Text(HoaDonFormatting.money(d.thanhTien)).font(.subheadline.weight(.semibold)).monospacedDigit()
+            Text(HoaDonFormatting.money(d.thanhTien)).font(.subheadline).monospacedDigit()
         }
         .padding(.vertical, 8)
     }
@@ -361,26 +384,22 @@ struct LayHangView: View {
         }
     }
 
-    private var hanhDongRow: some View {
-        HStack(spacing: 18) {
-            if let kq = model.ketQua, !(kq.dong.isEmpty && kq.uocLuongAi.isEmpty) {
-                Button {
-                    UIPasteboard.general.string = LayHangFormat.vanBanDon(kq)
-                    daSaoChep = true
-                    Task {
-                        try? await Task.sleep(nanoseconds: 2_000_000_000)
-                        daSaoChep = false
-                    }
-                } label: {
-                    Label(daSaoChep ? "Đã sao chép" : "Sao chép đơn", systemImage: daSaoChep ? "checkmark" : "doc.on.doc")
-                        .font(.subheadline.weight(.semibold))
+    /// Chỉ còn 1 nút chính; "Mặt hàng của đại lý" / "Thêm đại lý" nằm trong menu "…" ở đầu.
+    @ViewBuilder private var hanhDongRow: some View {
+        if let kq = model.ketQua, !(kq.dong.isEmpty && kq.uocLuongAi.isEmpty) {
+            Button {
+                UIPasteboard.general.string = LayHangFormat.vanBanDon(kq)
+                daSaoChep = true
+                Task {
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                    daSaoChep = false
                 }
-                .buttonStyle(.borderless)
+            } label: {
+                Label(daSaoChep ? "Đã sao chép" : "Sao chép đơn", systemImage: daSaoChep ? "checkmark" : "doc.on.doc")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
             }
-            Button { hienMatHang = true } label: {
-                Label("Mặt hàng của đại lý", systemImage: "list.bullet").font(.subheadline.weight(.semibold))
-            }
-            .buttonStyle(.borderless)
+            .buttonStyle(.bordered)
         }
     }
 }

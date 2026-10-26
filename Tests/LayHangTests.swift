@@ -59,7 +59,7 @@ final class LayHangTests: XCTestCase {
     func test_dongPhu_tonTruocSau() {
         let d = LayHangDong(nguyenLieuId: "a", ten: "Revive (Thùng)", donViTinh: "Thùng", soLuong: 3, donGia: 167_000,
                             thanhTien: 501_000, donViBan: "Chai", tonHienTai: 4, tonSau: 76, ngayConTruoc: 0.8, ngayConSau: 22.2)
-        XCTAssertEqual(LayHangFormat.dongPhu(d), "Tồn 4 chai (<1 ngày) → 76 (~22 ngày)")
+        XCTAssertEqual(LayHangFormat.dongPhu(d), "Tồn 4 chai · <1 ngày → ~22 ngày")
     }
 
     func test_vanBanDon_gomMonCongThucVaMonAi() {
