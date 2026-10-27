@@ -415,9 +415,9 @@ private struct MoreMenuView: View {
                     }
 
                     NavigationLink {
-                        ShopeeVoucherView()
+                        FacebookReelsView()
                     } label: {
-                        Label("Voucher Shopee ≥25%", systemImage: "ticket")
+                        Label("Reels Giả thuyết Kiến trúc", systemImage: "play.rectangle.on.rectangle")
                     }
                 }
 
