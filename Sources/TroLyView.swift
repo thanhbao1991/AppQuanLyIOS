@@ -48,6 +48,9 @@ struct TroLyTraLoi: Codable, Equatable {
     let trangThai: String?
     let dong: [Dong]
     let bieuDo: BieuDo?
+    /// Báo cáo chia cột cạnh nhau (vd iPhone | Android): mỗi cột tieuDe = tên cột, moTa = số chính. Có thì vẽ
+    /// cột thay cho dong/bieuDo (server vẫn gửi dong/bieuDo cho bản app cũ).
+    let cot: [TroLyTraLoi]?
 }
 
 /// Việc "Cần xử lý" (GET /api/TroLy/canh-bao) — lỗi API/crash, VPS (RAM/disk/SQL), lệch ví, backup. Thay Discord
@@ -407,7 +410,14 @@ struct TroLyTraLoiView: View {
                 SoLon(giaTri: td, moTa: traLoi.moTa, soSanh: traLoi.soSanh, tang: traLoi.soSanhTang)
             }
 
-            if let bd = traLoi.bieuDo, !bd.diem.isEmpty {
+            if let cot = traLoi.cot, !cot.isEmpty {
+                HStack(alignment: .top, spacing: 12) {
+                    ForEach(Array(cot.enumerated()), id: \.offset) { i, c in
+                        if i > 0 { Divider() }
+                        TroLyCotView(cot: c).frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            } else if let bd = traLoi.bieuDo, !bd.diem.isEmpty {
                 switch bd.loai {
                 case "duong":
                     BieuDoCongDon(diem: bd.diem.map {
@@ -417,7 +427,9 @@ struct TroLyTraLoiView: View {
                 }
             }
 
-            if !traLoi.dong.isEmpty && !anDong {
+            if traLoi.cot?.isEmpty == false {
+                EmptyView()
+            } else if !traLoi.dong.isEmpty && !anDong {
                 TroLyDongList(dong: traLoi.dong, onSua: onSua)
             } else if traLoi.dong.isEmpty, let tdiep = traLoi.thongDiep {
                 Label(tdiep, systemImage: traLoi.trangThai == "ok" ? "checkmark.circle.fill" : "info.circle")
@@ -475,6 +487,38 @@ struct TroLyDongList: View {
                 .padding(.vertical, 8)
                 .contentShape(Rectangle())
                 .onTapGesture { if d.nguyenLieuBanHangId != nil { onSua?(d) } }
+            }
+        }
+    }
+}
+
+/// 1 cột của báo cáo chia cột: tên cột + số chính, các dòng gọn (tên trái, giá trị phải), rồi biểu đồ cột ngang.
+struct TroLyCotView: View {
+    let cot: TroLyTraLoi
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 0) {
+                if let td = cot.tieuDe { Text(td).font(.subheadline).foregroundColor(.textMuted) }
+                if let mt = cot.moTa { Text(mt).font(.title3.weight(.bold)).monospacedDigit() }
+            }
+            VStack(spacing: 0) {
+                ForEach(Array(cot.dong.enumerated()), id: \.element.id) { i, d in
+                    if i > 0 { Divider() }
+                    HStack(spacing: 6) {
+                        Circle().fill(d.mucDo == nil ? Color.green : TroLyMau.theoMucDo(d.mucDo)).frame(width: 7, height: 7)
+                        Text(d.ten).font(.caption).lineLimit(1).minimumScaleFactor(0.8)
+                        Spacer(minLength: 4)
+                        Text(d.giaTri)
+                            .font(.caption.weight(.semibold))
+                            .monospacedDigit()
+                            .foregroundColor(d.mucDo == "thap" ? TroLyMau.theoMucDo(d.mucDo) : .primary)
+                    }
+                    .padding(.vertical, 6)
+                }
+            }
+            if let bd = cot.bieuDo, !bd.diem.isEmpty {
+                TroLyBieuDoCot(bieuDo: bd)
             }
         }
     }
