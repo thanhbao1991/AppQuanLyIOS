@@ -29,9 +29,13 @@ struct GioThapDiemView: View {
         return itemsGio.filter { $0.gio >= mo && $0.gio < dong }
     }
 
+    private var goiYGio: (batDau: Int, ketThuc: Int)? { Self.goiYGio(itemsGioMoCua) }
+
+    private var goiYThu: Set<Int> { Self.goiYThu(itemsThu) }
+
     /// Khung 2 giờ liên tiếp trong giờ mở bán có tổng doanh thu thấp nhất.
-    private var goiYGio: (batDau: Int, ketThuc: Int)? {
-        let sorted = itemsGioMoCua.sorted { $0.gio < $1.gio }
+    static func goiYGio(_ items: [PhanBoDonTheoGioItemDto]) -> (batDau: Int, ketThuc: Int)? {
+        let sorted = items.sorted { $0.gio < $1.gio }
         var best: (batDau: Int, ketThuc: Int, tong: Double)?
         for i in 0..<sorted.count {
             let j = i + 1
@@ -46,8 +50,8 @@ struct GioThapDiemView: View {
     }
 
     /// 2 thứ trong tuần có doanh thu thấp nhất — cùng cỡ "2 đơn vị" với gợi ý giờ cho nhất quán.
-    private var goiYThu: Set<Int> {
-        Set(itemsThu.sorted { $0.doanhThu < $1.doanhThu }.prefix(2).map(\.thu))
+    static func goiYThu(_ items: [PhanBoDoanhThuTheoThuItemDto]) -> Set<Int> {
+        Set(items.sorted { $0.doanhThu < $1.doanhThu }.prefix(2).map(\.thu))
     }
 
     var body: some View {
@@ -120,5 +124,41 @@ struct GioThapDiemView: View {
         async let configTask = APIClient.shared.getGamificationConfig()
         (itemsGio, itemsThu, config) = await (gioTask, thuTask, configTask)
         loading = false
+    }
+}
+
+/// "Giờ vắng khách" bung tại chỗ trong Trợ lý ảo (user 29/10/2026: không cần màn riêng, hạn chế biểu đồ) — chỉ kết
+/// luận giờ + thứ vắng nhất, cùng cách tính GioThapDiemView (màn đó vẫn giữ cho form voucher "Dùng gợi ý này").
+struct GioVangKhachTomTat: View {
+    @State private var ketQua: (gio: (batDau: Int, ketThuc: Int)?, thu: Set<Int>)?
+
+    var body: some View {
+        Group {
+            if let ketQua {
+                if let gio = ketQua.gio {
+                    TheKetLuan(
+                        mucDo: .trungTinh,
+                        tieuDe: "Vắng nhất: \(gio.batDau)h–\(gio.ketThuc)h",
+                        moTa: (ketQua.thu.isEmpty ? "" :
+                            ketQua.thu.sorted().compactMap { tenThuTrongTuan[$0] }.joined(separator: ", ") + " · ") + "30 ngày gần đây")
+                } else {
+                    Text("Chưa đủ dữ liệu 30 ngày gần đây.").font(.subheadline).foregroundColor(.textMuted)
+                }
+            } else {
+                ProgressView()
+            }
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        async let gioTask = APIClient.shared.getPhanBoDonTheoGio(soNgay: 30)
+        async let thuTask = APIClient.shared.getPhanBoDoanhThuTheoThu(soNgay: 30)
+        async let configTask = APIClient.shared.getGamificationConfig()
+        let (gio, thu, config) = await (gioTask, thuTask, configTask)
+        let mo = config?.gioMoCua ?? 0, dong = config?.gioDongCua ?? 24
+        let gioMoCua = gio.filter { $0.gio >= mo && $0.gio < dong }
+        ketQua = (gioMoCua.allSatisfy { $0.doanhThu == 0 } ? nil : GioThapDiemView.goiYGio(gioMoCua),
+                  GioThapDiemView.goiYThu(thu))
     }
 }

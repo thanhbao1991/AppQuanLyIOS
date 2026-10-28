@@ -205,7 +205,7 @@ struct TroLyView: View {
         dangTai = false
         // Câu nào đang mở thì làm mới luôn; câu đã tải mà đang đóng thì bỏ để lần mở sau tải số mới.
         traLoi = traLoi.filter { moRa.contains($0.key) }
-        for ma in moRa where ma != Self.maLayHang { Task { await hoi(ma) } }
+        for ma in moRa where !Self.khongQuaChiTiet.contains(ma) { Task { await hoi(ma) } }
         if daTaiSoDuAi { Task { await taiSoDuAi() } }
     }
 
@@ -332,6 +332,10 @@ struct TroLyView: View {
     }
 
     private static let maLayHang = "lay-hang"
+    /// Giờ vắng khách bung tại chỗ (29/10/2026 user: không cần màn riêng) — giữ mã "man-…" cho khỏi lệch thứ tự đã kéo.
+    private static let maGioVang = "man-gio-vang-khach"
+    /// Câu bung tại chỗ nhưng app tự tải, không gọi /chi-tiet.
+    private static let khongQuaChiTiet: Set<String> = [maLayHang, maGioVang]
 
     private static let icon: [String: String] = [
         "can-nhap": "cart",
@@ -372,7 +376,6 @@ struct TroLyView: View {
 
     @ViewBuilder private static func manXem(_ ma: String) -> some View {
         switch ma {
-        case "man-gio-vang-khach": GioThapDiemView()
         case "man-bao-hoa": BaoHoaView()
         case "man-ban-do-khach": BanDoKhachHangView()
         case "man-phien-ban-app-khach": PhienBanAppKhachView()
@@ -389,7 +392,7 @@ struct TroLyView: View {
                 _ = moRa.remove(ma)
             } else {
                 _ = moRa.insert(ma)
-                if traLoi[ma] == nil && ma != Self.maLayHang { Task { await hoi(ma) } }
+                if traLoi[ma] == nil && !Self.khongQuaChiTiet.contains(ma) { Task { await hoi(ma) } }
             }
         }
     }
@@ -461,7 +464,7 @@ struct TroLyView: View {
             }
             .padding(.vertical, 4)
             .task { if !daTaiSoDuAi { await taiSoDuAi() } }
-        } else if Self.mucTrenMay.contains(where: { $0.ma == c.ma }) {
+        } else if c.ma != Self.maGioVang, Self.mucTrenMay.contains(where: { $0.ma == c.ma }) {
             NavigationLink { Self.manXem(c.ma) } label: {
                 HStack(spacing: 12) { nhanCauHoi(c) }
             }
@@ -495,6 +498,8 @@ struct TroLyView: View {
                 if c.ma == Self.maLayHang {
                     // Có màn tương tác riêng (chọn đại lý, sửa đơn tối thiểu) — không qua chi-tiet.
                     LayHangView()
+                } else if c.ma == Self.maGioVang {
+                    GioVangKhachTomTat()
                 } else if let tl = traLoi[c.ma] {
                     TroLyTraLoiView(traLoi: tl, onSua: { suaTon = $0 })
                 } else if !dangHoi.contains(c.ma) {
