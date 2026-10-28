@@ -137,31 +137,43 @@ private let competitorUIColor = UIColor(red: 0xB0 / 255, green: 0x30 / 255, blue
 
 // MARK: - Annotation types
 
-private final class CustomerAnnotation: NSObject, MKAnnotation {
+/// Mọi chấm khách vẽ trên 1 overlay duy nhất (29/10/2026) — trước đó ~600 MKAnnotationView riêng lẻ (displayPriority
+/// .required) cộng với gỡ/thêm lại toàn bộ mỗi lần SwiftUI gọi updateUIView làm map ĐỨNG HẲN sau một lúc vuốt/zoom
+/// liên tục (user phải thoát màn). Overlay chỉ là 1 renderer vẽ chấm tròn cỡ cố định trên màn hình, không có view nào.
+private final class CustomerDotsOverlay: NSObject, MKOverlay {
+    struct Dot { let point: MKMapPoint; let isSeasonal: Bool }
+    let dots: [Dot]
+    let boundingMapRect: MKMapRect
     let coordinate: CLLocationCoordinate2D
-    let isSeasonal: Bool
-    init(coordinate: CLLocationCoordinate2D, isSeasonal: Bool) {
-        self.coordinate = coordinate
-        self.isSeasonal = isSeasonal
+
+    init(dots: [Dot]) {
+        self.dots = dots
+        let rect = dots.reduce(MKMapRect.null) { $0.union(MKMapRect(origin: $1.point, size: MKMapSize(width: 1, height: 1))) }
+        // Nới viền cho chấm ở rìa không bị cắt nửa; rỗng thì lấy quanh quán.
+        boundingMapRect = (rect.isNull ? MKMapRect(origin: MKMapPoint(storeCoordinate), size: MKMapSize(width: 1, height: 1)) : rect)
+            .insetBy(dx: -2000, dy: -2000)
+        coordinate = storeCoordinate
     }
 }
 
-/// View NHẸ cho chấm khách (thay MKMarkerAnnotationView "balloon" nặng — có bóng đổ/glyph/bezier
-/// phức tạp) — chỉ 1 CALayer tròn đơn giản. ~600 điểm cùng lúc với MKMarkerAnnotationView +
-/// displayPriority=.required (ép hiện đủ, không cho MapKit tự ẩn bớt) làm máy đơ lúc pan/zoom liên
-/// tục (phản hồi 2026-10-04) — đổi sang view nhẹ này để giữ "hiện đủ" mà không đơ.
-private final class CustomerDotAnnotationView: MKAnnotationView {
-    override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
-        super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
-        frame = CGRect(x: 0, y: 0, width: 8, height: 8)
-        layer.cornerRadius = 4
-        layer.masksToBounds = true
-        canShowCallout = false
-        displayPriority = .required
-        collisionMode = .circle
+private final class CustomerDotsRenderer: MKOverlayRenderer {
+    private let dots: [CustomerDotsOverlay.Dot]
+
+    init(dotsOverlay: CustomerDotsOverlay) {
+        dots = dotsOverlay.dots
+        super.init(overlay: dotsOverlay)
     }
 
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    override func draw(_ mapRect: MKMapRect, zoomScale: MKZoomScale, in context: CGContext) {
+        // Đường kính 8pt trên màn hình ở mọi mức zoom; hơi trong suốt để chỗ đông khách tự đậm màu hơn.
+        let r = 4 / zoomScale
+        let vung = mapRect.insetBy(dx: -r, dy: -r)
+        for d in dots where vung.contains(d.point) {
+            let p = point(for: d.point)
+            context.setFillColor((d.isSeasonal ? seasonalUIColor : localUIColor).withAlphaComponent(0.6).cgColor)
+            context.fillEllipse(in: CGRect(x: p.x - r, y: p.y - r, width: 2 * r, height: 2 * r))
+        }
+    }
 }
 
 private final class StoreAnnotation: NSObject, MKAnnotation {
@@ -198,7 +210,6 @@ private struct NativeMapView: UIViewRepresentable {
         map.delegate = context.coordinator
         map.region = MKCoordinateRegion(center: storeCoordinate,
                                          span: MKCoordinateSpan(latitudeDelta: 0.09, longitudeDelta: 0.09))
-        map.register(CustomerDotAnnotationView.self, forAnnotationViewWithReuseIdentifier: "customer")
         map.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: "store")
         map.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: "competitor")
         Task { await context.coordinator.load(into: map) }
@@ -212,7 +223,9 @@ private struct NativeMapView: UIViewRepresentable {
 
     final class Coordinator: NSObject, MKMapViewDelegate {
         var parent: NativeMapView
-        private var allCustomerAnns: [CustomerAnnotation] = []
+        private var allCustomers: [(coordinate: CLLocationCoordinate2D, isSeasonal: Bool)] = []
+        /// Bộ lọc lần vẽ trước — updateUIView bị SwiftUI gọi cả khi màn khác cập nhật, lọc không đổi thì không vẽ lại.
+        private var boLocDaVe: String?
         private var allCompetitorAnns: [CompetitorAnnotation] = []
 
         init(parent: NativeMapView) { self.parent = parent }
@@ -233,8 +246,8 @@ private struct NativeMapView: UIViewRepresentable {
                 return
             }
 
-            allCustomerAnns = customers.map {
-                CustomerAnnotation(coordinate: CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.long), isSeasonal: $0.seasonal)
+            allCustomers = customers.map {
+                (CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.long), $0.seasonal)
             }
             allCompetitorAnns = competitors.map {
                 CompetitorAnnotation(coordinate: CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon), name: $0.name)
@@ -256,14 +269,17 @@ private struct NativeMapView: UIViewRepresentable {
                 CLLocation(latitude: coord.latitude, longitude: coord.longitude).distance(from: storeLocation) < radiusMeters
             }
 
-            let existingCustomers = map.annotations.compactMap { $0 as? CustomerAnnotation }
-            map.removeAnnotations(existingCustomers)
-            let filtered = allCustomerAnns.filter { ann in
-                let categoryOn = (ann.isSeasonal && parent.showSeasonal) || (!ann.isSeasonal && parent.showLocal)
+            let boLoc = "\(parent.showLocal)|\(parent.showSeasonal)|\(parent.showCompetitors)|\(parent.hideWithin2km)|\(parent.hideRadiusKm)|\(allCustomers.count)|\(allCompetitorAnns.count)"
+            guard boLoc != boLocDaVe else { return }
+            boLocDaVe = boLoc
+
+            map.removeOverlays(map.overlays.filter { $0 is CustomerDotsOverlay })
+            let dots = allCustomers.filter { c in
+                let categoryOn = (c.isSeasonal && parent.showSeasonal) || (!c.isSeasonal && parent.showLocal)
                 guard categoryOn else { return false }
-                return !(parent.hideWithin2km && withinRadius(ann.coordinate))
-            }
-            map.addAnnotations(filtered)
+                return !(parent.hideWithin2km && withinRadius(c.coordinate))
+            }.map { CustomerDotsOverlay.Dot(point: MKMapPoint($0.coordinate), isSeasonal: $0.isSeasonal) }
+            if !dots.isEmpty { map.addOverlay(CustomerDotsOverlay(dots: dots), level: .aboveRoads) }
 
             let existingCompetitors = map.annotations.compactMap { $0 as? CompetitorAnnotation }
             map.removeAnnotations(existingCompetitors)
@@ -275,16 +291,12 @@ private struct NativeMapView: UIViewRepresentable {
             }
         }
 
+        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            if let dots = overlay as? CustomerDotsOverlay { return CustomerDotsRenderer(dotsOverlay: dots) }
+            return MKOverlayRenderer(overlay: overlay)
+        }
+
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
-            if let c = annotation as? CustomerAnnotation {
-                let view = mapView.dequeueReusableAnnotationView(withIdentifier: "customer", for: c) as! CustomerDotAnnotationView
-                // KHONG gom cum (clusteringIdentifier) nua - xem comment dau file.
-                view.backgroundColor = c.isSeasonal ? seasonalUIColor : localUIColor
-                // Hơi trong suốt để chấm chồng lên nhau khi zoom xa tự nhiên đậm màu hơn (cảm giác
-                // mật độ, không cần in số nào).
-                view.alpha = 0.6
-                return view
-            }
             if annotation is StoreAnnotation {
                 let view = mapView.dequeueReusableAnnotationView(withIdentifier: "store", for: annotation) as! MKMarkerAnnotationView
                 view.markerTintColor = localUIColor
