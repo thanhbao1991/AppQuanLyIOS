@@ -128,10 +128,11 @@ struct BanDoKhachHangView: View {
 }
 
 private let localColor = Color(red: 0x1E / 255, green: 0x4E / 255, blue: 0x8C / 255)
-private let seasonalColor = Color(red: 0x8E / 255, green: 0x2D / 255, blue: 0x8C / 255)
+// Cam (29/10/2026) — tím cũ 8E2D8C khó phân biệt với xanh dân địa phương trên bản đồ.
+private let seasonalColor = Color(red: 0xF0 / 255, green: 0x8A / 255, blue: 0x00 / 255)
 private let competitorColor = Color(red: 0xB0 / 255, green: 0x30 / 255, blue: 0x30 / 255)
 private let localUIColor = UIColor(red: 0x1E / 255, green: 0x4E / 255, blue: 0x8C / 255, alpha: 1)
-private let seasonalUIColor = UIColor(red: 0x8E / 255, green: 0x2D / 255, blue: 0x8C / 255, alpha: 1)
+private let seasonalUIColor = UIColor(red: 0xF0 / 255, green: 0x8A / 255, blue: 0x00 / 255, alpha: 1)
 private let competitorUIColor = UIColor(red: 0xB0 / 255, green: 0x30 / 255, blue: 0x30 / 255, alpha: 1)
 
 // MARK: - Annotation types
