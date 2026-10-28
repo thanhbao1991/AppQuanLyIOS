@@ -72,6 +72,9 @@ struct HoaDonListDto: Decodable, Identifiable {
     /// "HD" + 8 ký tự đầu Id, tính sẵn bên Backend — dùng ghép nội dung QR khi gộp nhiều đơn
     /// (xem CongNoListView.copyBillImage), khỏi tự cắt chuỗi id ở client.
     let maHoaDon: String?
+    /// true = đơn khách đặt qua app: AppDatHang, hoặc Mua hộ shipper tự đặt — cùng quy tắc tính hạng
+    /// bên Backend (HoaDonListDto.DatQuaApp). nil khi backend cũ chưa trả field này.
+    var datQuaApp: Bool? = nil
 }
 
 struct ChiTietHoaDonToppingResponseDto: Decodable, Identifiable {

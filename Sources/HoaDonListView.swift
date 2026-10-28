@@ -522,7 +522,11 @@ enum HoaDonQuickFilter: CaseIterable, Hashable {
             return self == .daGhiNo
                 ? item.conLai > 0 && daGhiNoFlag
                 : item.conLai > 0 && !daGhiNoFlag
-        case .taiCho, .ship, .muaVe, .muaHo, .app, .appDatHang:
+        case .appDatHang:
+            // "App Đenn" = mọi đơn đặt qua app, gồm cả Mua hộ shipper tự đặt (datQuaApp) — khớp đơn
+            // được tính hạng. Thẻ đơn Mua hộ vẫn giữ nhãn "Mua hộ" (kèm 🛒, xem HoaDonRowView).
+            return item.phanLoai == phanLoaiCode || item.datQuaApp == true
+        case .taiCho, .ship, .muaVe, .muaHo, .app:
             return item.phanLoai == phanLoaiCode
         }
     }
@@ -622,6 +626,10 @@ private struct HoaDonRowView: View {
                         .font(.caption.bold())
                         .foregroundColor(HoaDonFormatting.phanLoaiTextColor(item.phanLoai))
                         .lineLimit(1).minimumScaleFactor(0.7)
+                    // Mua hộ shipper tự đặt qua app — phân biệt với Mua hộ nhân viên nhập ở quầy.
+                    if item.phanLoai == "Mh", item.datQuaApp == true {
+                        Text("🛒").font(.caption2)
+                    }
                     if (item.phanLoai == "Ship" || item.phanLoai == "AppDatHang"), let nguoiShip = item.nguoiShip, !nguoiShip.isEmpty {
                         ShipperAvatarView(name: nguoiShip, size: 16)
                     }

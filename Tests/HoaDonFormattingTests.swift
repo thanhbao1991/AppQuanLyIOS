@@ -126,7 +126,8 @@ final class HoaDonFormattingTests: XCTestCase {
         nguoiShip: String? = nil,
         ngayNo: String? = nil,
         ngayShip: String? = nil,
-        ngayThanhToan: String? = nil
+        ngayThanhToan: String? = nil,
+        datQuaApp: Bool? = nil
     ) -> HoaDonListDto {
         HoaDonListDto(
             id: "1", khachHangId: nil, tenKhachHangText: nil, tenBan: nil,
@@ -134,8 +135,30 @@ final class HoaDonFormattingTests: XCTestCase {
             ngayNo: ngayNo, ngayIn: nil, ngayXacNhanOnline: nil, ngayThanhToan: ngayThanhToan, nguoiShip: nguoiShip,
             ghiChu: nil, ghiChuShipper: nil, diaChiText: nil, soDienThoaiText: nil,
             isBank: nil, isXu: nil, isAutoBank: nil, thanhTien: 50_000, conLai: conLai,
-            tenMonSummary: nil, maHoaDon: "HD00000001"
+            tenMonSummary: nil, maHoaDon: "HD00000001", datQuaApp: datQuaApp
         )
+    }
+
+    // MARK: - HoaDonQuickFilter "App Đenn"
+
+    // Mua hộ shipper tự đặt qua app phải hiện trong lọc "App Đenn" (khớp đơn được tính hạng).
+    func test_locAppDenn_GomMuaHoQuaApp() {
+        XCTAssertTrue(HoaDonQuickFilter.appDatHang.matches(hoaDon(phanLoai: "AppDatHang", datQuaApp: true)))
+        XCTAssertTrue(HoaDonQuickFilter.appDatHang.matches(hoaDon(phanLoai: "Mh", datQuaApp: true)))
+        XCTAssertFalse(HoaDonQuickFilter.appDatHang.matches(hoaDon(phanLoai: "Mh", datQuaApp: false)))
+        XCTAssertFalse(HoaDonQuickFilter.appDatHang.matches(hoaDon(phanLoai: "Ship")))
+    }
+
+    // Backend cũ chưa trả datQuaApp: lọc "App Đenn" vẫn chạy như trước (chỉ theo PhanLoai).
+    func test_locAppDenn_BackendCuThieuCo_VanLocTheoPhanLoai() {
+        XCTAssertTrue(HoaDonQuickFilter.appDatHang.matches(hoaDon(phanLoai: "AppDatHang")))
+        XCTAssertFalse(HoaDonQuickFilter.appDatHang.matches(hoaDon(phanLoai: "Mh")))
+    }
+
+    // Lọc "Mua hộ" giữ nguyên: hiện cả Mua hộ qua app lẫn Mua hộ ở quầy.
+    func test_locMuaHo_GomCaQuaAppVaQuay() {
+        XCTAssertTrue(HoaDonQuickFilter.muaHo.matches(hoaDon(phanLoai: "Mh", datQuaApp: true)))
+        XCTAssertTrue(HoaDonQuickFilter.muaHo.matches(hoaDon(phanLoai: "Mh", datQuaApp: false)))
     }
 
     // MARK: - waitingEndDate
