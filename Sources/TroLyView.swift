@@ -84,9 +84,10 @@ final class CanhBaoBadge: ObservableObject {
 /// sẵn THU GỌN — chạm câu nào mới mở + tải câu trả lời câu đó (server tính thẳng từ DB, kèm biểu đồ); user
 /// không muốn phải đọc hết mọi câu. Kéo xuống để làm mới; nhấn giữ rồi kéo 1 câu để đổi thứ tự — lưu trên máy
 /// (AppStorage), câu hỏi mới server thêm sẽ nằm cuối. Thứ tự mặc định do server xếp theo nhóm liên quan (hàng hoá →
-/// bán hàng → Xu); khoá lưu đổi sang ".v2" (25/10/2026) để mọi máy về đúng thứ tự nhóm mới, kéo lại thì lưu lại bình thường.
+/// bán hàng → khách app → phiên bản); khoá lưu đổi sang ".v2" (25/10/2026), ".v3" (28/10/2026, thêm "Khách sắp lên hạng" +
+/// "Ai nhận thưởng tháng tới") để mọi máy về đúng thứ tự nhóm mới, kéo lại thì lưu lại bình thường.
 struct TroLyView: View {
-    @AppStorage("troLy.thuTu.v2") private var thuTuRaw = ""
+    @AppStorage("troLy.thuTu.v3") private var thuTuRaw = ""
     @State private var tongQuan: TroLyTraLoi?
     @State private var cauHoi: [TroLyCauHoi] = []
     @State private var traLoi: [String: TroLyTraLoi] = [:]
@@ -364,6 +365,10 @@ struct TroLyView: View {
         "ban-chay": "trophy",
         "ban-chay-30-ngay": "calendar",
         "nap-xu": "banknote",
+        "khach-moi-cai-app": "person.badge.plus",
+        "sap-len-hang": "arrow.up.circle",
+        "thuong-thang-toi": "gift",
+        "phien-ban-app": "iphone",
     ]
 
     private func bamCauHoi(_ ma: String) {
