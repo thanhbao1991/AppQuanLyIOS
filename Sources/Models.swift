@@ -62,7 +62,9 @@ struct HoaDonListDto: Decodable, Identifiable {
     let diaChiText: String?
     let soDienThoaiText: String?
     let isBank: Bool?
+    /// true = trả TOÀN BỘ bằng Ví Xu; coXu = có ít nhất 1 khoản Xu (trả lẫn → nhãn "Tiền mặt + Xu").
     let isXu: Bool?
+    var coXu: Bool? = nil
     /// true = có dòng chuyển khoản do SePay webhook tự thu — hiện icon robot trên badge "Chuyển khoản"
     /// để phân biệt với thu tay. Xem ChiTietHoaDonThanhToanDto.tuDongLuc.
     let isAutoBank: Bool?
