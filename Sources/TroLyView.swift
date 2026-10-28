@@ -88,6 +88,8 @@ final class CanhBaoBadge: ObservableObject {
 /// (AppStorage), câu hỏi mới server thêm sẽ nằm cuối. Thứ tự mặc định do server xếp theo nhóm liên quan (hàng hoá →
 /// bán hàng → khách app → phiên bản); khoá lưu đổi sang ".v2" (25/10/2026), ".v3" (28/10/2026, thêm "Khách sắp lên hạng" +
 /// "Ai nhận thưởng tháng tới"), ".v4" (28/10/2026, chia 3 card theo nhóm) để mọi máy về đúng thứ tự nhóm mới, kéo lại thì lưu lại bình thường.
+/// Các màn chỉ để xem trong Menu (Giờ vắng khách, Bão hoà, Bản đồ, Phiên bản app khách, Tính lương, Số dư AI) đã dời
+/// vào đây (28/10/2026) — xem `mucTrenMay`; Menu chỉ còn việc sửa.
 struct TroLyView: View {
     @AppStorage("troLy.thuTu.v4") private var thuTuRaw = ""
     @State private var tongQuan: TroLyTraLoi?
@@ -106,6 +108,8 @@ struct TroLyView: View {
     @StateObject private var duyetCongThuc = DuyetCongThucSizeModel()
     /// Dòng tồn kho đang được sửa nhanh (bấm vào dòng trong thẻ tình trạng hoặc câu trả lời).
     @State private var suaTon: TroLyTraLoi.Dong?
+    @State private var soDuAi: AiBalanceDto?
+    @State private var daTaiSoDuAi = false
 
     var body: some View {
         List {
@@ -202,12 +206,19 @@ struct TroLyView: View {
             CanhBaoBadge.shared.soViec = c.count
         }
         if xemDaXuLy { await taiDaXuLy() }
-        if !d.isEmpty { cauHoiGoc = d; cauHoi = sapTheoThuTu(d) }
+        if !d.isEmpty { cauHoiGoc = d + Self.mucTrenMay; cauHoi = sapTheoThuTu(cauHoiGoc) }
         capNhatLuc = Date()
         dangTai = false
         // Câu nào đang mở thì làm mới luôn; câu đã tải mà đang đóng thì bỏ để lần mở sau tải số mới.
         traLoi = traLoi.filter { moRa.contains($0.key) }
         for ma in moRa where ma != Self.maLayHang { Task { await hoi(ma) } }
+        if daTaiSoDuAi { Task { await taiSoDuAi() } }
+    }
+
+    /// Gọi sang OpenRouter nên chỉ tải khi dòng Số dư AI hiện ra, không tải cùng các câu khác.
+    private func taiSoDuAi() async {
+        soDuAi = await APIClient.shared.getAiBalance()
+        daTaiSoDuAi = true
     }
 
     private func taiDaXuLy() async {
@@ -340,7 +351,42 @@ struct TroLyView: View {
         "sap-len-hang": "arrow.up.circle",
         "thuong-thang-toi": "gift",
         "phien-ban-app": "iphone",
+        "man-gio-vang-khach": "clock",
+        "man-bao-hoa": "chart.bar",
+        "man-ban-do-khach": "map",
+        "man-phien-ban-app-khach": "list.bullet.rectangle",
+        "man-luong-khanh": "fuelpump",
+        "man-luong-nha": "fuelpump",
+        "so-du-ai": "cpu",
     ]
+
+    private static let maSoDuAi = "so-du-ai"
+
+    /// Mục dời từ Menu sang (user 28/10/2026: trợ lý để đọc/xem, Menu chỉ giữ việc sửa) — app tự chèn vào cuối nhóm
+    /// liên quan, kéo thả như câu hỏi; server không biết các mã này. Màn xem chạm là mở màn riêng, không bung tại chỗ
+    /// (bản đồ, nhiều biểu đồ không vừa 1 dòng). Tên nhóm phải trùng nhóm server (TroLyService) — lệch thì thành card
+    /// riêng. Số dư Zalo OTP vẫn ở Menu vì phải nhập tay số dư.
+    private static let mucTrenMay: [TroLyCauHoi] = [
+        TroLyCauHoi(ma: "man-gio-vang-khach", noiDung: "Giờ vắng khách", nhom: "Bán Hàng"),
+        TroLyCauHoi(ma: "man-bao-hoa", noiDung: "Phân tích bão hoà", nhom: "Bán Hàng"),
+        TroLyCauHoi(ma: "man-ban-do-khach", noiDung: "Bản đồ khách hàng", nhom: "Bán Hàng"),
+        TroLyCauHoi(ma: "man-phien-ban-app-khach", noiDung: "Phiên bản app khách", nhom: "App Đặt Hàng"),
+        TroLyCauHoi(ma: "man-luong-khanh", noiDung: "Tính lương Khánh", nhom: "Chi Phí"),
+        TroLyCauHoi(ma: "man-luong-nha", noiDung: "Tính lương Nhã", nhom: "Chi Phí"),
+        TroLyCauHoi(ma: maSoDuAi, noiDung: "Số dư AI (OpenRouter)", nhom: "Chi Phí"),
+    ]
+
+    @ViewBuilder private static func manXem(_ ma: String) -> some View {
+        switch ma {
+        case "man-gio-vang-khach": GioThapDiemView()
+        case "man-bao-hoa": BaoHoaView()
+        case "man-ban-do-khach": BanDoKhachHangView()
+        case "man-phien-ban-app-khach": PhienBanAppKhachView()
+        case "man-luong-khanh": TinhLuongView(shipperTen: "Khánh")
+        case "man-luong-nha": TinhLuongView(shipperTen: "Nhã")
+        default: EmptyView()
+        }
+    }
 
     private func bamCauHoi(_ ma: String) {
         // Mở/đóng câu hỏi hiện ngay, không hiệu ứng (user 18/10: hiệu ứng làm chữ đè lên nhau lúc bung).
@@ -377,15 +423,49 @@ struct TroLyView: View {
     }
 
     @ViewBuilder
+    private func nhanCauHoi(_ c: TroLyCauHoi) -> some View {
+        Image(systemName: Self.icon[c.ma] ?? "questionmark.circle")
+            .font(.body.weight(.semibold))
+            .foregroundColor(.brandPrimary)
+            .frame(width: 24)
+        Text(c.noiDung).font(.body.weight(.medium)).foregroundColor(.primary)
+    }
+
+    @ViewBuilder
     private func cauHoiRow(_ c: TroLyCauHoi) -> some View {
+        if c.ma == Self.maSoDuAi {
+            HStack(spacing: 12) {
+                nhanCauHoi(c)
+                Spacer()
+                if let s = soDuAi {
+                    Text("$\(s.remaining, specifier: "%.2f")")
+                        .font(.body.weight(.semibold))
+                        .monospacedDigit()
+                        .foregroundColor(s.remaining < 1 ? .red : .primary)
+                } else if daTaiSoDuAi {
+                    Text("Không lấy được").font(.subheadline).foregroundColor(.textMuted)
+                } else {
+                    ProgressView()
+                }
+            }
+            .padding(.vertical, 4)
+            .task { if !daTaiSoDuAi { await taiSoDuAi() } }
+        } else if Self.mucTrenMay.contains(where: { $0.ma == c.ma }) {
+            NavigationLink { Self.manXem(c.ma) } label: {
+                HStack(spacing: 12) { nhanCauHoi(c) }
+            }
+            .padding(.vertical, 4)
+        } else {
+            cauHoiBungRow(c)
+        }
+    }
+
+    @ViewBuilder
+    private func cauHoiBungRow(_ c: TroLyCauHoi) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Button { bamCauHoi(c.ma) } label: {
                 HStack(spacing: 12) {
-                    Image(systemName: Self.icon[c.ma] ?? "questionmark.circle")
-                        .font(.body.weight(.semibold))
-                        .foregroundColor(.brandPrimary)
-                        .frame(width: 24)
-                    Text(c.noiDung).font(.body.weight(.medium)).foregroundColor(.primary)
+                    nhanCauHoi(c)
                     Spacer()
                     if dangHoi.contains(c.ma) {
                         ProgressView()

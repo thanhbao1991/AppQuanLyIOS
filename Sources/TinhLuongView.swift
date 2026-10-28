@@ -1,7 +1,7 @@
 import Charts
 import SwiftUI
 
-/// Công cụ tính lương shipper (Menu > Công cụ) — không lưu gì lên server, chỉ đọc doanh thu đơn ship/
+/// Công cụ tính lương shipper (Trợ lý ảo > Chi Phí, trước 28/10/2026 ở Menu > Công cụ) — không lưu gì lên server, chỉ đọc doanh thu đơn ship/
 /// chi xăng/chi ứng của shipper trong 1 tháng (GET /api/ThongKe/luong-shipper-thang), phần tỉ lệ lợi
 /// nhuận và lương hiện tại là input tại chỗ để thử nhiều kịch bản.
 /// 2 shipper tính KHÁC công thức hẳn nhau (không phải cùng 1 công thức đổi tham số):

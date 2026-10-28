@@ -15,7 +15,7 @@ struct KhachHangPhienBanAppDto: Decodable, Identifiable {
     var nhom: String { "\(nenTang ?? "?") · \(phienBanApp ?? "chưa rõ")" }
 }
 
-/// Công cụ "Phiên bản app khách" (Menu > Công cụ) — khách nào đang dùng bản app nào. Dùng trước khi nâng
+/// "Phiên bản app khách" (Trợ lý ảo > App Đặt Hàng, trước 28/10/2026 ở Menu > Công cụ) — khách nào đang dùng bản app nào. Dùng trước khi nâng
 /// phiên bản tối thiểu (cổng chặn cập nhật) để biết còn bao nhiêu máy chạy bản cũ. Backend chỉ ghi nhận từ
 /// 17/10/2026, iPhone bản cũ hiện dạng "build 546" (suy từ User-Agent).
 struct PhienBanAppKhachView: View {

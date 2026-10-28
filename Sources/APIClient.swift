@@ -127,7 +127,7 @@ actor APIClient {
 
     func getSessions() async -> [PhienDangNhapDto] { await getSessionsOrNil() ?? [] }
 
-    /// Công cụ "Phiên bản app khách" (Menu > Công cụ) — thiết bị khách + bản app đang chạy.
+    /// "Phiên bản app khách" (Trợ lý ảo > App Đặt Hàng) — thiết bị khách + bản app đang chạy.
     func getPhienBanAppKhach() async -> [KhachHangPhienBanAppDto] {
         let req = makeRequest("/api/KhachHang/phien-ban-app")
         let (data, _) = await send(req)

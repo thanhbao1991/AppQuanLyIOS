@@ -237,7 +237,6 @@ private struct MoreMenuView: View {
     @State private var isSyncingContacts = false
     @State private var syncResultMessage: String?
     @State private var showAccessDeniedAlert = false
-    @State private var aiBalance: AiBalanceDto?
     @State private var zaloBalance: ZaloBalanceDto?
     @State private var showZaloEdit = false
     @State private var zaloEditText = ""
@@ -330,50 +329,13 @@ private struct MoreMenuView: View {
                     }
                 }
 
+                // Các màn chỉ để xem (Bản đồ, Bão hoà, Tính lương, Giờ vắng khách, Phiên bản app khách, Số dư AI) đã
+                // dời sang Trợ lý ảo (28/10/2026) — Menu giữ việc sửa/cấu hình.
                 Section("Công cụ") {
-                    NavigationLink {
-                        BanDoKhachHangView()
-                    } label: {
-                        Label("Bản đồ khách hàng", systemImage: "map")
-                    }
-                    NavigationLink {
-                        BaoHoaView()
-                    } label: {
-                        Label("Phân tích bão hoà", systemImage: "chart.line.uptrend.xyaxis")
-                    }
-                    NavigationLink {
-                        TinhLuongView(shipperTen: "Khánh")
-                    } label: {
-                        Label("Tính lương Khánh", systemImage: "fuelpump")
-                    }
-                    NavigationLink {
-                        TinhLuongView(shipperTen: "Nhã")
-                    } label: {
-                        Label("Tính lương Nhã", systemImage: "fuelpump")
-                    }
-                    NavigationLink {
-                        GioThapDiemView()
-                    } label: {
-                        Label("Giờ vắng khách", systemImage: "clock")
-                    }
                     NavigationLink {
                         TtsSoundsView()
                     } label: {
                         Label("Âm báo đã tải", systemImage: "speaker.wave.2")
-                    }
-                    NavigationLink {
-                        PhienBanAppKhachView()
-                    } label: {
-                        Label("Phiên bản app khách", systemImage: "iphone")
-                    }
-
-                    if let balance = aiBalance {
-                        HStack {
-                            Label("Số dư AI (OpenRouter)", systemImage: "cpu")
-                            Spacer()
-                            Text("$\(balance.remaining, specifier: "%.2f")")
-                                .foregroundStyle(balance.remaining < 1 ? .red : .secondary)
-                        }
                     }
 
                     Button {
@@ -510,7 +472,6 @@ private struct MoreMenuView: View {
                     }
             }
             .task {
-                aiBalance = await APIClient.shared.getAiBalance()
                 zaloBalance = await APIClient.shared.getZaloBalance()
             }
         }
