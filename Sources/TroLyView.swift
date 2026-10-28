@@ -6,6 +6,8 @@ import UIKit
 struct TroLyCauHoi: Codable, Identifiable, Equatable {
     let ma: String
     let noiDung: String
+    /// Tên card nhóm ("Hàng Hoá" | "Bán Hàng" | "App Đặt Hàng") — server cũ không gửi thì gom 1 card không tiêu đề.
+    var nhom: String?
     var id: String { ma }
 }
 
@@ -85,11 +87,12 @@ final class CanhBaoBadge: ObservableObject {
 /// không muốn phải đọc hết mọi câu. Kéo xuống để làm mới; nhấn giữ rồi kéo 1 câu để đổi thứ tự — lưu trên máy
 /// (AppStorage), câu hỏi mới server thêm sẽ nằm cuối. Thứ tự mặc định do server xếp theo nhóm liên quan (hàng hoá →
 /// bán hàng → khách app → phiên bản); khoá lưu đổi sang ".v2" (25/10/2026), ".v3" (28/10/2026, thêm "Khách sắp lên hạng" +
-/// "Ai nhận thưởng tháng tới") để mọi máy về đúng thứ tự nhóm mới, kéo lại thì lưu lại bình thường.
+/// "Ai nhận thưởng tháng tới"), ".v4" (28/10/2026, chia 3 card theo nhóm) để mọi máy về đúng thứ tự nhóm mới, kéo lại thì lưu lại bình thường.
 struct TroLyView: View {
-    @AppStorage("troLy.thuTu.v3") private var thuTuRaw = ""
+    @AppStorage("troLy.thuTu.v4") private var thuTuRaw = ""
     @State private var tongQuan: TroLyTraLoi?
     @State private var cauHoi: [TroLyCauHoi] = []
+    @State private var cauHoiGoc: [TroLyCauHoi] = []
     @State private var traLoi: [String: TroLyTraLoi] = [:]
     @State private var moRa: Set<String> = []
     @State private var dangHoi: Set<String> = []
@@ -140,49 +143,17 @@ struct TroLyView: View {
                 theTinhTrang
             }
 
-            Section {
-                ForEach(cauHoi) { c in
-                    VStack(alignment: .leading, spacing: 12) {
-                        Button { bamCauHoi(c.ma) } label: {
-                            HStack(spacing: 12) {
-                                Image(systemName: Self.icon[c.ma] ?? "questionmark.circle")
-                                    .font(.body.weight(.semibold))
-                                    .foregroundColor(.brandPrimary)
-                                    .frame(width: 24)
-                                Text(c.noiDung).font(.body.weight(.medium)).foregroundColor(.primary)
-                                Spacer()
-                                if dangHoi.contains(c.ma) {
-                                    ProgressView()
-                                } else {
-                                    Image(systemName: "chevron.right")
-                                        .font(.footnote.weight(.semibold))
-                                        .foregroundColor(.textMuted)
-                                        .rotationEffect(.degrees(moRa.contains(c.ma) ? 90 : 0))
-                                }
-                            }
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-
-                        if moRa.contains(c.ma) {
-                            if c.ma == Self.maLayHang {
-                                // Có màn tương tác riêng (chọn đại lý, sửa đơn tối thiểu) — không qua chi-tiet.
-                                LayHangView()
-                            } else if let tl = traLoi[c.ma] {
-                                TroLyTraLoiView(traLoi: tl, onSua: { suaTon = $0 })
-                            } else if !dangHoi.contains(c.ma) {
-                                Text("Không tải được, chạm lại để thử.").font(.subheadline).foregroundColor(.textMuted)
-                            }
-                        }
-                    }
-                    .padding(.vertical, 4)
+            // 3 card theo nhóm (user 28/10/2026): Hàng Hoá · Bán Hàng · App Đặt Hàng. Kéo thả đổi thứ tự trong 1 nhóm.
+            ForEach(nhomCauHoi, id: \.self) { nhom in
+                let ds = cauHoi.filter { ($0.nhom ?? "") == nhom }
+                Section {
+                    ForEach(ds) { c in cauHoiRow(c) }
+                        .onMove { tu, den in doiThuTu(nhom: nhom, tu: tu, den: den) }
+                } header: {
+                    if !nhom.isEmpty { Text(nhom) }
+                } footer: {
+                    if nhom == nhomCauHoi.last { Text("Kéo xuống để làm mới · nhấn giữ rồi kéo để đổi thứ tự.") }
                 }
-                .onMove { tu, den in
-                    cauHoi.move(fromOffsets: tu, toOffset: den)
-                    thuTuRaw = cauHoi.map(\.ma).joined(separator: ",")
-                }
-            } footer: {
-                if !cauHoi.isEmpty { Text("Kéo xuống để làm mới · nhấn giữ rồi kéo để đổi thứ tự.") }
             }
         }
         .navigationTitle("Trợ lý ảo")
@@ -231,7 +202,7 @@ struct TroLyView: View {
             CanhBaoBadge.shared.soViec = c.count
         }
         if xemDaXuLy { await taiDaXuLy() }
-        if !d.isEmpty { cauHoi = sapTheoThuTu(d) }
+        if !d.isEmpty { cauHoiGoc = d; cauHoi = sapTheoThuTu(d) }
         capNhatLuc = Date()
         dangTai = false
         // Câu nào đang mở thì làm mới luôn; câu đã tải mà đang đóng thì bỏ để lần mở sau tải số mới.
@@ -389,6 +360,58 @@ struct TroLyView: View {
         let tl = await APIClient.shared.getTroLyChiTiet(ma)
         dangHoi.remove(ma)
         khongHieuUng { traLoi[ma] = tl }
+    }
+
+    /// Nhóm theo thứ tự server trả (thứ tự card cố định, chỉ kéo thả trong nhóm).
+    private var nhomCauHoi: [String] {
+        var kq: [String] = []
+        for c in cauHoiGoc where !kq.contains(c.nhom ?? "") { kq.append(c.nhom ?? "") }
+        return kq
+    }
+
+    private func doiThuTu(nhom: String, tu: IndexSet, den: Int) {
+        var ds = cauHoi.filter { ($0.nhom ?? "") == nhom }
+        ds.move(fromOffsets: tu, toOffset: den)
+        cauHoi = nhomCauHoi.flatMap { n in n == nhom ? ds : cauHoi.filter { ($0.nhom ?? "") == n } }
+        thuTuRaw = cauHoi.map(\.ma).joined(separator: ",")
+    }
+
+    @ViewBuilder
+    private func cauHoiRow(_ c: TroLyCauHoi) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button { bamCauHoi(c.ma) } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: Self.icon[c.ma] ?? "questionmark.circle")
+                        .font(.body.weight(.semibold))
+                        .foregroundColor(.brandPrimary)
+                        .frame(width: 24)
+                    Text(c.noiDung).font(.body.weight(.medium)).foregroundColor(.primary)
+                    Spacer()
+                    if dangHoi.contains(c.ma) {
+                        ProgressView()
+                    } else {
+                        Image(systemName: "chevron.right")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundColor(.textMuted)
+                            .rotationEffect(.degrees(moRa.contains(c.ma) ? 90 : 0))
+                    }
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if moRa.contains(c.ma) {
+                if c.ma == Self.maLayHang {
+                    // Có màn tương tác riêng (chọn đại lý, sửa đơn tối thiểu) — không qua chi-tiet.
+                    LayHangView()
+                } else if let tl = traLoi[c.ma] {
+                    TroLyTraLoiView(traLoi: tl, onSua: { suaTon = $0 })
+                } else if !dangHoi.contains(c.ma) {
+                    Text("Không tải được, chạm lại để thử.").font(.subheadline).foregroundColor(.textMuted)
+                }
+            }
+        }
+        .padding(.vertical, 4)
     }
 
     private func sapTheoThuTu(_ ds: [TroLyCauHoi]) -> [TroLyCauHoi] {
