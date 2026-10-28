@@ -89,7 +89,8 @@ final class CanhBaoBadge: ObservableObject {
 /// bán hàng → khách app → phiên bản); khoá lưu đổi sang ".v2" (25/10/2026), ".v3" (28/10/2026, thêm "Khách sắp lên hạng" +
 /// "Ai nhận thưởng tháng tới"), ".v4" (28/10/2026, chia 3 card theo nhóm) để mọi máy về đúng thứ tự nhóm mới, kéo lại thì lưu lại bình thường.
 /// Các màn chỉ để xem trong Menu (Giờ vắng khách, Bão hoà, Bản đồ, Phiên bản app khách, Tính lương, Số dư AI) đã dời
-/// vào đây (28/10/2026) — xem `mucTrenMay`; Menu chỉ còn việc sửa.
+/// vào đây (28/10/2026) — xem `mucTrenMay`; Menu chỉ còn việc sửa. Từ 29/10/2026 Duyệt công thức + card Chi Phí nằm
+/// trên cùng (trên cả Cần xử lý).
 struct TroLyView: View {
     @AppStorage("troLy.thuTu.v4") private var thuTuRaw = ""
     @State private var tongQuan: TroLyTraLoi?
@@ -113,6 +114,11 @@ struct TroLyView: View {
 
     var body: some View {
         List {
+            // Duyệt công thức + Chi Phí lên đầu, trên cả Cần xử lý (user 29/10/2026).
+            DuyetCongThucSizeSection(model: duyetCongThuc)
+
+            if nhomCauHoi.contains(Self.nhomChiPhi) { cardNhom(Self.nhomChiPhi) }
+
             if let canhBao {
                 Section {
                     if canhBao.isEmpty {
@@ -141,24 +147,12 @@ struct TroLyView: View {
                 }
             }
 
-            DuyetCongThucSizeSection(model: duyetCongThuc)
-
             Section {
                 theTinhTrang
             }
 
             // 3 card theo nhóm (user 28/10/2026): Hàng Hoá · Bán Hàng · App Đặt Hàng. Kéo thả đổi thứ tự trong 1 nhóm.
-            ForEach(nhomCauHoi, id: \.self) { nhom in
-                let ds = cauHoi.filter { ($0.nhom ?? "") == nhom }
-                Section {
-                    ForEach(ds) { c in cauHoiRow(c) }
-                        .onMove { tu, den in doiThuTu(nhom: nhom, tu: tu, den: den) }
-                } header: {
-                    if !nhom.isEmpty { Text(nhom) }
-                } footer: {
-                    if nhom == nhomCauHoi.last { Text("Kéo xuống để làm mới · nhấn giữ rồi kéo để đổi thứ tự.") }
-                }
-            }
+            ForEach(nhomDuoi, id: \.self) { nhom in cardNhom(nhom) }
         }
         .navigationTitle("Trợ lý ảo")
         .navigationBarTitleDisplayMode(.inline)
@@ -413,6 +407,23 @@ struct TroLyView: View {
         var kq: [String] = []
         for c in cauHoiGoc where !kq.contains(c.nhom ?? "") { kq.append(c.nhom ?? "") }
         return kq
+    }
+
+    /// Card Chi Phí nằm trên đầu màn (cạnh Duyệt công thức), các card còn lại nằm dưới thẻ tồn kho.
+    private static let nhomChiPhi = "Chi Phí"
+
+    private var nhomDuoi: [String] { nhomCauHoi.filter { $0 != Self.nhomChiPhi } }
+
+    @ViewBuilder
+    private func cardNhom(_ nhom: String) -> some View {
+        Section {
+            ForEach(cauHoi.filter { ($0.nhom ?? "") == nhom }) { c in cauHoiRow(c) }
+                .onMove { tu, den in doiThuTu(nhom: nhom, tu: tu, den: den) }
+        } header: {
+            if !nhom.isEmpty { Text(nhom) }
+        } footer: {
+            if nhom == nhomDuoi.last { Text("Kéo xuống để làm mới · nhấn giữ rồi kéo để đổi thứ tự.") }
+        }
     }
 
     private func doiThuTu(nhom: String, tu: IndexSet, den: Int) {
