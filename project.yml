@@ -3,6 +3,9 @@ packages:
   libvpx:
     url: https://github.com/ronnyf/libvpx.git
     branch: release/webrtc
+  WebRTC:
+    url: https://github.com/stasel/WebRTC.git
+    exactVersion: 155.0.0
 options:
   bundleIdPrefix: uk.denncoffee
   deploymentTarget:
@@ -19,6 +22,8 @@ targets:
     dependencies:
       - package: libvpx
         product: libvpx
+      - package: WebRTC
+        product: WebRTC
     info:
       path: Sources/Info.plist
       properties:
@@ -32,7 +37,7 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         NSContactsUsageDescription: Đồng bộ tên khách hàng vào Danh bạ để hiện tên khi khách gọi đến.
         NSCameraUsageDescription: Chụp ảnh hoá đơn mua hàng để đọc tự động vào Chi tiêu, và chụp ảnh món cho menu.
-        NSMicrophoneUsageDescription: Bộ đàm quầy — giữ nút để nói chuyện với máy quầy.
+        NSMicrophoneUsageDescription: Bộ đàm quầy — giữ nút hoặc nghe cuộc gọi để nói chuyện với máy quầy.
         NSPhotoLibraryUsageDescription: Chọn ảnh từ album Yêu thích để cập nhật ảnh món trong menu.
         CFBundleURLTypes:
           - CFBundleURLName: com.denncoffee.appquanly
@@ -40,6 +45,8 @@ targets:
               - trasuaapp
         UIBackgroundModes:
           - remote-notification
+          - voip
+          - audio
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.denncoffee.appquanly

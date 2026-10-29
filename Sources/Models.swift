@@ -10,6 +10,13 @@ struct ApiEnvelope<T: Decodable>: Decodable {
     let warnings: [String]?
 }
 
+/// Một mục ICE server (STUN/TURN) cho cuộc gọi bộ đàm — GET /api/bo-dam/ice.
+struct BoDamIceServer: Decodable {
+    let urls: [String]
+    let username: String?
+    let credential: String?
+}
+
 // ---- Auth ----
 
 struct LoginRequest: Encodable { let taiKhoan: String; let matKhau: String; let thietBi: String?; let nenTang: String?; let thietBiId: String? }

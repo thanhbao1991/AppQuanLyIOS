@@ -140,6 +140,36 @@ actor APIClient {
         return await executeAction(req)
     }
 
+    // ---- Cuộc gọi từ máy quầy (CuocGoiQuay.swift, BoDamController) ----
+
+    /// Token PushKit để quầy gọi được máy này (nil = gỡ).
+    func dangKyVoipToken(_ token: String?) async -> ActionResult {
+        let req = makeRequest("/api/bo-dam/voip-token", method: "PUT", body: jsonBody(["token": token]))
+        return await executeAction(req)
+    }
+
+    /// "dangGoi" | "daNghe" | "daHuy" | "tuChoi" | "hetGio" | "khongCo"; nil = lỗi mạng.
+    func boDamTrangThai(_ maCuoc: String) async -> String? {
+        let (data, _) = await send(makeRequest("/api/bo-dam/cuoc/\(maCuoc)"))
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<String>.self, from: data), env.isSuccess else { return nil }
+        return env.data
+    }
+
+    func boDamIce() async -> [BoDamIceServer] {
+        let (data, _) = await send(makeRequest("/api/bo-dam/ice"))
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[BoDamIceServer]>.self, from: data), env.isSuccess else { return [] }
+        return env.data ?? []
+    }
+
+    /// false = máy khác đã nghe / quầy đã thôi gọi.
+    func boDamNghe(_ maCuoc: String) async -> Bool {
+        await executeAction(makeRequest("/api/bo-dam/nghe/\(maCuoc)", method: "POST")).success
+    }
+
+    func boDamTuChoi(_ maCuoc: String) async {
+        _ = await executeAction(makeRequest("/api/bo-dam/tu-choi/\(maCuoc)", method: "POST"))
+    }
+
     /// nil = tải LỖI (mất mạng/decode hỏng), khác với [] = ngày đó thật sự không có đơn — caller
     /// phải phân biệt, không được hiện "Không có hoá đơn nào" khi chỉ là rớt mạng.
     func getHoaDonListByDay(_ dateIso: String) async -> [HoaDonListDto]? {

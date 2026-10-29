@@ -7,6 +7,8 @@ import UserNotifications
 final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         UNUserNotificationCenter.current().delegate = self
+        // Phải có ngay lúc mở app — app bị VoIP push (quầy gọi) đánh thức thì nhận push qua registry này.
+        CuocGoiQuay.shared.batDau()
         return true
     }
 
@@ -49,6 +51,7 @@ enum PushNotifications {
     /// nhập (login mới + mở app với phiên cũ còn hiệu lực), vì token APNs có thể đổi giữa các lần.
     /// Không chặn luồng gọi (fire-and-forget) — không có gì để người dùng chờ ở đây.
     static func requestAndRegister() {
+        CuocGoiQuay.shared.guiTokenLenServer()
         Task {
             let center = UNUserNotificationCenter.current()
             let granted = (try? await center.requestAuthorization(options: [.alert, .sound, .badge])) ?? false

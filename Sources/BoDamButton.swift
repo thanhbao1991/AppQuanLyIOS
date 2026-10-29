@@ -58,6 +58,11 @@ struct BoDamButton: View {
         .animation(.easeOut(duration: 0.15), value: dangGiu)
         .animation(.easeOut(duration: 0.15), value: model.trangThai)
         .onAppear { model.chuanBi() }
+        // Quầy gọi tới (CuocGoiQuay) — nhả máy quầy cho cuộc gọi.
+        .onReceive(NotificationCenter.default.publisher(for: .cuocGoiQuayBatDau)) { _ in
+            dangGiu = false
+            model.dung()
+        }
         .onChange(of: scenePhase) { phase in
             if phase == .background {
                 dangGiu = false
@@ -155,6 +160,11 @@ final class BoDamModel: NSObject, ObservableObject, WKNavigationDelegate, WKUIDe
         henNgat?.cancel()
         if on {
             loi = nil
+            if CuocGoiQuay.shared.dangCo {
+                muonNoi = false
+                baoLoi("Đang có cuộc gọi với quầy")
+                return
+            }
             if !chay { batDau() }
             if trangThai == "sanSang" || trangThai == "dangNoi" { chayJS("boDam.noi(true)") }
         } else {
