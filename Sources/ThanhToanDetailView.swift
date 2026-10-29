@@ -58,6 +58,12 @@ struct ThanhToanDetailView: View {
                             Text("🤖 Chuyển khoản thu tự động (SePay) — không thể đổi phương thức/xoá (khớp đối soát với tiền thật đã vào tài khoản).")
                                 .font(.caption).foregroundColor(.textMuted)
                                 .frame(maxWidth: .infinity, alignment: .leading)
+                        } else if isViXu {
+                            // 29/10/2026 user: dòng Ví Xu "ko được thay đổi" — khách tự trả bằng Xu trong app
+                            // (backend cũng chặn đổi phương thức dòng ViTien).
+                            Text("🪙 Khách trả bằng Ví Xu — không thể đổi phương thức/xoá.")
+                                .font(.caption).foregroundColor(.textMuted)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         } else {
                             ActionButtonView(
                                 icon: "🔄", code: nil,
