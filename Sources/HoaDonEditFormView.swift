@@ -315,8 +315,12 @@ struct HoaDonEditFormView: View {
                 EmojiLabel("Thêm địa chỉ", "➕")
             }.font(.caption)
 
-            Toggle("Được nhận voucher", isOn: $editVoucher)
-                .font(.subheadline)
+            // Từ 29/10/2026 không ai được bật "Được nhận voucher" nữa (chủ quán) — khách cũ đang bật chỉ còn tắt được,
+            // backend cũng chặn (KhachHangCrudService.UpdateAsync).
+            if selectedKhach?.duocNhanVoucher == true {
+                Toggle("Được nhận voucher", isOn: $editVoucher)
+                    .font(.subheadline)
+            }
 
             if let editError {
                 Text(editError).font(.caption).foregroundColor(.dangerColor)
@@ -488,7 +492,6 @@ struct HoaDonEditFormView: View {
             TextField("Tên khách", text: $newKhachTen).textFieldStyle(.roundedBorder)
             TextField("Số điện thoại (không bắt buộc)", text: $newKhachSdt).textFieldStyle(.roundedBorder).keyboardType(.phonePad)
             TenDuongTextField(text: $newKhachDiaChi)
-            Toggle("Được tích điểm/voucher", isOn: $newKhachVoucher).font(.caption)
             if let newKhachError {
                 Text(newKhachError).foregroundColor(.dangerColor).font(.caption)
             }
