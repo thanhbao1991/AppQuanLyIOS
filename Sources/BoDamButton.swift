@@ -1,16 +1,14 @@
 import SwiftUI
 import WebKit
 
-/// Bộ đàm quầy (29/10/2026) — nút ở thanh dưới tab Đơn, cạnh nút xem màn hình Desktop. Giữ nút là app này
-/// và máy quầy (Desktop bật Bộ đàm) cùng nói chuyện, thả ra là cả 2 mic tắt; máy quầy tự nhận, không ai phải
-/// bấm. Tiếng đi WebRTC trong một WKWebView ẩn nạp trang {api}/bodam/?vaiTro=ql
-/// (TraSuaApp.Backend/wwwroot/bodam/index.html) — khử vọng/lọc ồn/Opus của WebKit như gọi thoại.
-/// Bấm lần đầu mới nối (1–2 giây, rung báo khi nói được); thả ra 3 giây không bấm lại thì ngắt hẳn (iPhone nhả
-/// micro); bấm lại trong 3 giây đó là nói ngay. Ra nền cũng ngắt.
+/// Bộ đàm quầy (29/10/2026) — nút ở thanh dưới tab Đơn, cạnh nút xem màn hình Desktop. Bấm 1 lần là nối máy quầy
+/// (Desktop bật Bộ đàm, tự nhận) và 2 bên nói tự do; bấm lần nữa là tắt — giống hệt quầy gọi lên (bấm 📻 / giữ
+/// Space), user chốt "nhấn là gọi, nhấn lần nữa là tắt, 2 bên thao tác giống nhau". Tiếng đi WebRTC trong một
+/// WKWebView ẩn nạp trang {api}/bodam/?vaiTro=ql (TraSuaApp.Backend/wwwroot/bodam/index.html) — khử vọng/lọc ồn/
+/// Opus của WebKit như gọi thoại. Rung báo khi nói được. Ra nền thì tắt (WebKit không giữ micro ở nền).
 struct BoDamButton: View {
     @StateObject private var model = BoDamModel()
     @Environment(\.scenePhase) private var scenePhase
-    @State private var dangGiu = false
 
     var body: some View {
         ZStack {
@@ -23,26 +21,16 @@ struct BoDamButton: View {
             Image(systemName: bieuTuong)
                 .font(.system(size: 26, weight: .semibold))
                 .foregroundColor(mau)
-                .symbolEffectPulse(dangGiu && !model.dangNoi)
+                .symbolEffectPulse(model.dangChay && !model.dangNoi)
                 .frame(width: 36, height: 36)
                 .contentShape(Rectangle())
-                .gesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { _ in
-                            guard !dangGiu else { return }
-                            dangGiu = true
-                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            model.giu(true)
-                        }
-                        .onEnded { _ in
-                            guard dangGiu else { return }
-                            dangGiu = false
-                            model.giu(false)
-                        }
-                )
+                .onTapGesture {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    model.bam()
+                }
         }
         .overlay(alignment: .top) {
-            if dangGiu || model.loi != nil {
+            if model.dangChay || model.loi != nil {
                 Text(model.moTa)
                     .font(.footnote.weight(.semibold))
                     .foregroundColor(.white)
@@ -55,21 +43,17 @@ struct BoDamButton: View {
                     .allowsHitTesting(false)
             }
         }
-        .animation(.easeOut(duration: 0.15), value: dangGiu)
+        .animation(.easeOut(duration: 0.15), value: model.dangChay)
         .animation(.easeOut(duration: 0.15), value: model.trangThai)
         .onAppear { model.chuanBi() }
         // Quầy gọi tới (CuocGoiQuay) — nhả máy quầy cho cuộc gọi.
         .onReceive(NotificationCenter.default.publisher(for: .cuocGoiQuayBatDau)) { _ in
-            dangGiu = false
             model.dung()
         }
         .onChange(of: scenePhase) { phase in
-            if phase == .background {
-                dangGiu = false
-                model.dung()
-            }
+            if phase == .background { model.dung() }
         }
-        .accessibilityLabel("Bộ đàm quầy — giữ để nói")
+        .accessibilityLabel(model.dangChay ? "Bộ đàm quầy — bấm để tắt" : "Bộ đàm quầy — bấm để gọi quầy")
     }
 
     private var bieuTuong: String {
@@ -79,7 +63,7 @@ struct BoDamButton: View {
 
     private var mau: Color {
         if model.dangNoi { return .red }
-        if dangGiu { return .orange }
+        if model.dangChay { return .orange }
         return .brandPrimary
     }
 }
@@ -100,15 +84,12 @@ final class BoDamModel: NSObject, ObservableObject, WKNavigationDelegate, WKUIDe
     let webView: WKWebView
     @Published var trangThai = "dung"
     @Published var loi: String?
-    private var chay = false
+    @Published private(set) var dangChay = false
+    private var chay = false { didSet { dangChay = chay } }
     private var daNap = false
     private var dangNap = false
     private var muonNoi = false
-    private var henNgat: Task<Void, Never>?
     private var henXoaLoi: Task<Void, Never>?
-
-    /// Thả nút xong giữ kết nối bao lâu (bấm lại trong khoảng này là nói ngay).
-    private static let giuKetNoi: UInt64 = 3
 
     override init() {
         let config = WKWebViewConfiguration()
@@ -133,6 +114,7 @@ final class BoDamModel: NSObject, ObservableObject, WKNavigationDelegate, WKUIDe
         case "khongThayQuay": return "Không thấy máy quầy"
         case "quayBan": return "Quầy đang nói với máy khác"
         case "matMang": return "Mất mạng, đang thử lại…"
+        case "quayTat": return "Quầy đã tắt"
         default: return "Đang nối quầy…"
         }
     }
@@ -155,26 +137,16 @@ final class BoDamModel: NSObject, ObservableObject, WKNavigationDelegate, WKUIDe
         webView.load(URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData))
     }
 
-    func giu(_ on: Bool) {
-        muonNoi = on
-        henNgat?.cancel()
-        if on {
-            loi = nil
-            if CuocGoiQuay.shared.dangCo {
-                muonNoi = false
-                baoLoi("Đang có cuộc gọi với quầy")
-                return
-            }
-            if !chay { batDau() }
-            if trangThai == "sanSang" || trangThai == "dangNoi" { chayJS("boDam.noi(true)") }
-        } else {
-            chayJS("boDam.noi(false)")
-            henNgat = Task { [weak self] in
-                try? await Task.sleep(nanoseconds: Self.giuKetNoi * 1_000_000_000)
-                guard !Task.isCancelled else { return }
-                self?.dung()
-            }
+    /// Bấm nút: đang tắt thì gọi quầy (nối xong tự mở mic), đang bật thì tắt.
+    func bam() {
+        if chay { dung(); return }
+        loi = nil
+        if CuocGoiQuay.shared.dangCo {
+            baoLoi("Đang có cuộc gọi với quầy")
+            return
         }
+        muonNoi = true
+        batDau()
     }
 
     private func batDau() {
@@ -197,7 +169,6 @@ final class BoDamModel: NSObject, ObservableObject, WKNavigationDelegate, WKUIDe
     }
 
     func dung() {
-        henNgat?.cancel()
         muonNoi = false
         guard chay else { return }
         chay = false
@@ -218,6 +189,9 @@ final class BoDamModel: NSObject, ObservableObject, WKNavigationDelegate, WKUIDe
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
             } else if giaTri == "khongThayQuay", muonNoi {
                 UINotificationFeedbackGenerator().notificationOccurred(.error)
+            } else if giaTri == "quayTat" {
+                dung()
+                baoLoi("Quầy đã tắt")
             }
         } else if loai == "loi" {
             if giaTri.contains("NotAllowed") || giaTri.lowercased().contains("permission") {
