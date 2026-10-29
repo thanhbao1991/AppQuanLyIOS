@@ -658,6 +658,15 @@ struct VongQuayPhanThuongDto: Codable, Identifiable, Hashable {
     var thuong: Double
 }
 
+/// GET/PUT api/cau-hinh/thong-bao-nhan-vien — push + chuông của AppNhanVienIOS. phanLoai = khoá đang
+/// BẬT (Ship, AppDatHang, App, Mh, Mv, TaiCho, Khac).
+struct CauHinhThongBaoNhanVienDto: Codable {
+    var phanLoai: [String]
+    var tao: Bool
+    var sua: Bool
+    var xoa: Bool
+}
+
 struct GamificationConfigDto: Codable {
     var vongQuayPhanThuong: [VongQuayPhanThuongDto]
     var shipKmThuongThanhVien: Double

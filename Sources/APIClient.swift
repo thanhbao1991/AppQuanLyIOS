@@ -887,6 +887,17 @@ actor APIClient {
         return await executeAction(req)
     }
 
+    func getCauHinhThongBaoNhanVien() async -> CauHinhThongBaoNhanVienDto? {
+        let (data, _) = await send(makeRequest("/api/cau-hinh/thong-bao-nhan-vien"))
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<CauHinhThongBaoNhanVienDto>.self, from: data), env.isSuccess else { return nil }
+        return env.data
+    }
+
+    func saveCauHinhThongBaoNhanVien(_ dto: CauHinhThongBaoNhanVienDto) async -> ActionResult {
+        let req = makeRequest("/api/cau-hinh/thong-bao-nhan-vien", method: "PUT", body: jsonBody(dto))
+        return await executeAction(req)
+    }
+
     func getThongKeChiTieu(ngay: Int, thang: Int, nam: Int) async -> ThongKeChiTieuDto? {
         await getThongKe("chi-tieu-ngay", ngay: ngay, thang: thang, nam: nam)
     }

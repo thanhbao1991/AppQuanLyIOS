@@ -323,6 +323,11 @@ private struct MoreMenuView: View {
                         Label("Cấu hình App khách", systemImage: "gift")
                     }
                     NavigationLink {
+                        CauHinhAppNhanVienView()
+                    } label: {
+                        Label("Cấu hình App nhân viên", systemImage: "bell.badge")
+                    }
+                    NavigationLink {
                         VoucherListView()
                     } label: {
                         Label("Voucher", systemImage: "ticket")
