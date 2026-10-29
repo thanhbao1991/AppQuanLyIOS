@@ -196,6 +196,8 @@ struct HoaDonListView: View {
                     }
                     .foregroundColor(.brandPrimary)
 
+                    BoDamButton()
+
                     Button {
                         showPhanLoaiTotals = true
                     } label: {
