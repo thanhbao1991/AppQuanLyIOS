@@ -127,14 +127,6 @@ actor APIClient {
 
     func getSessions() async -> [PhienDangNhapDto] { await getSessionsOrNil() ?? [] }
 
-    /// "Phiên bản app khách" (Trợ lý ảo > App Đặt Hàng) — thiết bị khách + bản app đang chạy.
-    func getPhienBanAppKhach() async -> [KhachHangPhienBanAppDto] {
-        let req = makeRequest("/api/KhachHang/phien-ban-app")
-        let (data, _) = await send(req)
-        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[KhachHangPhienBanAppDto]>.self, from: data), env.isSuccess else { return [] }
-        return env.data ?? []
-    }
-
     func revokeSession(id: String) async -> ActionResult {
         let req = makeRequest("/api/Auth/sessions/\(id)", method: "DELETE")
         return await executeAction(req)

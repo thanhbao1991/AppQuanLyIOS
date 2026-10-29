@@ -24,6 +24,8 @@ struct TroLyTraLoi: Codable, Equatable {
         let nguyenLieuBanHangId: String?
         let ton: Double?
         let donVi: String?
+        /// Chi tiết của dòng (vd từng máy của "Bản cũ") — chỉ hiện khi bấm vào dòng trong báo cáo chia cột.
+        var con: [Dong]? = nil
         var id: String { ten }
     }
 
@@ -353,7 +355,6 @@ struct TroLyView: View {
         "man-gio-vang-khach": "clock",
         "man-bao-hoa": "chart.bar",
         "man-ban-do-khach": "map",
-        "man-phien-ban-app-khach": "list.bullet.rectangle",
         "man-luong-khanh": "fuelpump",
         "man-luong-nha": "fuelpump",
         "so-du-ai": "cpu",
@@ -369,7 +370,7 @@ struct TroLyView: View {
         TroLyCauHoi(ma: "man-gio-vang-khach", noiDung: "Giờ vắng khách", nhom: "Bán Hàng"),
         TroLyCauHoi(ma: "man-bao-hoa", noiDung: "Phân tích bão hoà", nhom: "Bán Hàng"),
         TroLyCauHoi(ma: "man-ban-do-khach", noiDung: "Bản đồ khách hàng", nhom: "Bán Hàng"),
-        TroLyCauHoi(ma: "man-phien-ban-app-khach", noiDung: "Phiên bản app khách", nhom: "App Đặt Hàng"),
+        // "Phiên bản app khách" bỏ màn riêng (29/10/2026) — bấm dòng Mới nhất/Bản cũ/Phải cập nhật trong "Máy mới cài App".
         TroLyCauHoi(ma: "man-luong-khanh", noiDung: "Tính lương Khánh", nhom: "Chi Phí"),
         TroLyCauHoi(ma: "man-luong-nha", noiDung: "Tính lương Nhã", nhom: "Chi Phí"),
         TroLyCauHoi(ma: maSoDuAi, noiDung: "Số dư AI (OpenRouter)", nhom: "Chi Phí"),
@@ -379,7 +380,6 @@ struct TroLyView: View {
         switch ma {
         case "man-bao-hoa": BaoHoaView()
         case "man-ban-do-khach": BanDoKhachHangView()
-        case "man-phien-ban-app-khach": PhienBanAppKhachView()
         case "man-luong-khanh": TinhLuongView(shipperTen: "Khánh")
         case "man-luong-nha": TinhLuongView(shipperTen: "Nhã")
         default: EmptyView()
@@ -523,6 +523,18 @@ struct TroLyTraLoiView: View {
     let traLoi: TroLyTraLoi
     /// Có thì dòng tồn kho bấm vào được để sửa nhanh.
     var onSua: ((TroLyTraLoi.Dong) -> Void)? = nil
+    /// Dòng đang chọn trong báo cáo chia cột ("cột|tên dòng") — chỉ hiện chi tiết dòng đó, không hiện tất cả.
+    @State private var chonCot: String?
+
+    private var conDangChon: (tieuDe: String, dong: [TroLyTraLoi.Dong])? {
+        guard let chonCot, let cot = traLoi.cot else { return nil }
+        for (i, c) in cot.enumerated() {
+            if let d = c.dong.first(where: { "\(i)|\($0.ten)" == chonCot }), let con = d.con {
+                return ("\(c.tieuDe ?? "") · \(d.ten)", con)
+            }
+        }
+        return nil
+    }
 
     /// Món bán chạy: biểu đồ cột đã ghi số trên cột, khỏi lặp lại danh sách.
     private var anDong: Bool {
@@ -539,8 +551,14 @@ struct TroLyTraLoiView: View {
                 HStack(alignment: .top, spacing: 12) {
                     ForEach(Array(cot.enumerated()), id: \.offset) { i, c in
                         if i > 0 { Divider() }
-                        TroLyCotView(cot: c).frame(maxWidth: .infinity, alignment: .leading)
+                        TroLyCotView(cot: c, chon: chonCot.flatMap { $0.hasPrefix("\(i)|") ? String($0.dropFirst("\(i)|".count)) : nil }) { ten in
+                            khongHieuUng { chonCot = chonCot == "\(i)|\(ten)" ? nil : "\(i)|\(ten)" }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
+                }
+                if let c = conDangChon {
+                    TroLyConList(tieuDe: c.tieuDe, dong: c.dong)
                 }
             } else if let bd = traLoi.bieuDo, !bd.diem.isEmpty {
                 switch bd.loai {
@@ -620,6 +638,9 @@ struct TroLyDongList: View {
 /// 1 cột của báo cáo chia cột: tên cột + số chính, các dòng gọn (tên trái, giá trị phải), rồi biểu đồ cột ngang.
 struct TroLyCotView: View {
     let cot: TroLyTraLoi
+    /// Tên dòng đang chọn trong cột này (dòng có `con`), nil = chưa chọn.
+    var chon: String? = nil
+    var onChon: ((String) -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -630,20 +651,62 @@ struct TroLyCotView: View {
             VStack(spacing: 0) {
                 ForEach(Array(cot.dong.enumerated()), id: \.element.id) { i, d in
                     if i > 0 { Divider() }
+                    let bamDuoc = d.con?.isEmpty == false && onChon != nil
+                    let dangChon = bamDuoc && chon == d.ten
                     HStack(spacing: 6) {
                         Circle().fill(d.mucDo == nil ? Color.green : TroLyMau.theoMucDo(d.mucDo)).frame(width: 7, height: 7)
                         Text(d.ten).font(.caption).lineLimit(1).minimumScaleFactor(0.8)
+                            .foregroundColor(dangChon ? .brandPrimary : .primary)
+                            .fontWeight(dangChon ? .semibold : .regular)
                         Spacer(minLength: 4)
                         Text(d.giaTri)
                             .font(.caption.weight(.semibold))
                             .monospacedDigit()
                             .foregroundColor(d.mucDo == "thap" ? TroLyMau.theoMucDo(d.mucDo) : .primary)
+                        if bamDuoc {
+                            Image(systemName: "chevron.down")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundColor(dangChon ? .brandPrimary : .textMuted)
+                                .rotationEffect(.degrees(dangChon ? 180 : 0))
+                        }
                     }
                     .padding(.vertical, 6)
+                    .contentShape(Rectangle())
+                    .onTapGesture { if bamDuoc { onChon?(d.ten) } }
                 }
             }
             if let bd = cot.bieuDo, !bd.diem.isEmpty {
                 TroLyBieuDoCot(bieuDo: bd)
+            }
+        }
+    }
+}
+
+/// Chi tiết dòng đang chọn của báo cáo chia cột (29/10/2026, thay màn "Phiên bản app khách"): từng máy — tên khách,
+/// SĐT · máy · lần mở gần nhất, bản app canh phải. Id theo vị trí vì 1 khách có thể có 2 máy (trùng tên).
+struct TroLyConList: View {
+    let tieuDe: String
+    let dong: [TroLyTraLoi.Dong]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(tieuDe).font(.caption.weight(.semibold)).foregroundColor(.textMuted).padding(.bottom, 2)
+            ForEach(Array(dong.enumerated()), id: \.offset) { i, d in
+                if i > 0 { Divider() }
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(d.ten).font(.subheadline.weight(.medium))
+                        if let phu = d.phu {
+                            Text(phu).font(.caption).foregroundColor(.textMuted).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    Spacer(minLength: 8)
+                    Text(d.giaTri)
+                        .font(.caption.weight(.semibold).monospacedDigit())
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(Color.secondary.opacity(0.15), in: Capsule())
+                }
+                .padding(.vertical, 7)
             }
         }
     }
