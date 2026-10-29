@@ -49,27 +49,16 @@ struct PhienBanAppKhachView: View {
             } else if items.isEmpty {
                 Section { Text("Chưa có thiết bị nào được ghi nhận.").foregroundStyle(.secondary) }
             } else {
-                ForEach([false, true], id: \.self) { android in
-                    let dongs = thongKe(android: android)
-                    if !dongs.isEmpty {
-                        Section {
-                            ForEach(dongs, id: \.nhom) { dong in
-                                Button {
-                                    locNhom = locNhom == dong.nhom ? nil : dong.nhom
-                                } label: {
-                                    HStack {
-                                        Image(systemName: locNhom == dong.nhom ? "checkmark.circle.fill" : "circle")
-                                            .foregroundStyle(locNhom == dong.nhom ? Color.brandPrimary : .secondary)
-                                        Text(dong.phienBan).foregroundStyle(.primary)
-                                        Spacer()
-                                        Text("\(dong.soMay) máy").foregroundStyle(.secondary)
-                                    }
-                                }
-                            }
-                        } header: {
-                            Text("\(android ? "Android" : "iPhone") · \(dongs.reduce(0) { $0 + $1.soMay }) máy · bấm để lọc")
-                        }
+                // "chia dọc": iPhone cột trái | Android cột phải.
+                Section {
+                    HStack(alignment: .top, spacing: 12) {
+                        cot(android: false)
+                        Divider()
+                        cot(android: true)
                     }
+                    .padding(.vertical, 4)
+                } header: {
+                    Text("\(items.count) thiết bị · bấm để lọc")
                 }
 
                 Section(locNhom ?? "Tất cả") {
@@ -99,6 +88,32 @@ struct PhienBanAppKhachView: View {
         .toolbarColorScheme(.dark, for: .navigationBar)
         .refreshable { await tai() }
         .task { await tai() }
+    }
+
+    private func cot(android: Bool) -> some View {
+        let dongs = thongKe(android: android)
+        return VStack(alignment: .leading, spacing: 10) {
+            Text("\(android ? "Android" : "iPhone") · \(dongs.reduce(0) { $0 + $1.soMay })")
+                .font(.subheadline.weight(.semibold))
+            ForEach(dongs, id: \.nhom) { dong in
+                Button {
+                    locNhom = locNhom == dong.nhom ? nil : dong.nhom
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(dong.phienBan)
+                            .font(.subheadline.monospacedDigit())
+                            .foregroundStyle(locNhom == dong.nhom ? Color.brandPrimary : .primary)
+                            .fontWeight(locNhom == dong.nhom ? .semibold : .regular)
+                            .lineLimit(1).minimumScaleFactor(0.8)
+                        Spacer(minLength: 2)
+                        Text("\(dong.soMay)").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
     private func tai() async {
