@@ -237,10 +237,6 @@ private struct MoreMenuView: View {
     @State private var isSyncingContacts = false
     @State private var syncResultMessage: String?
     @State private var showAccessDeniedAlert = false
-    @State private var zaloBalance: ZaloBalanceDto?
-    @State private var showZaloEdit = false
-    @State private var zaloEditText = ""
-    @State private var zaloEditFailed = false
     @State private var showLogoutConfirm = false
     @State private var showSwitchConfirm = false
     @State private var isSwitchingAccount = false
@@ -334,51 +330,13 @@ private struct MoreMenuView: View {
                     }
                 }
 
-                // Các màn chỉ để xem (Bản đồ, Bão hoà, Tính lương, Giờ vắng khách, Phiên bản app khách, Số dư AI) đã
+                // Các màn chỉ để xem (Bản đồ, Bão hoà, Tính lương, Giờ vắng khách, Phiên bản app khách, Số dư AI, Số dư Zalo) đã
                 // dời sang Trợ lý ảo (28/10/2026) — Menu giữ việc sửa/cấu hình.
                 Section("Công cụ") {
                     NavigationLink {
                         TtsSoundsView()
                     } label: {
                         Label("Âm báo đã tải", systemImage: "speaker.wave.2")
-                    }
-
-                    Button {
-                        zaloEditText = zaloBalance.map { String($0.soDu) } ?? ""
-                        showZaloEdit = true
-                    } label: {
-                        HStack {
-                            Label("Số dư Zalo OTP", systemImage: "message")
-                                .foregroundStyle(.primary)
-                            Spacer()
-                            if let zalo = zaloBalance {
-                                Text("\(zalo.soDu.formatted(.number.locale(Locale(identifier: "vi_VN")))) đ")
-                                    .foregroundStyle(zalo.soDu < 10_000 ? .red : .secondary)
-                            } else {
-                                Text("Nhập số dư").foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                    .alert("Số dư Zalo OTP", isPresented: $showZaloEdit) {
-                        TextField("Số dư (đ)", text: $zaloEditText)
-                            .keyboardType(.numberPad)
-                        Button("Lưu") {
-                            let digits = zaloEditText.filter(\.isNumber)
-                            guard let value = Int64(digits) else { return }
-                            Task {
-                                if let updated = await APIClient.shared.setZaloBalance(value) {
-                                    zaloBalance = updated
-                                } else {
-                                    zaloEditFailed = true
-                                }
-                            }
-                        }
-                        Button("Huỷ", role: .cancel) {}
-                    } message: {
-                        Text("Nhập số dư đang hiện trên trang Zalo (sau khi nạp tiền). App tự trừ 440 đ mỗi OTP gửi đi.")
-                    }
-                    .alert("Không lưu được số dư", isPresented: $zaloEditFailed) {
-                        Button("Đóng", role: .cancel) {}
                     }
 
                     NavigationLink {
@@ -475,9 +433,6 @@ private struct MoreMenuView: View {
                     } message: {
                         Text("Vào Cài đặt > ĐENN > Danh bạ để bật quyền truy cập trước khi đồng bộ.")
                     }
-            }
-            .task {
-                zaloBalance = await APIClient.shared.getZaloBalance()
             }
         }
     }
