@@ -744,6 +744,9 @@ struct ThongKeThanhToanDto: Decodable {
     /// Phần khách trả bằng Xu (ví) — không phải tiền thật, KHÔNG cộng vào tổng thẻ Thanh toán.
     /// Optional: backend cũ chưa trả trường này.
     let tongViXu: Double?
+    /// Tiền thật khách nạp Xu qua chuyển khoản (không gắn hoá đơn) — CK + Nạp Xu = tiền vào ngân hàng.
+    /// KHÔNG cộng vào tổng thẻ Thanh toán, không liên quan Kiểm tiền. Optional như trên.
+    let tongNapXu: Double?
     let danhSachTienMat: [NamedAmountDto]
 }
 

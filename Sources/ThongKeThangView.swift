@@ -62,6 +62,10 @@ struct ThongKeThangView: View {
                                             .contentShape(Rectangle())
                                             .onTapGesture { selectedThanhToanTen = "Chuyển khoản" }
                                     }
+                                    // Khớp Desktop: tiền nạp Xu không gắn hoá đơn nên không bấm mở danh sách đơn.
+                                    if let napXu = thanhToan.tongNapXu, napXu > 0 {
+                                        AmountRow(label: "Nạp Xu", value: napXu)
+                                    }
                                     if let xu = thanhToan.tongViXu, xu > 0 {
                                         AmountRow(label: "Xu (ví khách)", value: xu, color: .secondary)
                                             .contentShape(Rectangle())
