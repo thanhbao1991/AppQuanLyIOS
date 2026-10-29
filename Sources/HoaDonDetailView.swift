@@ -454,7 +454,9 @@ struct HoaDonDetailView: View {
             // tài khoản ngân hàng. Khớp guard Backend HoaDonTrangThaiService.RollbackAsync và
             // ChiTietHoaDonThanhToanService.DoiPhuongThucAsync.
             let coTuDong = payments.contains { $0.tuDongLuc != nil }
-            let showDoiPhuongThuc = d.conLai <= 0 && singlePaymentBank != nil && !coTuDong
+            // Dòng Ví Xu cũng không đổi phương thức được (29/10/2026, backend chặn KhongSuaViXu).
+            let coViXu = payments.contains { $0.phuongThucThanhToanId.lowercased() == PaymentMethod.viXuId }
+            let showDoiPhuongThuc = d.conLai <= 0 && singlePaymentBank != nil && !coTuDong && !coViXu
             let showHoanTac = d.conLai <= 0 && !coTuDong
             // Rút gọn "Tiền mặt"/"Chuyển khoản" thành "TM"/"CK" cho vừa nút compact (4 cột), kèm icon
             // đổi theo hướng đích giống doiPhanLoaiIcon bên dưới (trước đây dùng chung 1 icon 🔄 cố
