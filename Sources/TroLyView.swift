@@ -349,6 +349,7 @@ struct TroLyView: View {
         "sap-len-hang": "arrow.up.circle",
         "thuong-thang-toi": "gift",
         "phien-ban-app": "iphone",
+        "luot-tai-store": "arrow.down.app",
         "man-gio-vang-khach": "clock",
         "man-bao-hoa": "chart.bar",
         "man-ban-do-khach": "map",
