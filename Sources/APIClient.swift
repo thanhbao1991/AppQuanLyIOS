@@ -782,6 +782,19 @@ actor APIClient {
         return env.data ?? []
     }
 
+    /// Khách chờ duyệt tên gửi Zalo (việc gom trong Cần xử lý, 30/10/2026).
+    func getTenZaloChoDuyet() async -> [TenZaloChoDuyet]? {
+        let req = makeRequest("/api/TroLy/ten-zalo")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[TenZaloChoDuyet]>.self, from: data), env.isSuccess else { return nil }
+        return env.data ?? []
+    }
+
+    func duyetTenZalo(khachHangId: String, dungTen: Bool) async -> Bool {
+        let req = makeRequest("/api/TroLy/ten-zalo/\(khachHangId)", method: "POST", body: jsonBody(["dungTen": dungTen]))
+        return await executeAction(req).success
+    }
+
     func danhDauCanhBao(id: String, daXuLy: Bool) async -> ActionResult {
         let req = makeRequest("/api/TroLy/canh-bao/\(id)/xu-ly", method: "POST", body: jsonBody(["daXuLy": daXuLy]))
         return await executeAction(req)

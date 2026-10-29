@@ -217,6 +217,14 @@ struct TroLyView: View {
         daTaiSoDuAi = true
     }
 
+    /// Tải lại riêng mục Cần xử lý (sau khi duyệt tên gửi Zalo — số khách ở tiêu đề đổi, hết thì việc tự xong).
+    private func taiCanhBao() async {
+        if let c = await APIClient.shared.getCanhBao() {
+            canhBao = c
+            CanhBaoBadge.shared.soViec = c.count
+        }
+    }
+
     private func taiDaXuLy() async {
         if let ds = await APIClient.shared.getCanhBao(daXuLy: true) { daXuLy = ds }
     }
@@ -246,6 +254,11 @@ struct TroLyView: View {
                     Text(nd).font(.caption).foregroundColor(.textMuted).lineLimit(mo ? nil : 2)
                 }
                 Text(Self.dongPhu(cb)).font(.caption2).foregroundColor(.textMuted)
+
+                // Việc gom "Duyệt tên gửi Zalo" (30/10/2026): mở ra là danh sách khách, mỗi khách 2 nút.
+                if mo, cb.loai == "TenZalo", !cb.daXuLy {
+                    TenZaloDuyetList { Task { await taiCanhBao() } }
+                }
 
                 if mo, let ct = cb.chiTiet, !ct.isEmpty {
                     ScrollView(.horizontal) {
@@ -307,12 +320,13 @@ struct TroLyView: View {
         case "Loi": return "ladybug.fill"
         case "Vi": return "wallet.pass.fill"
         case "Backup": return "externaldrive.fill.badge.exclamationmark"
+        case "TenZalo": return "person.text.rectangle"
         default: return "server.rack"
         }
     }
 
     private static func mauLoai(_ loai: String) -> Color {
-        loai == "Loi" || loai == "Backup" ? .red : .orange
+        loai == "Loi" || loai == "Backup" ? .red : loai == "TenZalo" ? .blue : .orange
     }
 
     private static func dongPhu(_ cb: CanhBaoHeThong) -> String {
@@ -321,6 +335,7 @@ struct TroLyView: View {
         case "Loi": ten = "Lỗi"
         case "Vi": ten = "Ví khách"
         case "Backup": ten = "Backup"
+        case "TenZalo": ten = "Tin Zalo"
         default: ten = "Máy chủ"
         }
         var parts = [ten]
@@ -734,4 +749,58 @@ struct TroLyBieuDoCot: View {
             .frame(height: CGFloat(bieuDo.diem.count) * 30 + 8)
         }
     }
+}
+
+/// Khách chờ duyệt tên gửi trong tin Zalo ZNS (GET /api/TroLy/ten-zalo, 30/10/2026). "Dùng tên" lưu tên gợi ý (đã bỏ
+/// đuôi " App"/ghi chú trong ngoặc), "Xưng bạn" giữ xưng bạn — đều không hỏi lại khách đó.
+struct TenZaloDuyetList: View {
+    var onXong: () -> Void
+    @State private var ds: [TenZaloChoDuyet]?
+    @State private var dangLuu: Set<String> = []
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if let ds {
+                if ds.isEmpty { Text("Đã duyệt hết.").font(.caption).foregroundColor(.textMuted) }
+                ForEach(ds) { k in
+                    HStack(spacing: 8) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(k.goiY.isEmpty ? k.ten : k.goiY).font(.subheadline.weight(.medium))
+                            Text([k.goiY == k.ten ? nil : k.ten, k.sdt].compactMap { $0 }.joined(separator: " · "))
+                                .font(.caption2).foregroundColor(.textMuted)
+                        }
+                        Spacer(minLength: 4)
+                        Button("Dùng tên") { Task { await duyet(k, dungTen: true) } }
+                            .buttonStyle(.borderedProminent).controlSize(.small)
+                            .disabled(dangLuu.contains(k.id) || k.goiY.isEmpty)
+                        Button("Xưng bạn") { Task { await duyet(k, dungTen: false) } }
+                            .buttonStyle(.bordered).controlSize(.small)
+                            .disabled(dangLuu.contains(k.id))
+                    }
+                    .padding(.vertical, 6)
+                    Divider()
+                }
+            } else {
+                ProgressView().padding(.vertical, 6)
+            }
+        }
+        .task { ds = await APIClient.shared.getTenZaloChoDuyet() ?? [] }
+    }
+
+    private func duyet(_ k: TenZaloChoDuyet, dungTen: Bool) async {
+        dangLuu.insert(k.id)
+        let ok = await APIClient.shared.duyetTenZalo(khachHangId: k.id, dungTen: dungTen)
+        dangLuu.remove(k.id)
+        guard ok else { return }
+        ds?.removeAll { $0.id == k.id }
+        onXong()
+    }
+}
+
+struct TenZaloChoDuyet: Decodable, Identifiable {
+    let khachHangId: String
+    let ten: String
+    let goiY: String
+    let sdt: String?
+    var id: String { khachHangId }
 }
