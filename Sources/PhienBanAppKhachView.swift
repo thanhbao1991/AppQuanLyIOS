@@ -23,10 +23,18 @@ struct PhienBanAppKhachView: View {
     @State private var dangTai = true
     @State private var locNhom: String?
 
-    private var thongKe: [(nhom: String, soMay: Int)] {
-        Dictionary(grouping: items, by: \.nhom)
-            .map { ($0.key, $0.value.count) }
-            .sorted { $0.1 != $1.1 ? $0.1 > $1.1 : $0.0 > $1.0 }
+    /// 29/10/2026 user "chia đôi iphone và android, sắp lại thứ tự": mỗi nền tảng 1 khối, bản mới nhất lên đầu.
+    private func thongKe(android: Bool) -> [(nhom: String, phienBan: String, soMay: Int)] {
+        Dictionary(grouping: items.filter { ($0.nenTang?.lowercased() == "android") == android }, by: \.nhom)
+            .map { (nhom: $0.key, phienBan: $0.value.first?.phienBanApp ?? "chưa rõ", soMay: $0.value.count) }
+            .sorted { Self.soBuild($0.phienBan) > Self.soBuild($1.phienBan) }
+    }
+
+    /// Số build để xếp: "1.0.6 (654)" → 654, "build 551" → 551, "chưa rõ" → -1 (xuống cuối).
+    static func soBuild(_ s: String) -> Int {
+        let so = s.split(whereSeparator: { !$0.isNumber })
+        guard s.contains("(") || s.hasPrefix("build"), let cuoi = so.last else { return -1 }
+        return Int(cuoi) ?? -1
     }
 
     private var hienThi: [KhachHangPhienBanAppDto] {
@@ -41,22 +49,27 @@ struct PhienBanAppKhachView: View {
             } else if items.isEmpty {
                 Section { Text("Chưa có thiết bị nào được ghi nhận.").foregroundStyle(.secondary) }
             } else {
-                Section {
-                    ForEach(thongKe, id: \.nhom) { dong in
-                        Button {
-                            locNhom = locNhom == dong.nhom ? nil : dong.nhom
-                        } label: {
-                            HStack {
-                                Image(systemName: locNhom == dong.nhom ? "checkmark.circle.fill" : "circle")
-                                    .foregroundStyle(locNhom == dong.nhom ? Color.brandPrimary : .secondary)
-                                Text(dong.nhom).foregroundStyle(.primary)
-                                Spacer()
-                                Text("\(dong.soMay) máy").foregroundStyle(.secondary)
+                ForEach([false, true], id: \.self) { android in
+                    let dongs = thongKe(android: android)
+                    if !dongs.isEmpty {
+                        Section {
+                            ForEach(dongs, id: \.nhom) { dong in
+                                Button {
+                                    locNhom = locNhom == dong.nhom ? nil : dong.nhom
+                                } label: {
+                                    HStack {
+                                        Image(systemName: locNhom == dong.nhom ? "checkmark.circle.fill" : "circle")
+                                            .foregroundStyle(locNhom == dong.nhom ? Color.brandPrimary : .secondary)
+                                        Text(dong.phienBan).foregroundStyle(.primary)
+                                        Spacer()
+                                        Text("\(dong.soMay) máy").foregroundStyle(.secondary)
+                                    }
+                                }
                             }
+                        } header: {
+                            Text("\(android ? "Android" : "iPhone") · \(dongs.reduce(0) { $0 + $1.soMay }) máy · bấm để lọc")
                         }
                     }
-                } header: {
-                    Text("\(items.count) thiết bị · bấm để lọc")
                 }
 
                 Section(locNhom ?? "Tất cả") {
