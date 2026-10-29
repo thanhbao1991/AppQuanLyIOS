@@ -170,11 +170,19 @@ final class BoDamModel: NSObject, ObservableObject, WKNavigationDelegate, WKUIDe
     private func batDau() {
         chay = true
         trangThai = "dangKetNoi"
-        if daNap {
-            guiToken()
-            chayJS("boDam.batDau()")
-        } else {
-            chuanBi()
+        guard daNap else { chuanBi(); return }
+        // Trang nạp hỏng (lỗi mạng/server lúc nạp sẵn) thì không có window.boDam — nạp lại từ đầu.
+        webView.evaluateJavaScript("typeof window.boDam") { [weak self] value, _ in
+            Task { @MainActor in
+                guard let self, self.chay else { return }
+                if (value as? String) == "object" {
+                    self.guiToken()
+                    self.chayJS("boDam.batDau()")
+                } else {
+                    self.daNap = false
+                    self.chuanBi()
+                }
+            }
         }
     }
 
@@ -234,11 +242,19 @@ final class BoDamModel: NSObject, ObservableObject, WKNavigationDelegate, WKUIDe
 
     nonisolated func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         Task { @MainActor in
-            self.daNap = true
             self.dangNap = false
+            let value = try? await self.webView.evaluateJavaScriptObjC("typeof window.boDam")
+            self.daNap = (value as? String) == "object"
             guard self.chay else { return }
-            self.guiToken()
-            self.chayJS("boDam.batDau()")
+            if self.daNap {
+                self.guiToken()
+                self.chayJS("boDam.batDau()")
+            } else {
+                // Server trả trang lỗi (vd 401/502) — thử lại sau 3 giây.
+                self.trangThai = "matMang"
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                if self.chay, !self.daNap { self.chuanBi() }
+            }
         }
     }
 
@@ -260,6 +276,18 @@ final class BoDamModel: NSObject, ObservableObject, WKNavigationDelegate, WKUIDe
                              type: WKMediaCaptureType,
                              decisionHandler: @escaping (WKPermissionDecision) -> Void) {
         decisionHandler(origin.host.hasSuffix("denncoffee.com") ? .grant : .deny)
+    }
+}
+
+private extension WKWebView {
+    /// Bọc evaluateJavaScript bản completion (Objective-C) thành async — tránh bản async của Swift nằm ở
+    /// libswiftWebKit (iOS < 26 không có, xem WebKitJS.swift).
+    func evaluateJavaScriptObjC(_ js: String) async throws -> Any? {
+        try await withCheckedThrowingContinuation { cont in
+            evaluateJavaScript(js) { value, error in
+                if let error { cont.resume(throwing: error) } else { cont.resume(returning: value) }
+            }
+        }
     }
 }
 
