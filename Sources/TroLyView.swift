@@ -616,16 +616,20 @@ struct TroLyDongList: View {
     /// Có thì dòng tồn kho (có nguyenLieuBanHangId) bấm vào được, hiện bút chì nhỏ bên phải.
     var onSua: ((TroLyTraLoi.Dong) -> Void)? = nil
 
+    /// Cột thứ hạng rộng thêm khi có hạng 2 chữ số — 12pt làm "10" rớt xuống 2 dòng (30/10/2026).
+    private var rongCot: CGFloat { dong.contains { ($0.hang ?? 0) >= 10 } ? 20 : 12 }
+
     var body: some View {
         VStack(spacing: 0) {
             ForEach(Array(dong.enumerated()), id: \.element.id) { i, d in
-                if i > 0 { Divider().padding(.leading, 22) }
+                if i > 0 { Divider().padding(.leading, rongCot + 10) }
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     if let h = d.hang {
-                        Text("\(h)").font(.caption.weight(.bold)).foregroundColor(.textMuted).frame(width: 12)
+                        Text("\(h)").font(.caption.weight(.bold).monospacedDigit()).foregroundColor(.textMuted)
+                            .lineLimit(1).fixedSize().frame(width: rongCot, alignment: .leading)
                     } else {
                         Circle().fill(d.mucDo == nil ? Color.green : TroLyMau.theoMucDo(d.mucDo))
-                            .frame(width: 8, height: 8).frame(width: 12)
+                            .frame(width: 8, height: 8).frame(width: rongCot)
                     }
                     VStack(alignment: .leading, spacing: 2) {
                         Text(d.ten).font(.subheadline.weight(.medium))
