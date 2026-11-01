@@ -86,15 +86,12 @@ final class CanhBaoBadge: ObservableObject {
 
 /// Trợ lý ảo (Menu > Trợ lý ảo) — KHÔNG dùng AI. Đầu màn là thẻ tình trạng tồn kho, bên dưới các câu hỏi bấm
 /// sẵn THU GỌN — chạm câu nào mới mở + tải câu trả lời câu đó (server tính thẳng từ DB, kèm biểu đồ); user
-/// không muốn phải đọc hết mọi câu. Kéo xuống để làm mới; nhấn giữ rồi kéo 1 câu để đổi thứ tự — lưu trên máy
-/// (AppStorage), câu hỏi mới server thêm sẽ nằm cuối. Thứ tự mặc định do server xếp theo nhóm liên quan (hàng hoá →
-/// bán hàng → khách app → phiên bản); khoá lưu đổi sang ".v2" (25/10/2026), ".v3" (28/10/2026, thêm "Khách sắp lên hạng" +
-/// "Ai nhận thưởng tháng tới"), ".v4" (28/10/2026, chia 3 card theo nhóm) để mọi máy về đúng thứ tự nhóm mới, kéo lại thì lưu lại bình thường.
+/// không muốn phải đọc hết mọi câu. Kéo xuống để làm mới. Thứ tự CỐ ĐỊNH theo server (xếp theo nhóm liên quan) —
+/// 01/11/2026 user khoá, bỏ kéo thả đổi thứ tự tự do (trước đó lưu AppStorage "troLy.thuTu.v4").
 /// Các màn chỉ để xem trong Menu (Giờ vắng khách, Bão hoà, Bản đồ, Phiên bản app khách, Tính lương, Số dư AI) đã dời
 /// vào đây (28/10/2026) — xem `mucTrenMay`; Menu chỉ còn việc sửa. Từ 29/10/2026 Duyệt công thức + card Chi Phí nằm
 /// trên cùng (trên cả Cần xử lý).
 struct TroLyView: View {
-    @AppStorage("troLy.thuTu.v4") private var thuTuRaw = ""
     @State private var tongQuan: TroLyTraLoi?
     @State private var cauHoi: [TroLyCauHoi] = []
     @State private var cauHoiGoc: [TroLyCauHoi] = []
@@ -198,7 +195,7 @@ struct TroLyView: View {
             CanhBaoBadge.shared.soViec = c.count
         }
         if xemDaXuLy { await taiDaXuLy() }
-        if !d.isEmpty { cauHoiGoc = d + Self.mucTrenMay; cauHoi = sapTheoThuTu(cauHoiGoc) }
+        if !d.isEmpty { cauHoiGoc = d + Self.mucTrenMay; cauHoi = cauHoiGoc }
         capNhatLuc = Date()
         dangTai = false
         // Câu nào đang mở thì làm mới luôn; câu đã tải mà đang đóng thì bỏ để lần mở sau tải số mới.
@@ -437,19 +434,11 @@ struct TroLyView: View {
     private func cardNhom(_ nhom: String) -> some View {
         Section {
             ForEach(cauHoi.filter { ($0.nhom ?? "") == nhom }) { c in cauHoiRow(c) }
-                .onMove { tu, den in doiThuTu(nhom: nhom, tu: tu, den: den) }
         } header: {
             if !nhom.isEmpty { Text(nhom) }
         } footer: {
-            if nhom == nhomDuoi.last { Text("Kéo xuống để làm mới · nhấn giữ rồi kéo để đổi thứ tự.") }
+            if nhom == nhomDuoi.last { Text("Kéo xuống để làm mới.") }
         }
-    }
-
-    private func doiThuTu(nhom: String, tu: IndexSet, den: Int) {
-        var ds = cauHoi.filter { ($0.nhom ?? "") == nhom }
-        ds.move(fromOffsets: tu, toOffset: den)
-        cauHoi = nhomCauHoi.flatMap { n in n == nhom ? ds : cauHoi.filter { ($0.nhom ?? "") == n } }
-        thuTuRaw = cauHoi.map(\.ma).joined(separator: ",")
     }
 
     @ViewBuilder
@@ -546,12 +535,6 @@ struct TroLyView: View {
             }
         }
         .padding(.vertical, 4)
-    }
-
-    private func sapTheoThuTu(_ ds: [TroLyCauHoi]) -> [TroLyCauHoi] {
-        let thuTu = thuTuRaw.split(separator: ",").map(String.init)
-        let viTri = { (i: Int, c: TroLyCauHoi) in (thuTu.firstIndex(of: c.ma) ?? thuTu.count, i) }
-        return ds.enumerated().sorted { viTri($0.offset, $0.element) < viTri($1.offset, $1.element) }.map(\.element)
     }
 }
 
