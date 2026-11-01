@@ -69,12 +69,12 @@ final class DuyetCongThucSizeModel: ObservableObject {
 }
 
 /// Mục "Duyệt công thức L/XL" trong Trợ lý ảo — đa số công thức L/XL đang chép y nguyên Size
-/// Chuẩn nên trừ tồn kho thấp hơn thực tế. Hiện 5 món còn size CHƯA duyệt, vừa bán gần nhất, mỗi
-/// dòng chỉ tên + size (user 23/10). Chạm → `model.dangSua` → TroLyView mở bảng Chuẩn | L | XL.
+/// Chuẩn nên trừ tồn kho thấp hơn thực tế. Hiện 3 món còn size CHƯA duyệt, vừa bán gần nhất (rút từ 5
+/// xuống 3 — user 01/11), mỗi dòng chỉ tên + size. Chạm → `model.dangSua` → TroLyView mở bảng Chuẩn | L | XL.
 struct DuyetCongThucSizeSection: View {
     @ObservedObject var model: DuyetCongThucSizeModel
 
-    private static let soMonHien = 5
+    private static let soMonHien = 3
 
     var body: some View {
         // Hết món chưa duyệt (hoặc tải lỗi) thì ẩn cả mục.
