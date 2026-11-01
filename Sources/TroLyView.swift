@@ -655,7 +655,8 @@ struct TroLyDongList: View {
                             .frame(width: 8, height: 8).frame(width: rongCot)
                     }
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(d.ten).font(.subheadline.weight(.medium))
+                        Text(d.ten).font(.subheadline.weight(moCon.contains(d.ten) ? .bold : .medium))
+                            .foregroundColor(moCon.contains(d.ten) ? .brandPrimary : .primary)
                         if let phu = d.phu {
                             Text(phu).font(.caption).foregroundColor(.textMuted).fixedSize(horizontal: false, vertical: true)
                         }
@@ -684,10 +685,13 @@ struct TroLyDongList: View {
                         onSua?(d)
                     }
                 }
+                // Danh sách con nằm trong thẻ nền trắng riêng — mở nhiều dòng cùng lúc không dính vào dòng kế (user 01/11/2026).
                 if let con = d.con, !con.isEmpty, moCon.contains(d.ten) {
                     TroLyConList(tieuDe: nil, dong: con)
-                        .padding(.leading, rongCot + 10)
-                        .padding(.bottom, 6)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 8))
+                        .padding(.bottom, 12)
                 }
             }
         }
