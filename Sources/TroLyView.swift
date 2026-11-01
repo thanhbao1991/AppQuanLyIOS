@@ -352,7 +352,7 @@ struct TroLyView: View {
     /// Tính lương cũng bung tại chỗ bản gọn (01/11/2026) — mã → tên shipper.
     private static let maTinhLuong: [String: String] = ["man-luong-khanh": "Khánh", "man-luong-nha": "Nhã"]
     /// Câu bung tại chỗ nhưng app tự tải, không gọi /chi-tiet.
-    private static let khongQuaChiTiet: Set<String> = [maLayHang, maGioVang, maBaoHoa].union(maTinhLuong.keys)
+    private static let khongQuaChiTiet: Set<String> = Set([maLayHang, maGioVang, maBaoHoa]).union(maTinhLuong.keys)
 
     private static let icon: [String: String] = [
         "can-nhap": "cart",
