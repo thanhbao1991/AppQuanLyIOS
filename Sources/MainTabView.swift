@@ -125,7 +125,8 @@ struct MainTabView: View {
             if id != nil { selection = .hoaDon }
         }
         .task { await congViecBadge.refresh() }
-        // Gắn ở cấp màn hình, không gắn trong nội dung tab (cùng lý do duyetCongThucSheet).
+        // Gắn ở cấp màn hình, không gắn trong nội dung tab: sheet gắn trong List bị đóng ngay khi List
+        // vẽ lại (gặp thật 23/10).
         .sheet(item: Binding(get: { duyetCongThuc.dangSua }, set: { duyetCongThuc.dangSua = $0 }),
                onDismiss: xongDuyetCongThuc) { mon in
             duyetCongThucMonSheet(mon: mon, model: duyetCongThuc)

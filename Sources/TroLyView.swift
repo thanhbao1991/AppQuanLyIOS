@@ -108,7 +108,6 @@ struct TroLyView: View {
     @State private var daXuLy: [CanhBaoHeThong] = []
     @State private var xemDaXuLy = false
     @State private var moCanhBao: Set<String> = []
-    @StateObject private var duyetCongThuc = DuyetCongThucSizeModel()
     /// Dòng tồn kho đang được sửa nhanh (bấm vào dòng trong thẻ tình trạng hoặc câu trả lời).
     @State private var suaTon: TroLyTraLoi.Dong?
     @State private var soDuAi: AiBalanceDto?
@@ -116,9 +115,8 @@ struct TroLyView: View {
 
     var body: some View {
         List {
-            // Duyệt công thức + Chi Phí lên đầu, trên cả Cần xử lý (user 29/10/2026).
-            DuyetCongThucSizeSection(model: duyetCongThuc)
-
+            // Chi Phí lên đầu, trên cả Cần xử lý (user 29/10/2026). Duyệt công thức L/XL đã chuyển ra cổng
+            // vào tab (MainTabView.chonTab, user 01/11/2026).
             if nhomCauHoi.contains(Self.nhomChiPhi) { cardNhom(Self.nhomChiPhi) }
 
             if let canhBao {
@@ -162,7 +160,6 @@ struct TroLyView: View {
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .refreshable { await taiLai() }
-        .duyetCongThucSheet(duyetCongThuc)
         .sheet(item: $suaTon) { d in
             SuaTonNhanhSheet(dong: d) { Task { await taiLai() } }
         }
@@ -194,8 +191,7 @@ struct TroLyView: View {
         async let tq = APIClient.shared.getTroLyTongQuan()
         async let ds = APIClient.shared.getTroLyCauHoi()
         async let cbs = APIClient.shared.getCanhBao()
-        async let duyet = duyetCongThuc.load()
-        let (t, d, c, _) = await (tq, ds, cbs, duyet)
+        let (t, d, c) = await (tq, ds, cbs)
         tongQuan = t
         if let c {
             canhBao = c
