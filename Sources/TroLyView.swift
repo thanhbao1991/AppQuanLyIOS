@@ -349,8 +349,10 @@ struct TroLyView: View {
     private static let maGioVang = "man-gio-vang-khach"
     /// Bão hoà bung tại chỗ bản gọn (01/11/2026, user: xổ ra xem luôn, không mở màn mới).
     private static let maBaoHoa = "man-bao-hoa"
+    /// Tính lương cũng bung tại chỗ bản gọn (01/11/2026) — mã → tên shipper.
+    private static let maTinhLuong: [String: String] = ["man-luong-khanh": "Khánh", "man-luong-nha": "Nhã"]
     /// Câu bung tại chỗ nhưng app tự tải, không gọi /chi-tiet.
-    private static let khongQuaChiTiet: Set<String> = [maLayHang, maGioVang, maBaoHoa]
+    private static let khongQuaChiTiet: Set<String> = [maLayHang, maGioVang, maBaoHoa].union(maTinhLuong.keys)
 
     private static let icon: [String: String] = [
         "can-nhap": "cart",
@@ -395,8 +397,6 @@ struct TroLyView: View {
         switch ma {
         case "man-bao-hoa": BaoHoaView()
         case "man-ban-do-khach": BanDoKhachHangView()
-        case "man-luong-khanh": TinhLuongView(shipperTen: "Khánh")
-        case "man-luong-nha": TinhLuongView(shipperTen: "Nhã")
         default: EmptyView()
         }
     }
@@ -528,6 +528,8 @@ struct TroLyView: View {
                         GioVangKhachTomTat()
                     } else if c.ma == Self.maBaoHoa {
                         BaoHoaView(tomTat: true)
+                    } else if let shipper = Self.maTinhLuong[c.ma] {
+                        TinhLuongView(shipperTen: shipper)
                     } else if let tl = traLoi[c.ma] {
                         TroLyTraLoiView(traLoi: tl, onSua: { suaTon = $0 })
                     } else if !dangHoi.contains(c.ma) {
