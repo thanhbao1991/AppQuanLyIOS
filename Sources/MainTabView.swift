@@ -160,12 +160,14 @@ struct MainTabView: View {
     }
 
     /// Sheet duyệt đóng: món vừa mở đã hết trong danh sách chưa duyệt (Lưu & duyệt gọi load lại trước
-    /// khi đóng) thì cho vào tab; bấm Huỷ thì ở lại tab cũ.
+    /// khi đóng) hoặc vừa bấm "Duyệt sau" thì cho vào tab; bấm Huỷ thì ở lại tab cũ.
     private func xongDuyetCongThuc() {
         guard let tab = tabChoDuyet, let monId = monVuaMo else { return }
         tabChoDuyet = nil
         monVuaMo = nil
-        if !duyetCongThuc.monChuaDuyet.contains(where: { $0.id == monId }) { selection = tab }
+        let duyetSau = duyetCongThuc.duyetSau
+        duyetCongThuc.duyetSau = false
+        if duyetSau || !duyetCongThuc.monChuaDuyet.contains(where: { $0.id == monId }) { selection = tab }
     }
 
     /// Icon chuông đặt làm trailing TRONG header riêng của 6 tab (Thống kê/Hoá đơn/Thanh toán/Công

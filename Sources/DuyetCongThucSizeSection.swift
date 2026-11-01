@@ -27,6 +27,8 @@ final class DuyetCongThucSizeModel: ObservableObject {
     @Published var allSanPham: [SanPhamDto] = []
     @Published var allNguyenLieu: [NguyenLieuBanHangDto] = []
     @Published var dangSua: MonDuyetCongThuc?
+    /// Vừa bấm "Duyệt sau" (đã lưu, chưa duyệt) — cổng tab vẫn cho vào. MainTabView đọc xong tự đặt lại false.
+    var duyetSau = false
 
     /// Món còn size chưa duyệt, giữ thứ tự backend (vừa bán lên đầu).
     var monChuaDuyet: [MonDuyetCongThuc] {

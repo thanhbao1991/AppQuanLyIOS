@@ -27,6 +27,8 @@ struct CongThucSizeSheet: View {
     let tenSanPham: String
     let allNguyenLieu: [NguyenLieuBanHangDto]
     let onSaved: () async -> Void
+    /// Lưu thành công mà chưa duyệt (nút "Duyệt sau") — cổng tab dùng để vẫn cho vào tab.
+    var onLuuChuaDuyet: (() -> Void)?
 
     @Environment(\.dismiss) private var dismiss
     private let cots: [Cot]
@@ -148,17 +150,31 @@ struct CongThucSizeSheet: View {
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                Button {
-                    if coDuyet { xacNhanLuu = true } else { Task { await save() } }
-                } label: {
-                    Text(saving ? "Đang lưu..." : (coDuyet ? "Lưu & duyệt" : "Lưu"))
-                        .fontWeight(.bold)
-                        .frame(maxWidth: .infinity)
+                HStack(spacing: 12) {
+                    // "Duyệt sau" (user 01/11/2026): lưu số đang sửa, chưa ghi duyệt — món sẽ hiện lại lần sau.
+                    if coDuyet {
+                        Button {
+                            Task { await save(duyet: false) }
+                        } label: {
+                            Text("Duyệt sau").fontWeight(.bold).frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(.brandPrimary)
+                        .controlSize(.large)
+                        .disabled(saving || luuDoDang)
+                    }
+                    Button {
+                        if coDuyet { xacNhanLuu = true } else { Task { await save(duyet: false) } }
+                    } label: {
+                        Text(saving ? "Đang lưu..." : (coDuyet ? "Lưu & duyệt" : "Lưu"))
+                            .fontWeight(.bold)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.brandPrimary)
+                    .controlSize(.large)
+                    .disabled(saving || luuDoDang)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.brandPrimary)
-                .controlSize(.large)
-                .disabled(saving || luuDoDang)
                 .padding(.horizontal, 16)
                 .padding(.top, 10)
                 .padding(.bottom, 8)
@@ -177,7 +193,7 @@ struct CongThucSizeSheet: View {
                 Text("Xoá khỏi mọi size, có hiệu lực khi bấm Lưu.")
             }
             .confirmationDialog("Lưu và duyệt công thức \(tenSanPham)?", isPresented: $xacNhanLuu, titleVisibility: .visible) {
-                Button("Lưu & duyệt") { Task { await save() } }
+                Button("Lưu & duyệt") { Task { await save(duyet: true) } }
                 Button("Không", role: .cancel) {}
             }
             .sheet(isPresented: $dangChonNguyenLieu) {
@@ -226,7 +242,8 @@ struct CongThucSizeSheet: View {
         .frame(maxWidth: .infinity)
     }
 
-    private func save() async {
+    /// `duyet`: false = chỉ lưu định lượng (nút "Duyệt sau" hoặc màn Công thức), true = lưu xong ghi duyệt size L/XL.
+    private func save(duyet: Bool) async {
         errorMessage = nil
         // Size cần duyệt, hoặc đã có công thức, thì phải còn ít nhất 1 nguyên liệu — muốn bỏ hẳn
         // công thức 1 size thì vuốt xoá ở danh sách, đừng để công thức rỗng (bán không trừ kho).
@@ -243,10 +260,11 @@ struct CongThucSizeSheet: View {
             if !cot.canDuyet && cot.congThucId == nil && !dongs.contains(where: { $0.soLuong[i] > 0 }) { continue }
             guard let congThucId = await damBaoCongThuc(cot) else { loi += 1; continue }
             loi += await luuDinhLuong(congThucId: congThucId, cot: i, cu: linesCu[i])
-            if cot.canDuyet, !(await APIClient.shared.duyetCongThuc(id: congThucId)).success { loi += 1 }
+            if duyet, cot.canDuyet, !(await APIClient.shared.duyetCongThuc(id: congThucId)).success { loi += 1 }
         }
 
         await onSaved()
+        if !duyet, loi == 0 { onLuuChuaDuyet?() }
         if loi > 0 {
             luuDoDang = true
             errorMessage = "Có \(loi) thao tác CHƯA lưu được. Bấm Huỷ rồi mở lại món này để kiểm tra."
@@ -303,7 +321,9 @@ func duyetCongThucMonSheet(mon: MonDuyetCongThuc, model: DuyetCongThucSizeModel)
         .first
     let cots = [CongThucSizeSheet.Cot(ten: "Size Chuẩn", bienTheId: chuanBienThe?.id, congThucId: mon.congThucChuanId, canDuyet: false)]
         + mon.sizes.map { CongThucSizeSheet.Cot(ten: $0.tenBienThe, bienTheId: $0.sanPhamBienTheId, congThucId: $0.congThucId, canDuyet: true) }
-    return CongThucSizeSheet(tenSanPham: mon.tenSanPham, cots: cots, dinhLuongAll: model.dinhLuongAll,
-                             allNguyenLieu: model.allNguyenLieu, dienSanTuCotDau: true,
-                             onSaved: { _ = await model.load() })
+    var sheet = CongThucSizeSheet(tenSanPham: mon.tenSanPham, cots: cots, dinhLuongAll: model.dinhLuongAll,
+                                  allNguyenLieu: model.allNguyenLieu, dienSanTuCotDau: true,
+                                  onSaved: { _ = await model.load() })
+    sheet.onLuuChuaDuyet = { model.duyetSau = true }
+    return sheet
 }
