@@ -46,6 +46,10 @@ struct CongThucSizeSheet: View {
 
     private var coDuyet: Bool { cots.contains { $0.canDuyet } }
 
+    /// Vật tư (ly giấy…) ẩn khỏi bảng (user 01/11/2026: hay nhập nhầm số ml vào dòng ly) nhưng vẫn nằm trong
+    /// `dongs` — lưu không đụng tới nên vẫn trừ kho như cũ.
+    private var vatTuIds: Set<String> { Set(allNguyenLieu.filter { $0.laVatTu == true }.map(\.id)) }
+
     /// `dienSanTuCotDau`: size chưa có công thức điền sẵn số của cột đầu (Size Chuẩn) làm điểm xuất
     /// phát — chỉ dùng ở mục Duyệt (lưu là tạo luôn công thức). Màn Công thức để 0, không nhập gì thì
     /// không tạo công thức cho size đó.
@@ -101,24 +105,26 @@ struct CongThucSizeSheet: View {
             List {
                 Section {
                     ForEach($dongs) { $dong in
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Text(dong.ten).font(.subheadline.weight(.semibold))
-                                Spacer()
-                                Button {
-                                    dongCanXoa = dong
-                                } label: {
-                                    Image(systemName: "trash").font(.subheadline).foregroundColor(.dangerColor)
+                        if !vatTuIds.contains(dong.nguyenLieuId) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Text(dong.ten).font(.subheadline.weight(.semibold))
+                                    Spacer()
+                                    Button {
+                                        dongCanXoa = dong
+                                    } label: {
+                                        Image(systemName: "trash").font(.subheadline).foregroundColor(.dangerColor)
+                                    }
+                                    .buttonStyle(.borderless)
                                 }
-                                .buttonStyle(.borderless)
-                            }
-                            HStack(spacing: Self.khoangCot) {
-                                ForEach(cots.indices, id: \.self) { i in
-                                    oSoLuong($dong.soLuong[i], tat: cots[i].bienTheId == nil)
+                                HStack(spacing: Self.khoangCot) {
+                                    ForEach(cots.indices, id: \.self) { i in
+                                        oSoLuong($dong.soLuong[i], tat: cots[i].bienTheId == nil)
+                                    }
                                 }
                             }
+                            .padding(.vertical, 4)
                         }
-                        .padding(.vertical, 4)
                     }
                     Button {
                         dangChonNguyenLieu = true
@@ -197,7 +203,7 @@ struct CongThucSizeSheet: View {
                 Button("Không", role: .cancel) {}
             }
             .sheet(isPresented: $dangChonNguyenLieu) {
-                NguyenLieuBanHangPickerSheet(items: allNguyenLieu) { picked in
+                NguyenLieuBanHangPickerSheet(items: allNguyenLieu.filter { $0.laVatTu != true }) { picked in
                     guard !dongs.contains(where: { $0.nguyenLieuId == picked.id }) else { return }
                     dongs.append(Dong(nguyenLieuId: picked.id, ten: picked.ten,
                                       soLuong: Array(repeating: 0, count: cots.count)))

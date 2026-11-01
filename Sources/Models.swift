@@ -363,6 +363,8 @@ struct NguyenLieuBanHangDto: Decodable, Identifiable {
     var soNgayConLai: Double?
     /// Ngưỡng an toàn (đơn vị bán) — dưới ngưỡng thì push "Sắp hết hàng".
     var canhBaoDuoi: Double?
+    /// Vật tư (ly, bao bì…) — ẩn khỏi bảng sửa công thức, vẫn trừ kho. nil = backend cũ, coi như không phải.
+    var laVatTu: Bool?
 }
 
 /// Nhịp doanh thu cộng dồn của 1 kỳ so với kỳ trước — GET /api/ThongKe/nhip-doanh-thu-{ngay,thang}.
