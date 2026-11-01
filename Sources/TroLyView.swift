@@ -363,6 +363,8 @@ struct TroLyView: View {
         "thuong-thang-toi": "gift",
         "phien-ban-app": "iphone",
         "luot-tai-store": "arrow.down.app",
+        "app-thong-ke-ngay": "sun.max",
+        "app-thong-ke-thang": "calendar.circle",
         "man-gio-vang-khach": "clock",
         "man-bao-hoa": "chart.bar",
         "man-ban-do-khach": "map",
@@ -612,6 +614,9 @@ struct TroLyDongList: View {
     /// Có thì dòng tồn kho (có nguyenLieuBanHangId) bấm vào được, hiện bút chì nhỏ bên phải.
     var onSua: ((TroLyTraLoi.Dong) -> Void)? = nil
 
+    /// Dòng có `con` đang bung (Thống kê ngày/tháng nhóm App, 01/11/2026: mỗi dòng là 1 câu cũ, bấm xem chi tiết).
+    @State private var moCon: Set<String> = []
+
     /// Cột thứ hạng rộng thêm khi có hạng 2 chữ số — 12pt làm "10" rớt xuống 2 dòng (30/10/2026).
     private var rongCot: CGFloat { dong.contains { ($0.hang ?? 0) >= 10 } ? 20 : 12 }
 
@@ -641,10 +646,27 @@ struct TroLyDongList: View {
                     if d.nguyenLieuBanHangId != nil, onSua != nil {
                         Image(systemName: "pencil").font(.caption).foregroundColor(.textMuted)
                     }
+                    if d.con?.isEmpty == false {
+                        Image(systemName: "chevron.down")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundColor(.textMuted)
+                            .rotationEffect(.degrees(moCon.contains(d.ten) ? 180 : 0))
+                    }
                 }
                 .padding(.vertical, 8)
                 .contentShape(Rectangle())
-                .onTapGesture { if d.nguyenLieuBanHangId != nil { onSua?(d) } }
+                .onTapGesture {
+                    if d.con?.isEmpty == false {
+                        khongHieuUng { if moCon.contains(d.ten) { moCon.remove(d.ten) } else { moCon.insert(d.ten) } }
+                    } else if d.nguyenLieuBanHangId != nil {
+                        onSua?(d)
+                    }
+                }
+                if let con = d.con, !con.isEmpty, moCon.contains(d.ten) {
+                    TroLyConList(tieuDe: nil, dong: con)
+                        .padding(.leading, rongCot + 10)
+                        .padding(.bottom, 6)
+                }
             }
         }
     }
@@ -700,12 +722,15 @@ struct TroLyCotView: View {
 /// Chi tiết dòng đang chọn của báo cáo chia cột (29/10/2026, thay màn "Phiên bản app khách"): từng máy — tên khách,
 /// SĐT · máy · lần mở gần nhất, bản app canh phải. Id theo vị trí vì 1 khách có thể có 2 máy (trùng tên).
 struct TroLyConList: View {
-    let tieuDe: String
+    /// nil khi bung ngay dưới dòng cha (tên dòng cha đã nằm trên).
+    let tieuDe: String?
     let dong: [TroLyTraLoi.Dong]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(tieuDe).font(.caption.weight(.semibold)).foregroundColor(.textMuted).padding(.bottom, 2)
+            if let tieuDe {
+                Text(tieuDe).font(.caption.weight(.semibold)).foregroundColor(.textMuted).padding(.bottom, 2)
+            }
             ForEach(Array(dong.enumerated()), id: \.offset) { i, d in
                 if i > 0 { Divider() }
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
