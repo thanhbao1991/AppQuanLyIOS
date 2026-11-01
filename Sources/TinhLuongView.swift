@@ -11,6 +11,7 @@ import SwiftUI
 /// Dùng chung 1 view cho cả "Tính lương Khánh"/"Tính lương Nhã", chỉ khác `shipperTen` truyền vào.
 /// 01/11/2026 (user): bung ngay trong Trợ lý ảo, không mở màn riêng; bỏ biểu đồ 6 tháng, bỏ sheet chi tiết từng
 /// khoản. Đổi tháng bằng nút ‹ › tại chỗ (không dùng sheet chọn tháng — sheet gắn trong List bị đóng khi List vẽ lại).
+/// Ô tỉ lệ / lương hiện tại giấu sau nút "⋯" (rất ít khi sửa).
 struct TinhLuongView: View {
     let shipperTen: String
 
@@ -22,8 +23,17 @@ struct TinhLuongView: View {
     /// Chặn lượt load cũ (đổi tháng nhanh) ghi đè, và báo khi tải lỗi thay vì hiện 0đ.
     @State private var loadFailed = false
     @State private var loadGeneration = 0
-    @State private var tiLeText = "40"
-    @State private var luongHienTaiText = Self.formatThousands("10000000")
+    /// Tỉ lệ + lương hiện tại: rất ít khi sửa (user 01/11/2026) — giấu sau nút "⋯", lưu trên máy theo từng shipper
+    /// để lần sau mở không phải gõ lại.
+    @AppStorage private var tiLeText: String
+    @AppStorage private var luongHienTaiText: String
+    @State private var moCaiDat = false
+
+    init(shipperTen: String) {
+        self.shipperTen = shipperTen
+        _tiLeText = AppStorage(wrappedValue: "40", "tinhLuong.tiLe.\(shipperTen)")
+        _luongHienTaiText = AppStorage(wrappedValue: Self.formatThousands("10000000"), "tinhLuong.luong.\(shipperTen)")
+    }
 
     private var tiLe: Double { (Double(tiLeText) ?? 0) / 100 }
     private var luongHienTai: Double { Double(luongHienTaiText.filter(\.isNumber)) ?? 0 }
@@ -55,6 +65,10 @@ struct TinhLuongView: View {
                 Text(tieuDeThang).font(.subheadline.weight(.semibold))
                 Spacer()
                 Button { doiThang(1) } label: { Image(systemName: "chevron.right") }
+                Button { khongHieuUng { moCaiDat.toggle() } } label: {
+                    Image(systemName: moCaiDat ? "ellipsis.circle.fill" : "ellipsis.circle")
+                }
+                .padding(.leading, 8)
             }
             .buttonStyle(.borderless)
             .tint(.brandPrimary)
@@ -73,31 +87,10 @@ struct TinhLuongView: View {
                 }
                 AmountRow(label: "Chi xăng \(shipperTen)", value: luong?.chiXang ?? 0)
                 Divider()
-                if !isNha {
-                    HStack {
-                        Text("Tỉ lệ lợi nhuận").font(.subheadline)
-                        Spacer()
-                        TextField("40", text: $tiLeText)
-                            .keyboardType(.numberPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 60)
-                        Text("%").foregroundColor(.textMuted)
-                    }
+                if moCaiDat {
+                    caiDat
+                    Divider()
                 }
-                HStack {
-                    Text("Lương hiện tại").font(.subheadline)
-                    Spacer()
-                    TextField("10.000.000", text: $luongHienTaiText)
-                        .keyboardType(.numberPad)
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: 120)
-                        .onChange(of: luongHienTaiText) { newValue in
-                            let formatted = Self.formatThousands(newValue)
-                            if formatted != newValue { luongHienTaiText = formatted }
-                        }
-                    Text("đ").foregroundColor(.textMuted)
-                }
-                Divider()
                 if let ketQua {
                     let mau: Color = ketQua > 0 ? .successColor : ketQua == 0 ? .warningColor : .dangerColor
                     HStack(alignment: .firstTextBaseline) {
@@ -112,13 +105,41 @@ struct TinhLuongView: View {
                             .foregroundColor(mau)
                     }
                 }
-                Text(isNha
-                     ? "Kết quả = Lương hiện tại − (Ứng \(shipperTen) + Chi xăng)"
-                     : "Kết quả = Đơn ship × tỉ lệ − (Lương hiện tại + Chi xăng)")
-                    .font(.caption2).foregroundColor(.textMuted)
             }
         }
         .task { if !hasLoaded { await load() } }
+    }
+
+    /// Ô sửa tỉ lệ / lương hiện tại + công thức — chỉ hiện khi bấm "⋯".
+    @ViewBuilder private var caiDat: some View {
+        if !isNha {
+            HStack {
+                Text("Tỉ lệ lợi nhuận").font(.subheadline)
+                Spacer()
+                TextField("40", text: $tiLeText)
+                    .keyboardType(.numberPad)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 60)
+                Text("%").foregroundColor(.textMuted)
+            }
+        }
+        HStack {
+            Text("Lương hiện tại").font(.subheadline)
+            Spacer()
+            TextField("10.000.000", text: $luongHienTaiText)
+                .keyboardType(.numberPad)
+                .multilineTextAlignment(.trailing)
+                .frame(width: 120)
+                .onChange(of: luongHienTaiText) { newValue in
+                    let formatted = Self.formatThousands(newValue)
+                    if formatted != newValue { luongHienTaiText = formatted }
+                }
+            Text("đ").foregroundColor(.textMuted)
+        }
+        Text(isNha
+             ? "Kết quả = Lương hiện tại − (Ứng \(shipperTen) + Chi xăng)"
+             : "Kết quả = Đơn ship × tỉ lệ − (Lương hiện tại + Chi xăng)")
+            .font(.caption2).foregroundColor(.textMuted)
     }
 
     private func doiThang(_ buoc: Int) {
