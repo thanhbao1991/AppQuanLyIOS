@@ -50,7 +50,9 @@ final class DuyetCongThucSizeModel: ObservableObject {
         return dinhLuongAll.filter { $0.congThucId == congThucId }
     }
 
-    func load() async {
+    /// Trả false nếu tải lỗi (giữ bộ cũ).
+    @discardableResult
+    func load() async -> Bool {
         async let dsTask = APIClient.shared.getCongThucDuyetSizeOrNil()
         async let ctTask = APIClient.shared.getCongThucListOrNil()
         async let dlTask = APIClient.shared.getSuDungNguyenLieuListOrNil()
@@ -59,12 +61,13 @@ final class DuyetCongThucSizeModel: ObservableObject {
         let (ds, ct, dl, sp, nl) = await (dsTask, ctTask, dlTask, spTask, nlTask)
         // Phải về đủ cả bộ mới áp dụng — cùng lý do CongThucListView.load: thiếu dinhLuongAll mà vẫn
         // mở sửa rồi Lưu sẽ tạo trùng dòng nguyên liệu (trừ tồn kho gấp đôi). Lỗi thì giữ bộ cũ.
-        guard let ds, let ct, let dl, let sp, let nl else { return }
+        guard let ds, let ct, let dl, let sp, let nl else { return false }
         items = ds
         congThucs = ct
         dinhLuongAll = dl
         allSanPham = sp
         allNguyenLieu = nl.sorted { $0.ten.localizedStandardCompare($1.ten) == .orderedAscending }
+        return true
     }
 }
 

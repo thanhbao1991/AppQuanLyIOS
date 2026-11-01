@@ -59,6 +59,12 @@ struct MainTabView: View {
     /// Mặc định Hoá đơn dù Thống kê xếp trước về vị trí hiển thị — mở app luôn vào tab Hoá đơn
     /// theo yêu cầu, thứ tự khai báo trong MainTab không nhất thiết khớp mục mặc định.
     @State private var selection: MainTab = .hoaDon
+    /// Cổng vào tab Nợ/Kê (user 01/11/2026): còn món L/XL chưa duyệt công thức thì phải duyệt xong
+    /// 1 món mới được vào. Model riêng, không dùng chung với TroLyView.
+    @StateObject private var duyetCongThuc = DuyetCongThucSizeModel()
+    @State private var tabChoDuyet: MainTab?
+    @State private var monVuaMo: String?
+    @State private var dangMoTab = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -119,6 +125,43 @@ struct MainTabView: View {
             if id != nil { selection = .hoaDon }
         }
         .task { await congViecBadge.refresh() }
+        // Gắn ở cấp màn hình, không gắn trong nội dung tab (cùng lý do duyetCongThucSheet).
+        .sheet(item: Binding(get: { duyetCongThuc.dangSua }, set: { duyetCongThuc.dangSua = $0 }),
+               onDismiss: xongDuyetCongThuc) { mon in
+            duyetCongThucMonSheet(mon: mon, model: duyetCongThuc)
+        }
+    }
+
+    /// Bấm tab Nợ/Kê: còn món chưa duyệt thì mở bảng duyệt món đầu (vừa bán gần nhất), duyệt xong
+    /// mới chuyển tab. Tải lỗi / hết món thì vào thẳng — đừng khoá nhân viên vì mạng.
+    private func chonTab(_ tab: MainTab) {
+        guard tab == .congNo || tab == .thongKe, tab != selection else {
+            selection = tab
+            return
+        }
+        guard !dangMoTab else { return }
+        dangMoTab = true
+        Task {
+            // Luôn tải lại: định lượng cũ mà mở sửa rồi Lưu sẽ tạo trùng dòng (xem DuyetCongThucSizeModel.load).
+            let taiDuoc = await duyetCongThuc.load()
+            dangMoTab = false
+            guard taiDuoc, let mon = duyetCongThuc.monChuaDuyet.first else {
+                selection = tab
+                return
+            }
+            tabChoDuyet = tab
+            monVuaMo = mon.id
+            duyetCongThuc.dangSua = mon
+        }
+    }
+
+    /// Sheet duyệt đóng: món vừa mở đã hết trong danh sách chưa duyệt (Lưu & duyệt gọi load lại trước
+    /// khi đóng) thì cho vào tab; bấm Huỷ thì ở lại tab cũ.
+    private func xongDuyetCongThuc() {
+        guard let tab = tabChoDuyet, let monId = monVuaMo else { return }
+        tabChoDuyet = nil
+        monVuaMo = nil
+        if !duyetCongThuc.monChuaDuyet.contains(where: { $0.id == monId }) { selection = tab }
     }
 
     /// Icon chuông đặt làm trailing TRONG header riêng của 6 tab (Thống kê/Hoá đơn/Thanh toán/Công
@@ -191,7 +234,7 @@ struct MainTabView: View {
         HStack(spacing: 0) {
             ForEach(MainTab.allCases, id: \.self) { tab in
                 Button {
-                    selection = tab
+                    chonTab(tab)
                 } label: {
                     VStack(spacing: 3) {
                         // Khung cố định 22x22 cho icon — ZStack không có frame rõ ràng khiến badge

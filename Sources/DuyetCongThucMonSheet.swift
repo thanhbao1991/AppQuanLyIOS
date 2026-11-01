@@ -305,5 +305,5 @@ func duyetCongThucMonSheet(mon: MonDuyetCongThuc, model: DuyetCongThucSizeModel)
         + mon.sizes.map { CongThucSizeSheet.Cot(ten: $0.tenBienThe, bienTheId: $0.sanPhamBienTheId, congThucId: $0.congThucId, canDuyet: true) }
     return CongThucSizeSheet(tenSanPham: mon.tenSanPham, cots: cots, dinhLuongAll: model.dinhLuongAll,
                              allNguyenLieu: model.allNguyenLieu, dienSanTuCotDau: true,
-                             onSaved: { await model.load() })
+                             onSaved: { _ = await model.load() })
 }

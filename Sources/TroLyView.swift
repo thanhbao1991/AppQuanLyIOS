@@ -194,7 +194,7 @@ struct TroLyView: View {
         async let tq = APIClient.shared.getTroLyTongQuan()
         async let ds = APIClient.shared.getTroLyCauHoi()
         async let cbs = APIClient.shared.getCanhBao()
-        async let duyet: Void = duyetCongThuc.load()
+        async let duyet = duyetCongThuc.load()
         let (t, d, c, _) = await (tq, ds, cbs, duyet)
         tongQuan = t
         if let c {
