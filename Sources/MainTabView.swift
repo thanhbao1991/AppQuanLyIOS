@@ -59,7 +59,7 @@ struct MainTabView: View {
     /// Mặc định Hoá đơn dù Thống kê xếp trước về vị trí hiển thị — mở app luôn vào tab Hoá đơn
     /// theo yêu cầu, thứ tự khai báo trong MainTab không nhất thiết khớp mục mặc định.
     @State private var selection: MainTab = .hoaDon
-    /// Cổng vào tab Kê/Tiền/Chi/Việc (user 01/11/2026): còn món L/XL chưa duyệt công thức thì phải duyệt xong
+    /// Cổng vào tab Kê/Tiền/Việc (user 01/11/2026): còn món L/XL chưa duyệt công thức thì phải duyệt xong
     /// 1 món mới được vào. Model riêng, không dùng chung với TroLyView.
     @StateObject private var duyetCongThuc = DuyetCongThucSizeModel()
     @State private var tabChoDuyet: MainTab?
@@ -133,10 +133,10 @@ struct MainTabView: View {
         }
     }
 
-    /// Mọi tab trừ Đơn, Nợ và Menu (user 01/11/2026).
-    private static let tabCanDuyet: Set<MainTab> = [.thongKe, .thanhToan, .chiTieu, .congViec]
+    /// Chỉ Kê/Tiền/Việc — Đơn, Nợ, Chi, Menu vào thẳng (user 01/11/2026).
+    private static let tabCanDuyet: Set<MainTab> = [.thongKe, .thanhToan, .congViec]
 
-    /// Bấm tab Kê/Tiền/Chi/Việc: còn món chưa duyệt thì mở bảng duyệt món đầu (vừa bán gần nhất),
+    /// Bấm tab Kê/Tiền/Việc: còn món chưa duyệt thì mở bảng duyệt món đầu (vừa bán gần nhất),
     /// duyệt xong mới chuyển tab. Tải lỗi / hết món thì vào thẳng — đừng khoá nhân viên vì mạng.
     private func chonTab(_ tab: MainTab) {
         guard Self.tabCanDuyet.contains(tab), tab != selection else {
