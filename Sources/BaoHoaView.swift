@@ -19,6 +19,9 @@ import SwiftUI
 /// 18/10/2026: trình bày lại theo BaoCaoUI (kết luận trước, chi tiết sau) — thẻ kết luận tổng đầu màn,
 /// mỗi tín hiệu 1 dòng (kết luận 1 câu + màu mức độ + con số), chạm mới mở biểu đồ + giải thích dài.
 struct BaoHoaView: View {
+    /// true = bản gọn bung ngay trong Trợ lý ảo (01/11/2026, user: xổ ra xem luôn, không mở màn mới) — chỉ kết luận
+    /// tổng + mỗi tín hiệu 1 dòng, bỏ biểu đồ + mục TODO; muốn xem biểu đồ thì "Xem biểu đồ" mở màn đầy đủ.
+    var tomTat = false
     @State private var doanhThuThang: [DoanhThuTheoThangItemDto] = []
     @State private var gioItems: [PhanBoDonTheoGioItemDto] = []
     @State private var retentionThang: [TyLeKhachQuayLaiThangItemDto] = []
@@ -35,6 +38,42 @@ struct BaoHoaView: View {
     }
 
     var body: some View {
+        if tomTat { banGon } else { manDayDu }
+    }
+
+    @ViewBuilder private var banGon: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if loading {
+                ProgressView().frame(maxWidth: .infinity)
+            } else {
+                theKetLuan
+                let ds: [(String, TinHieu?)] = [("Doanh thu theo tháng", tinHieuDoanhThu), ("Bán kính ship", tinHieuBanKinh),
+                                                ("Khách quay lại", tinHieuQuayLai), ("Giờ đông đơn nhất", tinHieuGio)]
+                ForEach(Array(ds.enumerated()), id: \.offset) { i, x in
+                    if i > 0 { Divider() }
+                    let t = x.1 ?? TinHieu(mucDo: .trungTinh, ketLuan: "Chưa đủ dữ liệu", giaTri: nil, nhanXet: nil)
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        Circle().fill(t.mucDo.mau).frame(width: 8, height: 8)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(x.0).font(.subheadline.weight(.medium))
+                            Text(t.ketLuan).font(.caption).foregroundColor(t.mucDo.mau)
+                        }
+                        Spacer(minLength: 8)
+                        if let gt = t.giaTri {
+                            Text(gt).font(.subheadline.weight(.semibold)).monospacedDigit()
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+                NavigationLink { BaoHoaView() } label: {
+                    Text("Xem biểu đồ").font(.subheadline)
+                }
+            }
+        }
+        .task { await load() }
+    }
+
+    private var manDayDu: some View {
         List {
             if loading {
                 Section { fullScreenLoading() }

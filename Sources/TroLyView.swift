@@ -347,8 +347,10 @@ struct TroLyView: View {
     private static let maLayHang = "lay-hang"
     /// Giờ vắng khách bung tại chỗ (29/10/2026 user: không cần màn riêng) — giữ mã "man-…" cho khỏi lệch thứ tự đã kéo.
     private static let maGioVang = "man-gio-vang-khach"
+    /// Bão hoà bung tại chỗ bản gọn (01/11/2026, user: xổ ra xem luôn, không mở màn mới).
+    private static let maBaoHoa = "man-bao-hoa"
     /// Câu bung tại chỗ nhưng app tự tải, không gọi /chi-tiet.
-    private static let khongQuaChiTiet: Set<String> = [maLayHang, maGioVang]
+    private static let khongQuaChiTiet: Set<String> = [maLayHang, maGioVang, maBaoHoa]
 
     private static let icon: [String: String] = [
         "can-nhap": "cart",
@@ -478,7 +480,7 @@ struct TroLyView: View {
             }
             .padding(.vertical, 4)
             .task { if !daTaiSoDuAi { await taiSoDuAi() } }
-        } else if c.ma != Self.maGioVang, Self.mucTrenMay.contains(where: { $0.ma == c.ma }) {
+        } else if !Self.khongQuaChiTiet.contains(c.ma), Self.mucTrenMay.contains(where: { $0.ma == c.ma }) {
             NavigationLink { Self.manXem(c.ma) } label: {
                 HStack(spacing: 12) { nhanCauHoi(c) }
             }
@@ -488,12 +490,21 @@ struct TroLyView: View {
         }
     }
 
+    /// Câu đang mở: chữ câu hỏi đậm màu chính, câu trả lời nằm trong khung nền nhạt có vạch màu bên trái — mở nhiều câu
+    /// cùng lúc vẫn phân biệt được câu nào của câu trả lời nào (user 01/11/2026).
     @ViewBuilder
     private func cauHoiBungRow(_ c: TroLyCauHoi) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let mo = moRa.contains(c.ma)
+        VStack(alignment: .leading, spacing: 10) {
             Button { bamCauHoi(c.ma) } label: {
                 HStack(spacing: 12) {
-                    nhanCauHoi(c)
+                    Image(systemName: Self.icon[c.ma] ?? "questionmark.circle")
+                        .font(.body.weight(.semibold))
+                        .foregroundColor(.brandPrimary)
+                        .frame(width: 24)
+                    Text(c.noiDung)
+                        .font(mo ? .body.weight(.bold) : .body.weight(.medium))
+                        .foregroundColor(mo ? .brandPrimary : .primary)
                     Spacer()
                     if dangHoi.contains(c.ma) {
                         ProgressView()
@@ -508,17 +519,28 @@ struct TroLyView: View {
             }
             .buttonStyle(.plain)
 
-            if moRa.contains(c.ma) {
-                if c.ma == Self.maLayHang {
-                    // Có màn tương tác riêng (chọn đại lý, sửa đơn tối thiểu) — không qua chi-tiet.
-                    LayHangView()
-                } else if c.ma == Self.maGioVang {
-                    GioVangKhachTomTat()
-                } else if let tl = traLoi[c.ma] {
-                    TroLyTraLoiView(traLoi: tl, onSua: { suaTon = $0 })
-                } else if !dangHoi.contains(c.ma) {
-                    Text("Không tải được, chạm lại để thử.").font(.subheadline).foregroundColor(.textMuted)
+            if mo {
+                Group {
+                    if c.ma == Self.maLayHang {
+                        // Có màn tương tác riêng (chọn đại lý, sửa đơn tối thiểu) — không qua chi-tiet.
+                        LayHangView()
+                    } else if c.ma == Self.maGioVang {
+                        GioVangKhachTomTat()
+                    } else if c.ma == Self.maBaoHoa {
+                        BaoHoaView(tomTat: true)
+                    } else if let tl = traLoi[c.ma] {
+                        TroLyTraLoiView(traLoi: tl, onSua: { suaTon = $0 })
+                    } else if !dangHoi.contains(c.ma) {
+                        Text("Không tải được, chạm lại để thử.").font(.subheadline).foregroundColor(.textMuted)
+                    }
                 }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.brandPrimary.opacity(0.06))
+                .overlay(alignment: .leading) {
+                    Rectangle().fill(Color.brandPrimary).frame(width: 3)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 10))
             }
         }
         .padding(.vertical, 4)
