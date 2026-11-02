@@ -59,8 +59,10 @@ struct CongViecListView: View {
                     }
                     List {
                         if searchText.isEmpty && !visibleDeXuat.isEmpty {
-                            Section("Đề xuất nên làm") {
+                            Section {
                                 ForEach(visibleDeXuat) { deXuatRow($0) }
+                            } header: {
+                                sectionHeader("✨ Đề xuất nên làm", nil)
                             }
                         }
                         if items.isEmpty && searchText.isEmpty {
@@ -69,31 +71,41 @@ struct CongViecListView: View {
                                 .frame(maxWidth: .infinity)
                                 .listRowSeparator(.hidden)
                         }
-                        ForEach(sortedItems) { item in
-                            CongViecRowView(item: item) { toggled in
-                                confirmItem = item
-                                confirmNewState = toggled
+                        // 02/11/2026: chia "Cần làm" / "Đã xong" trong khung bo góc (insetGrouped) trên nền xám — cùng
+                        // tông các tab thẻ khác, vẫn là checklist kiểu Lời nhắc.
+                        let canLam = sortedItems.filter { !$0.daHoanThanh }
+                        let daXong = sortedItems.filter { $0.daHoanThanh }
+                        if !canLam.isEmpty || tenViecMoi != nil {
+                            Section {
+                                ForEach(canLam) { congViecRow($0) }
+                                // Thêm mới ngay bằng chính chuỗi đang tìm (khớp pattern "Thêm nguyên liệu mới"
+                                // bên tab Chi tiêu) — luôn ở cuối, miễn chưa có việc trùng khít tên.
+                                if let ten = tenViecMoi {
+                                    Button {
+                                        Task { await addCongViec(ten: ten) }
+                                    } label: {
+                                        if adding {
+                                            ProgressView()
+                                        } else {
+                                            EmojiLabel("Thêm việc mới \"\(ten)\"", "➕")
+                                        }
+                                    }
+                                    .disabled(adding)
+                                }
+                            } header: {
+                                sectionHeader("Cần làm", canLam.count)
                             }
                         }
-                        // Thêm mới ngay bằng chính chuỗi đang tìm (khớp pattern "Thêm nguyên liệu mới"
-                        // bên tab Chi tiêu) — luôn ở cuối kết quả, miễn chưa có việc trùng khít tên.
-                        if let ten = tenViecMoi {
-                            Button {
-                                Task { await addCongViec(ten: ten) }
-                            } label: {
-                                if adding {
-                                    ProgressView()
-                                } else {
-                                    EmojiLabel("Thêm việc mới \"\(ten)\"", "➕")
-                                }
+                        if !daXong.isEmpty {
+                            Section {
+                                ForEach(daXong) { congViecRow($0) }
+                            } header: {
+                                sectionHeader("Đã xong", daXong.count)
                             }
-                            .disabled(adding)
-                            .listRowSeparator(.hidden)
                         }
                     }
-                    .listStyle(.plain)
+                    .listStyle(.insetGrouped)
                     .softScrollEdgeTop()
-                    .padding(.top, 4)
                     .refreshable { await load() }
                 }
             }
@@ -149,6 +161,22 @@ struct CongViecListView: View {
             let moi = await APIClient.shared.getCongViecDeXuat()
             if generation == deXuatGeneration { deXuat = moi }
         }
+    }
+
+    private func congViecRow(_ item: CongViecNoiBoDto) -> some View {
+        CongViecRowView(item: item) { toggled in
+            confirmItem = item
+            confirmNewState = toggled
+        }
+    }
+
+    private func sectionHeader(_ ten: String, _ soLuong: Int?) -> some View {
+        HStack(spacing: 6) {
+            Text(ten)
+            if let soLuong { Text("\(soLuong)").foregroundColor(.textMuted) }
+        }
+        .font(.footnote.weight(.semibold))
+        .textCase(nil)
     }
 
     /// Chỉ hiện tên — bấm vào mở đúng confirm đổi trạng thái của công việc tương ứng (tìm trong
