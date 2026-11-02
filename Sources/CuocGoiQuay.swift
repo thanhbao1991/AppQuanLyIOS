@@ -5,8 +5,8 @@ import UIKit
 import WebRTC
 
 extension Notification.Name {
-    /// Có cuộc gọi từ quầy (CallKit) — nút bộ đàm WKWebView phải nhả kết nối, không thì 2 bên giành máy quầy.
-    static let cuocGoiQuayBatDau = Notification.Name("cuocGoiQuayBatDau")
+    /// Trạng thái cuộc gọi đi lên quầy đổi (bắt đầu / nối xong / kết thúc) — nút bộ đàm cập nhật hình.
+    static let cuocGoiQuayDoi = Notification.Name("cuocGoiQuayDoi")
 }
 
 /// Máy quầy gọi AppQuanLy (29/10/2026) — chiều ngược của nút bộ đàm (BoDamButton).
@@ -48,6 +48,13 @@ final class CuocGoiQuay: NSObject {
     /// Đang đổ chuông hoặc đang nói — nút bộ đàm không được nối trong lúc này.
     var dangCo: Bool { maCuoc != nil }
 
+    /// Cuộc gọi do chính app gọi lên quầy (nút bộ đàm) — khác cuộc quầy gọi tới.
+    private(set) var laGoiRa = false
+    /// Đã nối xong tới quầy, 2 bên nói được.
+    var daNoiQuay: Bool { pc?.connectionState == .connected }
+    /// Lý do cuộc gọi đi vừa kết thúc bất thường (hiện cho người dùng); nút đọc rồi xoá.
+    var loiGoiRa: String?
+
     private override init() {
         let config = CXProviderConfiguration()
         config.supportsVideo = false
@@ -82,6 +89,50 @@ final class CuocGoiQuay: NSObject {
         AVAudioSession.sharedInstance().requestRecordPermission { _ in }
     }
 
+    // MARK: - Gọi quầy (nút bộ đàm)
+
+    /// Bấm nút bộ đàm: gọi quầy như cuộc gọi đi (CallKit) — chạy chung đường WebRTC native với cuộc quầy gọi tới nên
+    /// ra nền / sang app khác / khoá màn hình vẫn nói được, như đang gọi Zalo.
+    func goiRa() {
+        guard maCuoc == nil else { return }
+        let ma = UUID()
+        maCuoc = ma
+        laGoiRa = true
+        daNghe = true
+        tatTieng = false
+        loiGoiRa = nil
+        thongBaoDoi()
+        let handle = CXHandle(type: .generic, value: Self.tenQuay)
+        let action = CXStartCallAction(call: ma, handle: handle)
+        action.isVideo = false
+        callController.request(CXTransaction(action: action)) { [weak self] error in
+            guard error != nil else { return }
+            DispatchQueue.main.async {
+                guard let self, self.maCuoc == ma else { return }
+                self.loiGoiRa = "Không gọi được quầy"
+                self.donDep()
+            }
+        }
+        // Không nối được quầy (tắt máy, mất mạng…) thì tự gác sau 25 giây.
+        let item = DispatchWorkItem { [weak self] in
+            guard let self, self.maCuoc == ma, self.pc?.connectionState != .connected else { return }
+            self.loiGoiRa = "Không thấy máy quầy"
+            self.ketThuc(.failed)
+        }
+        henChuong = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 25, execute: item)
+    }
+
+    /// Bấm nút lúc đang gọi đi: gác máy.
+    func gacMay() {
+        guard let ma = maCuoc, laGoiRa else { return }
+        callController.request(CXTransaction(action: CXEndCallAction(call: ma))) { _ in }
+    }
+
+    private func thongBaoDoi() {
+        NotificationCenter.default.post(name: .cuocGoiQuayDoi, object: nil)
+    }
+
     // MARK: - Đổ chuông
 
     private func baoCuocGoiDen(_ ma: UUID, ten: String) {
@@ -105,7 +156,7 @@ final class CuocGoiQuay: NSObject {
         maCuoc = ma
         daNghe = false
         tatTieng = false
-        NotificationCenter.default.post(name: .cuocGoiQuayBatDau, object: nil)
+        thongBaoDoi()
         provider.reportNewIncomingCall(with: ma, update: update) { [weak self] error in
             DispatchQueue.main.async {
                 guard let self, self.maCuoc == ma else { return }
@@ -266,6 +317,11 @@ final class CuocGoiQuay: NSObject {
         switch s {
         case .connected:
             henGoiLai?.cancel()
+            if laGoiRa, let ma = maCuoc {
+                henChuong?.cancel()
+                provider.reportOutgoingCall(with: ma, connectedAt: nil)
+                thongBaoDoi()
+            }
             // Cả cuộc gọi là "đang giữ nút": quầy mở mic + phát tiếng mình suốt tới khi gác máy.
             gui(["t": "noi", "phien": phien, "on": true])
         case .disconnected:
@@ -299,6 +355,8 @@ final class CuocGoiQuay: NSObject {
         phien += 1
         maCuoc = nil
         daNghe = false
+        laGoiRa = false
+        thongBaoDoi()
     }
 
     private func cauHinhAmThanh() {
@@ -362,6 +420,31 @@ extension CuocGoiQuay: CXProviderDelegate {
                     self.ice = ds.map { RTCIceServer(urlStrings: $0.urls, username: $0.username, credential: $0.credential) }
                 }
                 if self.hub == nil { self.noiHub() } else { self.goiQuay() }
+            }
+        }
+    }
+
+    func provider(_ provider: CXProvider, perform action: CXStartCallAction) {
+        guard action.callUUID == maCuoc, laGoiRa else { action.fail(); return }
+        let ma = action.callUUID
+        cauHinhAmThanh()
+        action.fulfill()
+        let update = CXCallUpdate()
+        update.remoteHandle = action.handle
+        update.localizedCallerName = Self.tenQuay
+        update.hasVideo = false
+        update.supportsHolding = false
+        update.supportsGrouping = false
+        update.supportsUngrouping = false
+        update.supportsDTMF = false
+        provider.reportCall(with: ma, updated: update)
+        provider.reportOutgoingCall(with: ma, startedConnectingAt: nil)
+        Task {
+            let ds = await APIClient.shared.boDamIce()
+            await MainActor.run {
+                guard self.maCuoc == ma else { return }
+                self.ice = ds.map { RTCIceServer(urlStrings: $0.urls, username: $0.username, credential: $0.credential) }
+                self.noiHub()
             }
         }
     }

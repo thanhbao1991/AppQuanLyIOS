@@ -1,68 +1,58 @@
 import SwiftUI
-import WebKit
 
-/// Bộ đàm quầy (29/10/2026) — nút ở thanh dưới tab Đơn, cạnh nút xem màn hình Desktop. Bấm 1 lần là nối máy quầy
-/// (Desktop bật Bộ đàm, tự nhận) và 2 bên nói tự do; bấm lần nữa là tắt — giống hệt quầy gọi lên (bấm 📻 / giữ
-/// Space), user chốt "nhấn là gọi, nhấn lần nữa là tắt, 2 bên thao tác giống nhau". Tiếng đi WebRTC trong một
-/// WKWebView ẩn nạp trang {api}/bodam/?vaiTro=ql (TraSuaApp.Backend/wwwroot/bodam/index.html) — khử vọng/lọc ồn/
-/// Opus của WebKit như gọi thoại. Rung báo khi nói được. Ra nền thì tắt (WebKit không giữ micro ở nền).
+/// Bộ đàm quầy (29/10/2026) — nút ở thanh dưới tab Đơn, cạnh nút xem màn hình Desktop. Bấm 1 lần là gọi máy quầy
+/// (Desktop bật Bộ đàm, tự nhận) và 2 bên nói tự do; bấm lần nữa là gác — giống hệt quầy gọi lên (bấm 📻 / giữ
+/// Space). Từ 2/11/2026 là cuộc gọi đi CallKit + WebRTC native (CuocGoiQuay.goiRa) như đang gọi Zalo: sang app khác
+/// xem camera, khoá màn hình vẫn nói được (trước đây là WKWebView ẩn nên ra nền là tắt). Rung báo khi nói được.
 struct BoDamButton: View {
     @StateObject private var model = BoDamModel()
-    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        ZStack {
-            // WebView phải nằm trong cây view thì WebKit mới chạy âm thanh/mic.
-            BoDamWebView(webView: model.webView)
-                .frame(width: 1, height: 1)
-                .opacity(0.01)
-                .allowsHitTesting(false)
-
-            Image(systemName: bieuTuong)
-                .font(.system(size: 26, weight: .semibold))
-                .foregroundColor(mau)
-                .symbolEffectPulse(model.dangChay && !model.dangNoi)
-                .frame(width: 36, height: 36)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    model.bam()
-                }
-        }
-        .overlay(alignment: .top) {
-            if model.dangChay || model.loi != nil {
-                Text(model.moTa)
-                    .font(.footnote.weight(.semibold))
-                    .foregroundColor(.white)
-                    .fixedSize()
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Capsule().fill(model.mauMoTa))
-                    .offset(y: -44)
-                    .transition(.opacity)
-                    .allowsHitTesting(false)
+        Image(systemName: bieuTuong)
+            .font(.system(size: 26, weight: .semibold))
+            .foregroundColor(mau)
+            .symbolEffectPulse(model.dangChay && !model.daNoi)
+            .frame(width: 36, height: 36)
+            .contentShape(Rectangle())
+            // Gọi phải nhấn giữ 1 giây (tránh chạm nhầm gọi quầy); đang gọi thì chạm 1 lần để gác.
+            .onTapGesture {
+                guard model.dangChay else { return }
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                model.bam()
             }
-        }
-        .animation(.easeOut(duration: 0.15), value: model.dangChay)
-        .animation(.easeOut(duration: 0.15), value: model.trangThai)
-        .onAppear { model.chuanBi() }
-        // Quầy gọi tới (CuocGoiQuay) — nhả máy quầy cho cuộc gọi.
-        .onReceive(NotificationCenter.default.publisher(for: .cuocGoiQuayBatDau)) { _ in
-            model.dung()
-        }
-        .onChange(of: scenePhase) { phase in
-            if phase == .background { model.dung() }
-        }
-        .accessibilityLabel(model.dangChay ? "Bộ đàm quầy — bấm để tắt" : "Bộ đàm quầy — bấm để gọi quầy")
+            .onLongPressGesture(minimumDuration: 1) {
+                guard !model.dangChay else { return }
+                UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                model.bam()
+            }
+            .overlay(alignment: .top) {
+                if model.dangChay || model.loi != nil {
+                    Text(model.moTa)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundColor(.white)
+                        .fixedSize()
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Capsule().fill(model.mauMoTa))
+                        .offset(y: -44)
+                        .transition(.opacity)
+                        .allowsHitTesting(false)
+                }
+            }
+            .animation(.easeOut(duration: 0.15), value: model.dangChay)
+            .animation(.easeOut(duration: 0.15), value: model.daNoi)
+            .onReceive(NotificationCenter.default.publisher(for: .cuocGoiQuayDoi)) { _ in
+                model.capNhat()
+            }
+            .accessibilityLabel(model.dangChay ? "Bộ đàm quầy — bấm để gác máy" : "Bộ đàm quầy — nhấn giữ 1 giây để gọi quầy")
     }
 
     private var bieuTuong: String {
-        if model.dangNoi { return "waveform.circle.fill" }
-        return "antenna.radiowaves.left.and.right"
+        model.daNoi ? "waveform.circle.fill" : "antenna.radiowaves.left.and.right"
     }
 
     private var mau: Color {
-        if model.dangNoi { return .red }
+        if model.daNoi { return .red }
         if model.dangChay { return .orange }
         return .brandPrimary
     }
@@ -80,124 +70,45 @@ private extension View {
 }
 
 @MainActor
-final class BoDamModel: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegate {
-    let webView: WKWebView
-    @Published var trangThai = "dung"
-    @Published var loi: String?
+final class BoDamModel: ObservableObject {
     @Published private(set) var dangChay = false
-    private var chay = false { didSet { dangChay = chay } }
-    private var daNap = false
-    private var dangNap = false
-    private var muonNoi = false
+    @Published private(set) var daNoi = false
+    @Published var loi: String?
     private var henXoaLoi: Task<Void, Never>?
-
-    override init() {
-        let config = WKWebViewConfiguration()
-        config.allowsInlineMediaPlayback = true
-        config.mediaTypesRequiringUserActionForPlayback = []
-        let proxy = BoDamMessageProxy()
-        config.userContentController.add(proxy, name: "bodam")
-        webView = WKWebView(frame: CGRect(x: 0, y: 0, width: 1, height: 1), configuration: config)
-        super.init()
-        proxy.model = self
-        webView.navigationDelegate = self
-        webView.uiDelegate = self
-    }
-
-    var dangNoi: Bool { trangThai == "dangNoi" }
 
     var moTa: String {
         if let loi { return loi }
-        switch trangThai {
-        case "dangNoi": return "Đang nói với quầy"
-        case "sanSang": return "Đã nối quầy"
-        case "khongThayQuay": return "Không thấy máy quầy"
-        case "quayBan": return "Quầy đang nói với máy khác"
-        case "matMang": return "Mất mạng, đang thử lại…"
-        case "quayTat": return "Quầy đã tắt"
-        default: return "Đang nối quầy…"
-        }
+        return daNoi ? "Đang nói với quầy" : "Đang nối quầy…"
     }
 
     var mauMoTa: Color {
         if loi != nil { return .red }
-        switch trangThai {
-        case "dangNoi": return .red
-        case "sanSang": return .green
-        case "khongThayQuay", "quayBan", "matMang": return .orange
-        default: return .gray
-        }
+        return daNoi ? .red : .gray
     }
 
-    /// Nạp sẵn trang (chưa xin mic, chưa nối) để lần bấm đầu đỡ mất thời gian tải.
-    func chuanBi() {
-        guard !daNap, !dangNap else { return }
-        dangNap = true
-        let url = URL(string: Prefs.apiBase + "/bodam/?vaiTro=ql")!
-        webView.load(URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData))
-    }
-
-    /// Bấm nút: đang tắt thì gọi quầy (nối xong tự mở mic), đang bật thì tắt.
+    /// Bấm nút: đang tắt thì gọi quầy, đang gọi thì gác máy.
     func bam() {
-        if chay { dung(); return }
+        let quay = CuocGoiQuay.shared
+        if dangChay { quay.gacMay(); return }
         loi = nil
-        if CuocGoiQuay.shared.dangCo {
+        if quay.dangCo {
             baoLoi("Đang có cuộc gọi với quầy")
             return
         }
-        muonNoi = true
-        batDau()
+        quay.goiRa()
     }
 
-    private func batDau() {
-        chay = true
-        trangThai = "dangKetNoi"
-        guard daNap else { chuanBi(); return }
-        // Trang nạp hỏng (lỗi mạng/server lúc nạp sẵn) thì không có window.boDam — nạp lại từ đầu.
-        webView.evaluateJavaScript("typeof window.boDam") { [weak self] value, _ in
-            Task { @MainActor in
-                guard let self, self.chay else { return }
-                if (value as? String) == "object" {
-                    self.guiToken()
-                    self.chayJS("boDam.batDau()")
-                } else {
-                    self.daNap = false
-                    self.chuanBi()
-                }
-            }
-        }
-    }
-
-    func dung() {
-        muonNoi = false
-        guard chay else { return }
-        chay = false
-        trangThai = "dung"
-        chayJS("boDam.dung()")
-    }
-
-    fileprivate func nhanTin(_ body: Any) {
-        guard let dict = body as? [String: Any], let loai = dict["loai"] as? String else { return }
-        let giaTri = dict["giaTri"] as? String ?? ""
-        if loai == "trangThai" {
-            if giaTri == "sanSangNap" || !chay { return }
-            let cu = trangThai
-            trangThai = giaTri
-            if giaTri == "sanSang", cu != "sanSang", cu != "dangNoi", muonNoi {
-                // Vừa nối xong mà tay vẫn giữ nút → mở mic luôn, rung báo "nói được rồi".
-                chayJS("boDam.noi(true)")
-                UINotificationFeedbackGenerator().notificationOccurred(.success)
-            } else if giaTri == "khongThayQuay", muonNoi {
-                UINotificationFeedbackGenerator().notificationOccurred(.error)
-            } else if giaTri == "quayTat" {
-                dung()
-                baoLoi("Quầy đã tắt")
-            }
-        } else if loai == "loi" {
-            if giaTri.contains("NotAllowed") || giaTri.lowercased().contains("permission") {
-                baoLoi("Chưa cho phép micro — Cài đặt → ĐENN → Micro")
-                dung()
-            }
+    /// Cuộc gọi đi đổi trạng thái (CuocGoiQuay phát .cuocGoiQuayDoi).
+    func capNhat() {
+        let quay = CuocGoiQuay.shared
+        let chayMoi = quay.dangCo && quay.laGoiRa
+        let noiMoi = chayMoi && quay.daNoiQuay
+        if noiMoi, !daNoi { UINotificationFeedbackGenerator().notificationOccurred(.success) }
+        dangChay = chayMoi
+        daNoi = noiMoi
+        if !chayMoi, let l = quay.loiGoiRa {
+            quay.loiGoiRa = nil
+            baoLoi(l)
         }
     }
 
@@ -211,82 +122,4 @@ final class BoDamModel: NSObject, ObservableObject, WKNavigationDelegate, WKUIDe
             self?.loi = nil
         }
     }
-
-    private func guiToken() {
-        let token = Prefs.token ?? ""
-        guard let data = try? JSONSerialization.data(withJSONObject: [token]),
-              let json = String(data: data, encoding: .utf8) else { return }
-        chayJS("boDam.setToken(\(json)[0])")
-    }
-
-    private func chayJS(_ js: String) {
-        // evaluateJavaScript là method Objective-C — không kéo libswiftWebKit (xem WebKitJS.swift).
-        webView.evaluateJavaScript("window.boDam && \(js)", completionHandler: nil)
-    }
-
-    nonisolated func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        Task { @MainActor in
-            self.dangNap = false
-            let value = try? await self.webView.evaluateJavaScriptObjC("typeof window.boDam")
-            self.daNap = (value as? String) == "object"
-            guard self.chay else { return }
-            if self.daNap {
-                self.guiToken()
-                self.chayJS("boDam.batDau()")
-            } else {
-                // Server trả trang lỗi (vd 401/502) — thử lại sau 3 giây.
-                self.trangThai = "matMang"
-                try? await Task.sleep(nanoseconds: 3_000_000_000)
-                if self.chay, !self.daNap { self.chuanBi() }
-            }
-        }
-    }
-
-    nonisolated func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-        Task { @MainActor in
-            self.dangNap = false
-            if self.chay { self.trangThai = "matMang" }
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
-            guard !self.daNap else { return }
-            self.chuanBi()
-        }
-    }
-
-    // Trang của chính mình xin micro — cho luôn, khỏi hộp hỏi lần 2 của WebKit. Quyền micro của app
-    // (NSMicrophoneUsageDescription) iOS vẫn hỏi một lần đầu như bình thường.
-    nonisolated func webView(_ webView: WKWebView,
-                             requestMediaCapturePermissionFor origin: WKSecurityOrigin,
-                             initiatedByFrame frame: WKFrameInfo,
-                             type: WKMediaCaptureType,
-                             decisionHandler: @escaping (WKPermissionDecision) -> Void) {
-        decisionHandler(origin.host.hasSuffix("denncoffee.com") ? .grant : .deny)
-    }
-}
-
-private extension WKWebView {
-    /// Bọc evaluateJavaScript bản completion (Objective-C) thành async — tránh bản async của Swift nằm ở
-    /// libswiftWebKit (iOS < 26 không có, xem WebKitJS.swift).
-    func evaluateJavaScriptObjC(_ js: String) async throws -> Any? {
-        try await withCheckedThrowingContinuation { cont in
-            evaluateJavaScript(js) { value, error in
-                if let error { cont.resume(throwing: error) } else { cont.resume(returning: value) }
-            }
-        }
-    }
-}
-
-/// WKUserContentController giữ handler mạnh — tách proxy giữ model yếu để không vòng tham chiếu.
-private final class BoDamMessageProxy: NSObject, WKScriptMessageHandler {
-    weak var model: BoDamModel?
-
-    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        let body = message.body
-        Task { @MainActor in self.model?.nhanTin(body) }
-    }
-}
-
-private struct BoDamWebView: UIViewRepresentable {
-    let webView: WKWebView
-    func makeUIView(context: Context) -> WKWebView { webView }
-    func updateUIView(_ uiView: WKWebView, context: Context) {}
 }
