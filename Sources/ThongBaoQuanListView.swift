@@ -37,10 +37,15 @@ struct ThongBaoQuanListView: View {
                             } onDelete: {
                                 deleting = item
                             }
+                            .listRowInsets(EdgeInsets(top: 5, leading: 14, bottom: 5, trailing: 14))
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
                         }
                     }
                 }
                 .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .background(Color(.systemGroupedBackground))
                 .softScrollEdgeTop()
                 .refreshable { await load() }
             }
@@ -88,32 +93,53 @@ private struct ThongBaoQuanRowView: View {
     let onEdit: () -> Void
     let onDelete: () -> Void
 
+    private var mauTrangThai: Color { item.dangHoatDong ? .successColor : .textMuted }
+
     var body: some View {
         Button(action: onEdit) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text(item.tieude)
-                        .font(.subheadline).fontWeight(.semibold)
-                        .foregroundColor(.primary)
-                    Spacer()
-                    Text(item.dangHoatDong ? "Đang hiện" : "Đã ẩn")
-                        .font(.caption2).fontWeight(.semibold)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 8).padding(.vertical, 3)
-                        .background(item.dangHoatDong ? Color.successColor : Color.textMuted)
-                        .clipShape(Capsule())
-                }
-                Text(item.noiDung)
-                    .font(.caption)
-                    .foregroundColor(.textMuted)
-                    .lineLimit(2)
-                if let ngayTao = item.ngayTao {
-                    Text(HoaDonFormatting.congNoTime(ngayTao))
-                        .font(.caption2)
+            HStack(alignment: .top, spacing: 12) {
+                Text("📣")
+                    .font(.system(size: 20))
+                    .frame(width: 38, height: 38)
+                    .background(Circle().fill(mauTrangThai.opacity(0.14)))
+                    .grayscale(item.dangHoatDong ? 0 : 1)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(item.tieude)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundColor(.primary)
+                            .lineLimit(2)
+                        Spacer(minLength: 4)
+                        HStack(spacing: 4) {
+                            Circle().fill(mauTrangThai).frame(width: 6, height: 6)
+                            Text(item.dangHoatDong ? "Đang hiện" : "Đã ẩn")
+                                .font(.caption.weight(.semibold))
+                                .foregroundColor(mauTrangThai)
+                        }
+                        .fixedSize()
+                    }
+                    Text(item.noiDung)
+                        .font(.footnote)
                         .foregroundColor(.textMuted)
+                        .lineLimit(3)
+                        .multilineTextAlignment(.leading)
+                    if let ngayTao = item.ngayTao {
+                        Text(HoaDonFormatting.congNoTime(ngayTao))
+                            .font(.caption)
+                            .foregroundColor(Color(.tertiaryLabel))
+                    }
                 }
             }
+            .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color(.secondarySystemGroupedBackground))
+            )
+            // Tin đã ẩn khỏi app khách thì làm mờ — nhìn là biết khách đang không thấy.
+            .opacity(item.dangHoatDong ? 1 : 0.65)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .swipeActions(edge: .trailing) {
