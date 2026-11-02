@@ -1382,7 +1382,7 @@ actor APIClient {
     /// (KhachHangCrudService.UpdateAsync) — dòng có Id trùng thì sửa tại chỗ, không có thì thêm mới,
     /// bị thiếu trong payload thì xoá. KHÔNG đụng SoDu (server không đọc field này khi Update).
     func updateKhachHang(_ body: KhachHangDto) async -> (success: Bool, message: String?, khach: KhachHangDto?) {
-        let req = makeRequest("/api/KhachHang/\(body.id)", method: "PUT", body: jsonBody(body))
+        let req = makeRequest("/api/KhachHang/\(body.id)?choSuaDiaChiKhach=true", method: "PUT", body: jsonBody(body))
         let (data, _) = await send(req)
         guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<KhachHangDto>.self, from: data) else {
             return (false, "Không có phản hồi từ server.", nil)
