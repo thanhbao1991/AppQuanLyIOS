@@ -139,35 +139,34 @@ struct ThanhToanListView: View {
                                 ThanhToanRowView(item: item)
                                     .contentShape(Rectangle())
                                     .onTapGesture { selectedItem = item }
-                                    .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+                                    .listRowInsets(EdgeInsets(top: 4, leading: 14, bottom: 4, trailing: 14))
                                     .listRowBackground(Color.clear)
                                     .listRowSeparator(.hidden)
                             }
                         }
                     }
                     .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .background(Color(.systemGroupedBackground))
                     .softScrollEdgeTop()
-                    .padding(.top, 4)
                     .refreshable { await load() }
                 }
 
                 Divider()
-                VStack(spacing: 2) {
-                    HStack {
-                        Spacer()
-                        Text("Tiền mặt: \(HoaDonFormatting.money(totalTienMat))")
-                            .font(.caption2).foregroundColor(.successColor)
-                        Text("Chuyển khoản: \(HoaDonFormatting.money(totalChuyenKhoan))")
-                            .font(.caption2).foregroundColor(.brandPrimary)
-                        if totalViXu > 0 {
-                            Text("Ví Xu: \(HoaDonFormatting.money(totalViXu))")
-                                .font(.caption2).foregroundColor(.orange)
+                HStack(alignment: .center, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("\(filteredItems.count) giao dịch")
+                            .font(.caption).foregroundColor(.textMuted)
+                        HStack(spacing: 10) {
+                            footerChip("💵", HoaDonFormatting.money(totalTienMat), .successColor)
+                            footerChip("💳", HoaDonFormatting.money(totalChuyenKhoan), .brandPrimary)
+                            if totalViXu > 0 {
+                                footerChip("🪙", HoaDonFormatting.money(totalViXu), .orange)
+                            }
                         }
                     }
-                    HStack {
-                        Spacer()
-                        Text(totalText).font(.headline)
-                    }
+                    Spacer(minLength: 8)
+                    Text(totalText).font(.title3.bold())
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 8)
@@ -186,6 +185,13 @@ struct ThanhToanListView: View {
             ThanhToanDetailView(item: item) {
                 Task { await load() }
             }
+        }
+    }
+
+    private func footerChip(_ emoji: String, _ text: String, _ color: Color) -> some View {
+        HStack(spacing: 3) {
+            Text(emoji).font(.caption)
+            Text(text).font(.caption.weight(.semibold)).foregroundColor(color)
         }
     }
 
@@ -265,53 +271,48 @@ private struct ThanhToanRowView: View {
         isViXu ? .orange : (isBank ? .brandPrimary : .successColor)
     }
 
-    private var borderColor: Color { methodColor }
+    private var methodEmoji: String {
+        isViXu ? "🪙" : (isBank ? "💳" : "💵")
+    }
 
     var body: some View {
-        HStack(spacing: 10) {
-            Rectangle()
-                .fill(borderColor)
-                .frame(width: 4)
+        HStack(alignment: .top, spacing: 12) {
+            Text(methodEmoji)
+                .font(.system(size: 20))
+                .frame(width: 38, height: 38)
+                .background(Circle().fill(methodColor.opacity(0.14)))
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(item.ten).font(.subheadline.weight(.semibold)).lineLimit(1)
+                if let mon = item.tenMonSummary, !mon.isEmpty {
+                    Text(mon).font(.footnote).foregroundColor(.textMuted).lineLimit(1)
+                }
                 HStack(spacing: 6) {
                     Text(HoaDonFormatting.time(item.ngayGio)).font(.caption).foregroundColor(.textMuted)
+                    if isAutoBank { Text("🤖").font(.caption2) }
                     if let loaiThanhToanText {
-                        Text(loaiThanhToanText).font(.caption.bold()).foregroundColor(borderColor)
+                        Text(loaiThanhToanText).font(.caption.bold()).foregroundColor(methodColor)
                     }
                     if isShipperNote {
                         ShipperAvatarView(name: "Khánh", size: 16)
                     } else if let ghiChuDisplay {
                         Text(ghiChuDisplay).font(.caption).foregroundColor(.textMuted).lineLimit(1)
                     }
-                }
-                Text(item.ten).font(.subheadline.bold())
-                if let mon = item.tenMonSummary, !mon.isEmpty {
-                    Text(mon).font(.footnote).foregroundColor(.textMuted).lineLimit(1)
-                }
-                if let tk = item.tenTaiKhoan, !tk.isEmpty {
-                    Text("Thu bởi: \(tk)").font(.caption2).foregroundColor(.textMuted).lineLimit(1)
-                }
-            }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 4) {
-                Text(HoaDonFormatting.money(item.soTien)).font(.subheadline.bold())
-                HStack(spacing: 3) {
-                    if isAutoBank {
-                        Text("🤖").font(.caption2)
+                    if let tk = item.tenTaiKhoan, !tk.isEmpty {
+                        Text("· \(tk)").font(.caption).foregroundColor(.textMuted).lineLimit(1)
                     }
-                    Text(isViXu ? "Ví Xu" : (isBank ? "Chuyển khoản" : "Tiền mặt")).font(.caption2.bold())
                 }
-                .padding(.horizontal, 8).padding(.vertical, 2)
-                .background(methodColor.opacity(0.15))
-                .foregroundColor(methodColor)
-                .clipShape(Capsule())
             }
+            Spacer(minLength: 8)
+            Text(HoaDonFormatting.money(item.soTien))
+                .font(.subheadline.weight(.bold))
+                .foregroundColor(methodColor)
         }
         .padding(12)
-        .background(borderColor.pastelBackground())
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(.secondarySystemGroupedBackground))
+        )
     }
 }
 
