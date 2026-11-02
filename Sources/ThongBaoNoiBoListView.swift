@@ -344,6 +344,12 @@ enum ThongBaoNoiBoFormatting {
         case "ThanhToanBanking": return "Banking"
         case "ThanhToan": return "Thanh toán"
         case "DuyKhanh": return "Duy Khánh"
+        case "DuyKhanhGhiNo": return "Khánh báo, khách ghi nợ"
+        case "DuyKhanhTraNo": return "Khánh báo, khách trả nợ"
+        case "DuyKhanhChuyenKhoan": return "Khánh báo, khách chuyển khoản"
+        case "NhaGhiNo": return "Nhã báo, khách ghi nợ"
+        case "NhaTraNo": return "Nhã báo, khách trả nợ"
+        case "NhaChuyenKhoan": return "Nhã báo, khách chuyển khoản"
         case "Admin": return "Hệ thống"
         default: return "Thông báo"
         }
@@ -367,7 +373,8 @@ enum ThongBaoNoiBoFormatting {
         case "ThanhToanChuyenKhoan": return AppIcon.chuyenKhoan
         case "ThanhToanBanking": return AppIcon.tuDong
         case "ThanhToan": return "dollarsign.circle.fill"
-        case "DuyKhanh", "DuyKhanhGhiNo", "DuyKhanhTraNo", "DuyKhanhChuyenKhoan": return "person.fill"
+        case "DuyKhanh", "DuyKhanhGhiNo", "DuyKhanhTraNo", "DuyKhanhChuyenKhoan",
+             "NhaGhiNo", "NhaTraNo", "NhaChuyenKhoan": return "person.fill"
         case "Admin": return "gearshape.fill"
         default: return "bell.fill"
         }
