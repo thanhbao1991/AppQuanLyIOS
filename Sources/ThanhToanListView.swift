@@ -157,7 +157,9 @@ struct ThanhToanListView: View {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("\(filteredItems.count) giao dịch")
                             .font(.caption).foregroundColor(.textMuted)
-                        HStack(spacing: 10) {
+                        // Có thêm chip Xu thì 3 chip + tổng không vừa 1 hàng — chữ co lại chứ không bẻ
+                        // "1.057.000đ" xuống 2 dòng.
+                        HStack(spacing: 8) {
                             footerChip("💵", HoaDonFormatting.money(totalTienMat), .successColor)
                             footerChip("💳", HoaDonFormatting.money(totalChuyenKhoan), .brandPrimary)
                             if totalViXu > 0 {
@@ -167,6 +169,8 @@ struct ThanhToanListView: View {
                     }
                     Spacer(minLength: 8)
                     Text(totalText).font(.title3.bold())
+                        .lineLimit(1).minimumScaleFactor(0.7)
+                        .layoutPriority(1)
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 8)
@@ -193,6 +197,7 @@ struct ThanhToanListView: View {
             Text(emoji).font(.caption)
             Text(text).font(.caption.weight(.semibold)).foregroundColor(color)
         }
+        .lineLimit(1).minimumScaleFactor(0.6)
     }
 
     private func load() async {
