@@ -229,7 +229,7 @@ struct HoaDonEditFormView: View {
     private var khachHangCard: some View {
         DetailCard {
             HStack {
-                EmojiLabel("Khách hàng", "👤").font(.headline)
+                IconLabel("Khách hàng", "person").font(.headline)
                 Spacer()
                 if selectedKhach != nil && !showEditKhachHang {
                     Button("Sửa") { beginEditKhach() }.font(.caption)
@@ -273,7 +273,7 @@ struct HoaDonEditFormView: View {
                     }
 
                     Button { showNewKhachForm = true } label: {
-                        EmojiLabel("Khách mới", "➕👤")
+                        IconLabel("Khách mới", "person.badge.plus")
                     }
                     .font(.subheadline)
                 }
@@ -304,7 +304,7 @@ struct HoaDonEditFormView: View {
             Button {
                 editPhoneRows.append(EditContactRow(id: UUID().uuidString, value: "", isDefault: editPhoneRows.isEmpty))
             } label: {
-                EmojiLabel("Thêm SĐT", "➕")
+                IconLabel("Thêm SĐT", AppIcon.them)
             }.font(.caption)
 
             fieldLabel("Địa chỉ", icon: "location")
@@ -312,7 +312,7 @@ struct HoaDonEditFormView: View {
             Button {
                 editAddressRows.append(EditContactRow(id: UUID().uuidString, value: "", isDefault: editAddressRows.isEmpty))
             } label: {
-                EmojiLabel("Thêm địa chỉ", "➕")
+                IconLabel("Thêm địa chỉ", AppIcon.them)
             }.font(.caption)
 
             // Từ 29/10/2026 không ai được bật "Được nhận voucher" nữa (chủ quán) — khách cũ đang bật chỉ còn tắt được,
@@ -517,7 +517,7 @@ struct HoaDonEditFormView: View {
     private var monCard: some View {
         DetailCard {
             HStack {
-                EmojiLabel("Món", "☕").font(.headline)
+                IconLabel("Món", "cup.and.saucer").font(.headline)
                 Spacer()
                 if tongLy > 0 {
                     Text("\(tongLy) ly")
@@ -608,7 +608,7 @@ struct HoaDonEditFormView: View {
 
     private var discountCard: some View {
         DetailCard {
-            EmojiLabel("Giảm giá", "🏷️").font(.headline)
+            IconLabel("Giảm giá", "tag").font(.headline)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(discountPresets, id: \.self) { v in

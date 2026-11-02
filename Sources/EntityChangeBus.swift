@@ -74,7 +74,7 @@ final class EntityChangeBus: ObservableObject {
     /// chi tiết "Bàn 5 120.000" không nói rõ vừa xảy ra chuyện gì).
     @Published var toastLabel: String = ""
     @Published var toastColor: Color = .brandPrimary
-    @Published var toastIcon: String = "🔔"
+    @Published var toastIcon: String = "bell.fill"
     private var toastDismissTask: Task<Void, Never>?
 
     func post(_ entityName: String, _ action: String, _ id: String, voice: String = "") {
@@ -127,25 +127,25 @@ final class EntityChangeBus: ObservableObject {
     private static func style(entityName: String, action: String) -> (label: String, color: Color, icon: String) {
         if entityName.lowercased() == "hoadon" {
             switch action {
-            case "CREATE": return ("Đơn mới", .brandPrimary, "➕")
-            case "UPDATE": return ("Sửa đơn", .warningColor, "✏️")
-            case "DEL": return ("Xoá đơn", .dangerColor, "🗑️")
-            case "F1": return ("Thu tiền mặt", .successColor, "💵")
-            case "F4": return ("Thu chuyển khoản", .brandPrimary, "💳")
-            case "F4Auto": return ("Tự thu chuyển khoản", .brandPrimary, "✨")
-            case "F12": return ("Ghi nợ", .dangerColor, "⚠️")
-            case "ESC", "ESC_KHANH": return ("Chuyển đi ship", .pinkColor, "🛵")
+            case "CREATE": return ("Đơn mới", .brandPrimary, "plus.circle.fill")
+            case "UPDATE": return ("Sửa đơn", .warningColor, AppIcon.sua)
+            case "DEL": return ("Xoá đơn", .dangerColor, AppIcon.xoa)
+            case "F1": return ("Thu tiền mặt", .successColor, AppIcon.tienMat)
+            case "F4": return ("Thu chuyển khoản", .brandPrimary, AppIcon.chuyenKhoan)
+            case "F4Auto": return ("Tự thu chuyển khoản", .brandPrimary, AppIcon.tuDong)
+            case "F12": return ("Ghi nợ", .dangerColor, AppIcon.ghiNo)
+            case "ESC", "ESC_KHANH": return ("Chuyển đi ship", .pinkColor, AppIcon.ship)
             case "ROLLBACK": return ("Hoàn tác thanh toán", .warningColor, "↩️")
-            case "PRINT": return ("Yêu cầu in", .textMuted, "🖨️")
+            case "PRINT": return ("Yêu cầu in", .textMuted, "printer.fill")
             default: break
             }
         }
         switch action {
-        case "created": return ("\(entityLabel(entityName)) mới", .brandPrimary, "➕")
-        case "updated": return ("\(entityLabel(entityName)) cập nhật", .warningColor, "✏️")
-        case "deleted": return ("\(entityLabel(entityName)) đã xoá", .dangerColor, "🗑️")
-        case "reordered": return ("\(entityLabel(entityName)) sắp xếp lại", .textMuted, "🔀")
-        default: return (entityLabel(entityName), .textMuted, "🔔")
+        case "created": return ("\(entityLabel(entityName)) mới", .brandPrimary, "plus.circle.fill")
+        case "updated": return ("\(entityLabel(entityName)) cập nhật", .warningColor, AppIcon.sua)
+        case "deleted": return ("\(entityLabel(entityName)) đã xoá", .dangerColor, AppIcon.xoa)
+        case "reordered": return ("\(entityLabel(entityName)) sắp xếp lại", .textMuted, "arrow.up.arrow.down")
+        default: return (entityLabel(entityName), .textMuted, "bell.fill")
         }
     }
 

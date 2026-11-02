@@ -62,7 +62,7 @@ struct CongViecListView: View {
                             Section {
                                 ForEach(visibleDeXuat) { deXuatRow($0) }
                             } header: {
-                                sectionHeader("✨ Đề xuất nên làm", nil)
+                                sectionHeader("Đề xuất nên làm", nil)
                             }
                         }
                         if items.isEmpty && searchText.isEmpty {
@@ -87,7 +87,7 @@ struct CongViecListView: View {
                                         if adding {
                                             ProgressView()
                                         } else {
-                                            EmojiLabel("Thêm việc mới \"\(ten)\"", "➕")
+                                            IconLabel("Thêm việc mới \"\(ten)\"", AppIcon.them)
                                         }
                                     }
                                     .disabled(adding)

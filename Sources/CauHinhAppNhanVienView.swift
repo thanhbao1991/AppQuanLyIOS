@@ -10,14 +10,14 @@ struct CauHinhAppNhanVienView: View {
     @State private var errorMessage: String?
 
     /// Khớp CauHinhThongBaoNhanVienDto.TatCaPhanLoai bên Backend (thứ tự hiện).
-    private static let phanLoai: [(khoa: String, ten: String, emoji: String)] = [
-        ("Ship", "Ship", "🛵"),
-        ("AppDatHang", "App Đenn", "🛒"),
-        ("App", "Đơn App", "📱"),
-        ("Mh", "Mua hộ", "✋"),
-        ("Mv", "Mua về", "🛍️"),
-        ("TaiCho", "Tại chỗ", "🪑"),
-        ("Khac", "Khác", "➕"),
+    private static let phanLoai: [(khoa: String, ten: String)] = [
+        ("Ship", "Ship"),
+        ("AppDatHang", "App Đenn"),
+        ("App", "Đơn App"),
+        ("Mh", "Mua hộ"),
+        ("Mv", "Mua về"),
+        ("TaiCho", "Tại chỗ"),
+        ("Khac", "Khác"),
     ]
 
     var body: some View {
@@ -59,7 +59,7 @@ struct CauHinhAppNhanVienView: View {
             Section {
                 ForEach(Self.phanLoai, id: \.khoa) { item in
                     Toggle(isOn: phanLoaiBinding(item.khoa)) {
-                        Text("\(item.emoji)  \(item.ten)")
+                        IconLabel(item.ten, AppIcon.phanLoai(item.khoa))
                     }
                 }
             } header: {
@@ -69,9 +69,9 @@ struct CauHinhAppNhanVienView: View {
             }
 
             Section {
-                Toggle("➕  Đơn mới", isOn: boolBinding(\.tao))
-                Toggle("✏️  Sửa đơn", isOn: boolBinding(\.sua))
-                Toggle("🗑️  Xoá đơn", isOn: boolBinding(\.xoa))
+                Toggle(isOn: boolBinding(\.tao)) { IconLabel("Đơn mới", "plus.circle") }
+                Toggle(isOn: boolBinding(\.sua)) { IconLabel("Sửa đơn", AppIcon.sua) }
+                Toggle(isOn: boolBinding(\.xoa)) { IconLabel("Xoá đơn", AppIcon.xoa) }
             } header: {
                 Text("Báo khi")
             } footer: {

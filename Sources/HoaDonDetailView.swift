@@ -172,7 +172,7 @@ struct HoaDonDetailView: View {
                             Text(d.tenKhachHangText?.isEmpty == false ? d.tenKhachHangText! : (d.tenBan.map { "Bàn \($0)" } ?? "Khách lẻ"))
                                 .font(.title3.bold())
                             if let sdt = d.soDienThoaiText, !sdt.isEmpty { phoneRow(sdt) }
-                            if let dc = d.diaChiText, !dc.isEmpty { iconRow("📍", dc) }
+                            if let dc = d.diaChiText, !dc.isEmpty { iconRow("mappin.and.ellipse", dc) }
                         }
                         Spacer()
                         if let qrImage {
@@ -182,14 +182,14 @@ struct HoaDonDetailView: View {
                                 .frame(width: 90, height: 90)
                         }
                     }
-                    if let gc = d.ghiChu, !gc.isEmpty { iconRow("📝", gc) }
-                    if let tk = d.tenTaiKhoan, !tk.isEmpty { iconRow("👤", "Tạo bởi: \(tk)") }
+                    if let gc = d.ghiChu, !gc.isEmpty { iconRow("note.text", gc) }
+                    if let tk = d.tenTaiKhoan, !tk.isEmpty { iconRow("person", "Tạo bởi: \(tk)") }
                 }
 
                 if let chiTiet = d.chiTietHoaDons, !chiTiet.isEmpty {
                     DetailCard {
                         HStack {
-                            EmojiLabel("Món", "☕").font(.headline)
+                            IconLabel("Món", "cup.and.saucer").font(.headline)
                             Spacer()
                             Text("\(chiTiet.reduce(0) { $0 + $1.soLuong }) ly")
                                 .font(.caption.bold())
@@ -206,19 +206,24 @@ struct HoaDonDetailView: View {
                 }
 
                 DetailCard(tint: tongTienTint(d)) {
-                    infoRow("Tổng tiền", HoaDonFormatting.money(d.tongTien))
+                    // Dòng trùng số thì ẩn: không giảm giá → Tổng tiền = Thành tiền; chưa thu → "Đã thu 0đ" thừa.
+                    if d.giamGia > 0 {
+                        infoRow("Tổng tiền", HoaDonFormatting.money(d.tongTien))
+                    }
                     if d.giamGia > 0 {
                         VStack(alignment: .leading, spacing: 2) {
                             infoRow("Giảm giá", HoaDonFormatting.money(d.giamGia))
                             if let lyDo = d.lyDoGiamGia, !lyDo.isEmpty {
-                                Text("🏷️ \(lyDo)")
+                                Text("\(Image(systemName: "tag")) \(lyDo)")
                                     .font(.caption)
                                     .foregroundColor(.textMuted)
                             }
                         }
                     }
                     infoRow("Thành tiền", HoaDonFormatting.money(d.thanhTien))
-                    infoRow("Đã thu", HoaDonFormatting.money(d.daThu))
+                    if d.daThu > 0 {
+                        infoRow("Đã thu", HoaDonFormatting.money(d.daThu))
+                    }
                     Divider()
                     HStack {
                         Text("CÒN LẠI").font(.caption.bold()).foregroundColor(.textMuted)
@@ -394,14 +399,14 @@ struct HoaDonDetailView: View {
         return VStack(spacing: 8) {
             HStack(spacing: 8) {
                 ActionButtonView(
-                    icon: copiedFeedback ? "✅" : "🧾", code: nil,
+                    icon: copiedFeedback ? AppIcon.daCopy : AppIcon.bill, code: nil,
                     caption: copiedFeedback ? "Đã copy" : "Gửi Bill", color: .brandPrimary
                 ) {
                     Task { await copyBillImage(d) }
                 }
 
                 ActionButtonView(
-                    icon: linkCopiedFeedback ? "✅" : "🔗", code: nil,
+                    icon: linkCopiedFeedback ? AppIcon.daCopy : AppIcon.link, code: nil,
                     caption: linkCopiedFeedback ? "Đã copy" : "Gửi link thanh toán", color: .brandPrimary
                 ) {
                     copyPaymentLink(d)
@@ -410,10 +415,10 @@ struct HoaDonDetailView: View {
 
             if d.conLai > 0 {
                 HStack(spacing: 8) {
-                    ActionButtonView(icon: "💵", code: "F1", caption: "Tiền mặt", color: .successColor, prominent: true) {
+                    ActionButtonView(icon: AppIcon.tienMat, code: "F1", caption: "Tiền mặt", color: .successColor, prominent: true) {
                         pendingAction = .tienMat
                     }
-                    ActionButtonView(icon: "💳", code: "F4", caption: "Chuyển khoản", color: .brandPrimary, prominent: true) {
+                    ActionButtonView(icon: AppIcon.chuyenKhoan, code: "F4", caption: "Chuyển khoản", color: .brandPrimary, prominent: true) {
                         pendingAction = .chuyenKhoan
                     }
                 }
@@ -447,7 +452,7 @@ struct HoaDonDetailView: View {
             // đổi theo hướng đích giống doiPhanLoaiIcon bên dưới (trước đây dùng chung 1 icon 🔄 cố
             // định không phân biệt đổi sang gì).
             let doiPhuongThucCaption = singlePaymentBank.map { $0 ? "Đổi sang TM" : "Đổi sang CK" } ?? "Đổi phương thức TT"
-            let doiPhuongThucIcon = singlePaymentBank.map { $0 ? "💵" : "💳" } ?? "🔄"
+            let doiPhuongThucIcon = singlePaymentBank.map { $0 ? AppIcon.tienMat : AppIcon.chuyenKhoan } ?? AppIcon.doiPhuongThuc
             let doiPhuongThucColor: Color = singlePaymentBank == true ? .successColor : .brandPrimary
 
             // Đổi nhanh Ship <-> Mua về (khớp Backend HoaDonTrangThaiService.DoiPhanLoaiAsync, chỉ
@@ -462,22 +467,22 @@ struct HoaDonDetailView: View {
             // Đơn AppDatHang chỉ đổi một chiều sang Mua hộ (Mh), cùng vị trí nút vì chỉ hiện 1 trong 3.
             let doiPhanLoaiDich = d.phanLoai == "AppDatHang" ? "Mh" : (d.phanLoai == "Ship" ? "Mv" : "Ship")
             let doiPhanLoaiCaption = "Đổi sang \(doiPhanLoaiDich)"
-            let doiPhanLoaiIcon = doiPhanLoaiDich == "Mh" ? "✋" : (doiPhanLoaiDich == "Mv" ? "🛍️" : "🛵")
+            let doiPhanLoaiIcon = AppIcon.phanLoai(doiPhanLoaiDich)
             let doiPhanLoaiColor = HoaDonFormatting.phanLoaiColor(doiPhanLoaiDich)
 
             // Thứ tự theo yêu cầu: hàng 1 = Esc/F12/Sửa/Del (thao tác trên đơn), hàng 2 = Đổi phân
             // loại/Đổi phương thức/Hoàn tác (thao tác trên thanh toán), ô cuối để trống.
             LazyVGrid(columns: fourColumns, spacing: 6) {
-                ActionButtonView(icon: "🛵", code: "Esc", caption: "Đi Ship", color: .pinkColor, compact: true, disabled: !showShip) {
+                ActionButtonView(icon: AppIcon.ship, code: "Esc", caption: "Đi Ship", color: .pinkColor, compact: true, disabled: !showShip) {
                     showShipperPicker = true
                 }
-                ActionButtonView(icon: "⚠️", code: "F12", caption: "Ghi nợ", color: .dangerColor, compact: true, disabled: !showGhiNo) {
+                ActionButtonView(icon: AppIcon.ghiNo, code: "F12", caption: "Ghi nợ", color: .dangerColor, compact: true, disabled: !showGhiNo) {
                     pendingAction = .ghiNo
                 }
-                ActionButtonView(icon: "✏️", code: nil, caption: "Sửa đơn", color: .warningColor, compact: true, disabled: !showSua) {
+                ActionButtonView(icon: AppIcon.sua, code: nil, caption: "Sửa đơn", color: .warningColor, compact: true, disabled: !showSua) {
                     showEditForm = true
                 }
-                ActionButtonView(icon: "🗑️", code: "Del", caption: "Xoá đơn", color: .dangerColor, compact: true, disabled: !showXoa) {
+                ActionButtonView(icon: AppIcon.xoa, code: "Del", caption: "Xoá đơn", color: .dangerColor, compact: true, disabled: !showXoa) {
                     pendingAction = .xoa
                 }
 
@@ -487,7 +492,7 @@ struct HoaDonDetailView: View {
                 ActionButtonView(icon: doiPhuongThucIcon, code: nil, caption: doiPhuongThucCaption, color: doiPhuongThucColor, compact: true, disabled: !showDoiPhuongThuc) {
                     pendingAction = .doiPhuongThuc
                 }
-                ActionButtonView(icon: "❌", code: nil, caption: "Xoá thanh toán", color: .warningColor, compact: true, disabled: !showHoanTac) {
+                ActionButtonView(icon: "xmark.circle", code: nil, caption: "Xoá thanh toán", color: .warningColor, compact: true, disabled: !showHoanTac) {
                     pendingAction = .rollback
                 }
             }
@@ -556,7 +561,7 @@ struct HoaDonDetailView: View {
             if let url = URL(string: "tel:\(digits)") {
                 Link(destination: url) {
                     HStack(spacing: 4) {
-                        Text("📞").font(.caption2)
+                        Image(systemName: "phone.fill").font(.caption2)
                         Text(sdt)
                     }
                     .foregroundColor(.brandPrimary)
@@ -580,9 +585,7 @@ struct HoaDonDetailView: View {
     /// Dòng phụ trong card khách hàng (địa chỉ/ghi chú) — icon nhỏ bên trái thay vì nhãn chữ, gọn hơn.
     private func iconRow(_ icon: String, _ text: String) -> some View {
         HStack(alignment: .top, spacing: 6) {
-            // Emoji thay SF Symbol (đổi 2026-09-13) — mất màu .textMuted trên icon (emoji không ăn
-            // foregroundColor), chấp nhận đánh đổi để đồng bộ phong cách.
-            Text(icon).font(.caption).frame(width: 14)
+            Image(systemName: icon).font(.caption).foregroundColor(.textMuted).frame(width: 16)
             Text(text).font(.subheadline).foregroundColor(.textMuted)
             Spacer()
         }
@@ -906,7 +909,7 @@ struct DetailCard<Content: View>: View {
 /// Dùng chung cho mọi màn "chi tiết" có action button (HoaDonDetailView, ThanhToanDetailView) —
 /// khớp icon + mã tắt + caption 1 kiểu xuyên suốt app.
 struct ActionButtonView: View {
-    /// Emoji thay cho SF Symbol (đổi 2026-09-12, khớp phong cách emoji đã dùng ở AppDatHangIOS).
+    /// Tên SF Symbol (xem AppIcon) — tô theo màu nút, disabled tự xám qua .tint(.gray).
     let icon: String
     let code: String?
     let caption: String
@@ -933,25 +936,22 @@ struct ActionButtonView: View {
     }
 
     private var label: some View {
-        VStack(spacing: compact ? 0 : 1) {
-            HStack(spacing: compact ? 2 : 4) {
-                Text(icon)
+        // Nút compact cao ~44pt (chuẩn vùng chạm Apple) — bản cũ chữ 9pt/icon 11pt, cao ~30pt, khó bấm.
+        VStack(spacing: compact ? 2 : 3) {
+            HStack(spacing: 4) {
+                Image(systemName: icon)
                 if let code {
                     Text(code).fontWeight(.bold)
                 }
             }
-            .font(compact ? .system(size: 11) : .footnote)
+            .font(compact ? .footnote.weight(.semibold) : .subheadline.weight(.semibold))
             Text(caption)
-                .font(compact ? .system(size: 9) : .caption2)
+                .font(compact ? .caption2.weight(.medium) : .footnote.weight(.medium))
                 .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                .minimumScaleFactor(0.75)
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, minHeight: compact ? 38 : 44)
         .padding(.vertical, compact ? 2 : 4)
-        // Emoji KHÔNG đổi màu theo .tint() như Image(systemName:) trước đây (glyph màu cố định) —
-        // disabled=true trước đây tự mờ đi qua .tint(.gray), giờ phải tự thêm opacity mới thấy được
-        // trạng thái "không bấm được", không thì icon emoji vẫn hiện sặc sỡ dù nút đang disabled.
-        .opacity(disabled ? 0.4 : 1)
     }
 
     var body: some View {

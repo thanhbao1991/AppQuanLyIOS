@@ -246,7 +246,7 @@ struct CongNoFooterView: View {
             Group {
                 if showSendButton {
                     footerColumnButton(
-                        icon: copiedFeedback ? "✅" : "🧾",
+                        icon: copiedFeedback ? AppIcon.daCopy : AppIcon.bill,
                         label: copiedFeedback ? "Đã copy" : "Gửi Bill",
                         color: .brandPrimary
                     ) {
@@ -260,7 +260,7 @@ struct CongNoFooterView: View {
 
             Group {
                 if showSendButton && !items.isEmpty {
-                    footerColumnButton(icon: "💵", label: "Tiền mặt", color: .successColor) {
+                    footerColumnButton(icon: AppIcon.tienMat, label: "Tiền mặt", color: .successColor) {
                         startPayAll(isCash: true)
                     }
                     .disabled(payingAll)
@@ -272,7 +272,7 @@ struct CongNoFooterView: View {
 
             Group {
                 if showSendButton && !items.isEmpty {
-                    footerColumnButton(icon: "💳", label: "Chuyển khoản", color: .brandPrimary) {
+                    footerColumnButton(icon: AppIcon.chuyenKhoan, label: "Chuyển khoản", color: .brandPrimary) {
                         startPayAll(isCash: false)
                     }
                     .disabled(payingAll)
@@ -408,7 +408,7 @@ struct CongNoFooterView: View {
     private func footerColumnButton(icon: String, label: String, color: Color, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: 1) {
-                Text(icon).font(.footnote)
+                Image(systemName: icon).font(.footnote)
                 Text(label).font(.system(size: 10).bold()).lineLimit(1).minimumScaleFactor(0.8)
             }
             .frame(maxWidth: .infinity)
@@ -594,9 +594,7 @@ struct CongNoRowView: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Text("🧾")
-                .font(.system(size: 20))
-                .frame(width: 38, height: 38)
+            IconBadge(symbol: "doc.text.fill", color: .dangerColor)
 
             VStack(alignment: .leading, spacing: 4) {
                 if showName {

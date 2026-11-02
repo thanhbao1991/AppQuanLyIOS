@@ -169,9 +169,8 @@ private struct ChiTieuRowView: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Text(item.nguonShopeeOrderId != nil ? "🛍️" : (item.billThang ? "📅" : "🧾"))
-                .font(.system(size: 20))
-                .frame(width: 38, height: 38)
+            IconBadge(symbol: item.nguonShopeeOrderId != nil ? "bag.fill" : (item.billThang ? "calendar" : "doc.text.fill"),
+                      color: borderColor)
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
@@ -261,10 +260,10 @@ private struct ChiTieuDetailSheet: View {
                 Spacer()
 
                 HStack(spacing: 12) {
-                    ActionButtonView(icon: "✏️", code: nil, caption: "Sửa", color: .warningColor) {
+                    ActionButtonView(icon: AppIcon.sua, code: nil, caption: "Sửa", color: .warningColor) {
                         showEditForm = true
                     }
-                    ActionButtonView(icon: "🗑️", code: nil, caption: "Xoá", color: .dangerColor) {
+                    ActionButtonView(icon: AppIcon.xoa, code: nil, caption: "Xoá", color: .dangerColor) {
                         showDeleteConfirm = true
                     }
                 }
@@ -535,7 +534,7 @@ struct AddExpenseSheet: View {
                                 if addingNguyenLieu {
                                     ProgressView()
                                 } else {
-                                    EmojiLabel("Thêm nguyên liệu mới \"\(searchText)\"", "➕")
+                                    IconLabel("Thêm nguyên liệu mới \"\(searchText)\"", AppIcon.them)
                                 }
                             }
                             .disabled(addingNguyenLieu)
@@ -593,7 +592,7 @@ struct AddExpenseSheet: View {
         // CheckGiaBatThuongAsync/ChiTieuHangNgayService) — chỉ cảnh báo, không chặn, đóng sheet
         // sau khi người dùng bấm xác nhận đã đọc.
         .popupHost { host in
-            host.alert("⚠️ Giá bất thường", isPresented: Binding(
+            host.alert("Giá bất thường", isPresented: Binding(
                 get: { warningAlertText != nil },
                 set: { if !$0 { warningAlertText = nil } }
             )) {

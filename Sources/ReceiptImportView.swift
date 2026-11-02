@@ -321,7 +321,7 @@ struct ReceiptReviewSheet: View {
         // Đã lưu thành công nhưng có dòng giá lệch lớn so với lần mua gần nhất — chỉ cảnh báo,
         // không chặn (xem AddExpenseSheet cùng cơ chế).
         .popupHost { host in
-            host.alert("⚠️ Giá bất thường", isPresented: Binding(
+            host.alert("Giá bất thường", isPresented: Binding(
                 get: { warningAlertText != nil },
                 set: { if !$0 { warningAlertText = nil } }
             )) {

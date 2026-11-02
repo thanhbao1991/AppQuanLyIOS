@@ -55,25 +55,25 @@ struct ThanhToanDetailView: View {
 
                     VStack(spacing: 10) {
                         if isAutoBank {
-                            Text("🤖 Chuyển khoản thu tự động (SePay) — không thể đổi phương thức/xoá (khớp đối soát với tiền thật đã vào tài khoản).")
+                            Text("\(Image(systemName: AppIcon.tuDong)) Chuyển khoản thu tự động (SePay) — không thể đổi phương thức/xoá (khớp đối soát với tiền thật đã vào tài khoản).")
                                 .font(.caption).foregroundColor(.textMuted)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         } else if isViXu {
                             // 29/10/2026 user: dòng Ví Xu "ko được thay đổi" — khách tự trả bằng Xu trong app
                             // (backend cũng chặn đổi phương thức dòng ViTien).
-                            Text("🪙 Khách trả bằng Ví Xu — không thể đổi phương thức/xoá.")
+                            Text("\(Image(systemName: AppIcon.viXu)) Khách trả bằng Ví Xu — không thể đổi phương thức/xoá.")
                                 .font(.caption).foregroundColor(.textMuted)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         } else {
                             ActionButtonView(
-                                icon: "🔄", code: nil,
+                                icon: AppIcon.doiPhuongThuc, code: nil,
                                 caption: isBank ? "Đổi sang Tiền mặt" : "Đổi sang Chuyển khoản",
                                 color: isBank ? .successColor : .brandPrimary
                             ) {
                                 showDoiPhuongThucConfirm = true
                             }
 
-                            ActionButtonView(icon: "🗑️", code: nil, caption: "Xoá", color: .dangerColor) {
+                            ActionButtonView(icon: AppIcon.xoa, code: nil, caption: "Xoá", color: .dangerColor) {
                                 showDeleteConfirm = true
                             }
                         }

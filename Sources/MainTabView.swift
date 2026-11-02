@@ -311,17 +311,7 @@ private struct MoreMenuView: View {
                     }
                 }
 
-                Section("Cấu hình") {
-                    NavigationLink {
-                        GiaNguyenLieuView()
-                    } label: {
-                        Label("Nguyên liệu & giá", systemImage: "leaf")
-                    }
-                    NavigationLink {
-                        TonKhoListView()
-                    } label: {
-                        Label("Tồn kho", systemImage: "shippingbox")
-                    }
+                Section("Bán hàng") {
                     NavigationLink {
                         SanPhamListView()
                     } label: {
@@ -338,24 +328,45 @@ private struct MoreMenuView: View {
                         Label("Công thức", systemImage: "list.clipboard")
                     }
                     NavigationLink {
-                        TenDuongListView()
-                    } label: {
-                        Label("Tên đường", systemImage: "signpost.right")
-                    }
-                    NavigationLink {
                         GiaRiengListView()
                     } label: {
                         Label("Giá riêng", systemImage: "tag")
                     }
+                    NavigationLink {
+                        SanPhamHinhAnhListView()
+                    } label: {
+                        Label("Ảnh menu", systemImage: "photo")
+                    }
+                }
+
+                Section("Kho") {
+                    NavigationLink {
+                        GiaNguyenLieuView()
+                    } label: {
+                        Label("Nguyên liệu & giá", systemImage: "leaf")
+                    }
+                    NavigationLink {
+                        TonKhoListView()
+                    } label: {
+                        Label("Tồn kho", systemImage: "shippingbox")
+                    }
+                }
+
+                Section("Khách hàng") {
                     NavigationLink {
                         KhachHangListView()
                     } label: {
                         Label("Khách hàng", systemImage: "person.2")
                     }
                     NavigationLink {
-                        SanPhamHinhAnhListView()
+                        TenDuongListView()
                     } label: {
-                        Label("Ảnh menu", systemImage: "photo")
+                        Label("Tên đường", systemImage: "signpost.right")
+                    }
+                    NavigationLink {
+                        VoucherListView()
+                    } label: {
+                        Label("Voucher", systemImage: "ticket")
                     }
                     NavigationLink {
                         ThongBaoQuanListView()
@@ -367,15 +378,13 @@ private struct MoreMenuView: View {
                     } label: {
                         Label("Cấu hình App khách", systemImage: "gift")
                     }
+                }
+
+                Section("Hệ thống") {
                     NavigationLink {
                         CauHinhAppNhanVienView()
                     } label: {
                         Label("Cấu hình App nhân viên", systemImage: "bell.badge")
-                    }
-                    NavigationLink {
-                        VoucherListView()
-                    } label: {
-                        Label("Voucher", systemImage: "ticket")
                     }
                 }
 

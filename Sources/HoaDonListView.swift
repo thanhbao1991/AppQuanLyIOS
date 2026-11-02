@@ -90,8 +90,8 @@ struct HoaDonListView: View {
         // Thiếu AppDatHang ở đây thì doanh thu đơn app khách biến mất khỏi thanh tổng, dù vẫn còn
         // trong cachedSorted — mirror đúng lỗi đã sửa ở ThongKeService (Backend, thêm nhãn "App Đenn").
         let order: [(code: String, icon: String)] = [
-            ("Ship", "🛵"), ("Tại Chỗ", "🪑"), ("Mv", "🛍️"),
-            ("Mh", "✋"), ("App", "📱"), ("AppDatHang", "🛒"),
+            ("Ship", AppIcon.ship), ("Tại Chỗ", AppIcon.taiCho), ("Mv", AppIcon.muaVe),
+            ("Mh", AppIcon.muaHo), ("App", AppIcon.app), ("AppDatHang", AppIcon.appDatHang),
         ]
         return order.compactMap { entry in
             let total = cachedSorted.filter { $0.phanLoai == entry.code }.reduce(0) { $0 + $1.thanhTien }
@@ -210,7 +210,7 @@ struct HoaDonListView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             ForEach(phanLoaiTotals, id: \.phanLoai) { item in
                                 HStack(spacing: 6) {
-                                    Text(item.icon)
+                                    Image(systemName: item.icon).foregroundColor(item.color).frame(width: 22)
                                     Text(HoaDonFormatting.phanLoaiLabel(item.phanLoai))
                                     Spacer(minLength: 16)
                                     Text("\(item.text)k").foregroundColor(item.color).fontWeight(.semibold)
@@ -406,7 +406,7 @@ struct QuickFilterIcon: View {
         if let avatarName {
             ShipperAvatarView(name: avatarName, size: 26)
         } else if let emoji {
-            Text(emoji).font(.system(size: 20))
+            Image(systemName: emoji).font(.system(size: 17, weight: .semibold)).foregroundColor(.brandPrimary)
         }
     }
 }
@@ -474,12 +474,12 @@ enum HoaDonQuickFilter: CaseIterable, Hashable {
     /// quán trong app (đổi từ SF Symbol 2026-09-12, khớp phong cách AppDatHangIOS).
     var systemIcon: String? {
         switch self {
-        case .taiCho: return "🪑"
-        case .ship: return "🛵"
-        case .muaVe: return "🛍️"
-        case .muaHo: return "✋"
-        case .app: return "📱"
-        case .appDatHang: return "🛒"
+        case .taiCho: return AppIcon.taiCho
+        case .ship: return AppIcon.ship
+        case .muaVe: return AppIcon.muaVe
+        case .muaHo: return AppIcon.muaHo
+        case .app: return AppIcon.app
+        case .appDatHang: return AppIcon.appDatHang
         default: return nil
         }
     }
@@ -621,9 +621,7 @@ private struct HoaDonRowView: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Text(HoaDonFormatting.phanLoaiEmoji(item.phanLoai))
-                .font(.system(size: 20))
-                .frame(width: 38, height: 38)
+            IconBadge(symbol: AppIcon.phanLoai(item.phanLoai), color: HoaDonFormatting.phanLoaiColor(item.phanLoai))
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
@@ -637,7 +635,7 @@ private struct HoaDonRowView: View {
                         .lineLimit(1).minimumScaleFactor(0.7)
                     // Mua hộ shipper tự đặt qua app — phân biệt với Mua hộ nhân viên nhập ở quầy.
                     if item.phanLoai == "Mh", item.datQuaApp == true {
-                        Text("🛒").font(.caption2)
+                        Image(systemName: AppIcon.appDatHang).font(.caption2)
                     }
                     if (item.phanLoai == "Ship" || item.phanLoai == "AppDatHang"), let nguoiShip = item.nguoiShip, !nguoiShip.isEmpty {
                         ShipperAvatarView(name: nguoiShip, size: 16)
@@ -645,7 +643,7 @@ private struct HoaDonRowView: View {
                     Spacer(minLength: 0)
                     if let waitingMinutes {
                         HStack(spacing: 3) {
-                            Text("🕐").font(.caption2)
+                            Image(systemName: "clock").font(.caption2)
                             Text(HoaDonFormatting.waitingText(waitingMinutes)).font(.caption2.bold())
                         }
                         .lineLimit(1)
@@ -658,7 +656,7 @@ private struct HoaDonRowView: View {
                     .font(.subheadline.bold())
                 if (item.phanLoai == "Ship" || item.phanLoai == "AppDatHang"), let diaChi = item.diaChiText, !diaChi.isEmpty {
                     HStack(spacing: 4) {
-                        Text("📍").font(.caption2).foregroundColor(.textMuted)
+                        Image(systemName: "mappin.and.ellipse").font(.caption2).foregroundColor(.textMuted)
                         Text(diaChi).font(.footnote).foregroundColor(.textMuted).lineLimit(1)
                     }
                 }
@@ -670,7 +668,7 @@ private struct HoaDonRowView: View {
             VStack(alignment: .trailing, spacing: 4) {
                 if shipTiNuaChuyenKhoan {
                     HStack(spacing: 3) {
-                        Text("🔔").font(.caption2)
+                        Image(systemName: "bell.fill").font(.caption2)
                         Text("Tí nữa CK").font(.caption2.bold())
                     }
                     .foregroundColor(.white)
@@ -682,7 +680,7 @@ private struct HoaDonRowView: View {
                 if let statusText {
                     HStack(spacing: 3) {
                         if item.isBank == true, item.isAutoBank == true {
-                            Text("🤖").font(.caption2)
+                            Image(systemName: AppIcon.tuDong).font(.caption2)
                         }
                         Text(statusText).font(.caption2.bold())
                     }
@@ -727,10 +725,10 @@ private struct AddHoaDonSheet: View {
 
     // Không có "App" ở đây: đơn App chỉ được tạo qua "Bắt đơn App" (nút riêng bên dưới, lấy từ store).
     private let categories: [(code: String, icon: String)] = [
-        ("Ship", "🛵"),
-        ("Tại Chỗ", "🪑"),
-        ("Mv", "🛍️"),
-        ("Mh", "✋"),
+        ("Ship", AppIcon.ship),
+        ("Tại Chỗ", AppIcon.taiCho),
+        ("Mv", AppIcon.muaVe),
+        ("Mh", AppIcon.muaHo),
     ]
 
     var body: some View {
@@ -743,7 +741,7 @@ private struct AddHoaDonSheet: View {
                         ForEach(categories, id: \.code) { cat in
                             Button { dismiss(); onPick(cat.code) } label: {
                                 VStack(spacing: 4) {
-                                    Text(cat.icon).font(.title3)
+                                    Image(systemName: cat.icon).font(.title3)
                                     Text(HoaDonFormatting.phanLoaiLabel(cat.code)).font(.caption)
                                 }
                                 .frame(maxWidth: .infinity)
@@ -757,7 +755,7 @@ private struct AddHoaDonSheet: View {
 
                     Button { showGoiSom = true } label: {
                         HStack {
-                            Text("🕐")
+                            Image(systemName: "clock")
                             Text("Đơn 7h — khách hay gọi sớm")
                             Spacer()
                             Image(systemName: "chevron.right").font(.caption)
@@ -769,7 +767,7 @@ private struct AddHoaDonSheet: View {
 
                     Button { showAppOrder = true } label: {
                         HStack {
-                            Text("📱")
+                            Image(systemName: AppIcon.app)
                             Text("Bắt đơn App — lấy đơn từ store")
                             Spacer()
                             Image(systemName: "chevron.right").font(.caption)
@@ -781,7 +779,7 @@ private struct AddHoaDonSheet: View {
 
                     Button { showImageOrder = true } label: {
                         HStack {
-                            Text("🖼️")
+                            Image(systemName: "photo")
                             Text("Bắt đơn từ ảnh — chat khách đặt món")
                             Spacer()
                             Image(systemName: "chevron.right").font(.caption)

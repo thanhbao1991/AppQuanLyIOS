@@ -144,9 +144,7 @@ private struct ThongBaoNoiBoRowView: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Text(ThongBaoNoiBoFormatting.emoji(item.loai))
-                .font(.system(size: 20))
-                .frame(width: 38, height: 38)
+            IconBadge(symbol: ThongBaoNoiBoFormatting.icon(item.loai), color: ThongBaoNoiBoFormatting.mau(item.loai))
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline) {
@@ -352,26 +350,26 @@ enum ThongBaoNoiBoFormatting {
     }
 
     /// Icon emoji theo loại thông báo, thay cho chấm màu `mau` cũ. Loại lạ rơi về 🔔.
-    static func emoji(_ loai: String) -> String {
+    static func icon(_ loai: String) -> String {
         switch loai {
-        case "HoaDonNew": return "➕"
-        case "HoaDonNewShip": return "🛵"
-        case "HoaDonNewMuaVe": return "🛍️"
-        case "HoaDonNewTaiCho": return "🪑"
-        case "HoaDonNewApp": return "📱"
-        case "HoaDonNewMuaHo": return "✋"
-        case "HoaDonNewAppDatHang": return "🛒"
-        case "HoaDonEdit": return "✏️"
-        case "HoaDonDel": return "🗑️"
-        case "DangGiaoHang": return "🚚"
-        case "GhiNo": return "⚠️"
-        case "ThanhToanTienMat": return "💵"
-        case "ThanhToanChuyenKhoan": return "💳"
-        case "ThanhToanBanking": return "🤖"
-        case "ThanhToan": return "💰"
-        case "DuyKhanh", "DuyKhanhGhiNo", "DuyKhanhTraNo", "DuyKhanhChuyenKhoan": return "👤"
-        case "Admin": return "⚙️"
-        default: return "🔔"
+        case "HoaDonNew": return "plus"
+        case "HoaDonNewShip": return AppIcon.ship
+        case "HoaDonNewMuaVe": return AppIcon.muaVe
+        case "HoaDonNewTaiCho": return AppIcon.taiCho
+        case "HoaDonNewApp": return AppIcon.app
+        case "HoaDonNewMuaHo": return AppIcon.muaHo
+        case "HoaDonNewAppDatHang": return AppIcon.appDatHang
+        case "HoaDonEdit": return AppIcon.sua
+        case "HoaDonDel": return AppIcon.xoa
+        case "DangGiaoHang": return "box.truck.fill"
+        case "GhiNo": return AppIcon.ghiNo
+        case "ThanhToanTienMat": return AppIcon.tienMat
+        case "ThanhToanChuyenKhoan": return AppIcon.chuyenKhoan
+        case "ThanhToanBanking": return AppIcon.tuDong
+        case "ThanhToan": return "dollarsign.circle.fill"
+        case "DuyKhanh", "DuyKhanhGhiNo", "DuyKhanhTraNo", "DuyKhanhChuyenKhoan": return "person.fill"
+        case "Admin": return "gearshape.fill"
+        default: return "bell.fill"
         }
     }
 

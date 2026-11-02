@@ -139,18 +139,6 @@ enum HoaDonFormatting {
         }
     }
 
-    /// Emoji phân loại trên thẻ đơn — cùng bộ với menu lọc (HoaDonQuickFilter.systemIcon).
-    static func phanLoaiEmoji(_ phanLoai: String?) -> String {
-        switch phanLoai {
-        case "Tại Chỗ": return "🪑"
-        case "Mv": return "🛍️"
-        case "Mh": return "✋"
-        case "App": return "📱"
-        case "AppDatHang": return "🛒"
-        default: return "🛵"
-        }
-    }
-
     static func phanLoaiColor(_ phanLoai: String?) -> Color {
         switch phanLoai {
         case "Tại Chỗ": return .successColor

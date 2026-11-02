@@ -160,10 +160,10 @@ struct ThanhToanListView: View {
                         // Có thêm chip Xu thì 3 chip + tổng không vừa 1 hàng — chữ co lại chứ không bẻ
                         // "1.057.000đ" xuống 2 dòng.
                         HStack(spacing: 8) {
-                            footerChip("💵", HoaDonFormatting.money(totalTienMat), .successColor)
-                            footerChip("💳", HoaDonFormatting.money(totalChuyenKhoan), .brandPrimary)
+                            footerChip(AppIcon.tienMat, HoaDonFormatting.money(totalTienMat), .successColor)
+                            footerChip(AppIcon.chuyenKhoan, HoaDonFormatting.money(totalChuyenKhoan), .brandPrimary)
                             if totalViXu > 0 {
-                                footerChip("🪙", HoaDonFormatting.money(totalViXu), .orange)
+                                footerChip(AppIcon.viXu, HoaDonFormatting.money(totalViXu), .orange)
                             }
                         }
                     }
@@ -194,7 +194,7 @@ struct ThanhToanListView: View {
 
     private func footerChip(_ emoji: String, _ text: String, _ color: Color) -> some View {
         HStack(spacing: 3) {
-            Text(emoji).font(.caption)
+            Image(systemName: emoji).font(.caption).foregroundColor(color)
             Text(text).font(.caption.weight(.semibold)).foregroundColor(color)
         }
         .lineLimit(1).minimumScaleFactor(0.6)
@@ -277,14 +277,12 @@ private struct ThanhToanRowView: View {
     }
 
     private var methodEmoji: String {
-        isViXu ? "🪙" : (isBank ? "💳" : "💵")
+        isViXu ? AppIcon.viXu : (isBank ? AppIcon.chuyenKhoan : AppIcon.tienMat)
     }
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Text(methodEmoji)
-                .font(.system(size: 20))
-                .frame(width: 38, height: 38)
+            IconBadge(symbol: methodEmoji, color: methodColor)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(item.ten).font(.subheadline.weight(.semibold)).lineLimit(1)
@@ -293,7 +291,7 @@ private struct ThanhToanRowView: View {
                 }
                 HStack(spacing: 6) {
                     Text(HoaDonFormatting.time(item.ngayGio)).font(.caption).foregroundColor(.textMuted)
-                    if isAutoBank { Text("🤖").font(.caption2) }
+                    if isAutoBank { Image(systemName: AppIcon.tuDong).font(.caption2).foregroundColor(methodColor) }
                     if let loaiThanhToanText {
                         Text(loaiThanhToanText).font(.caption.bold()).foregroundColor(methodColor)
                     }
@@ -368,9 +366,9 @@ enum ThanhToanQuickFilter: CaseIterable, Hashable {
     /// Emoji (đổi từ SF Symbol 2026-09-12, khớp F1/F4 bên HoaDonDetailView + phong cách AppDatHangIOS).
     var systemIcon: String? {
         switch self {
-        case .tienMat: return "💵"
-        case .chuyenKhoan: return "💳"
-        case .viXu: return "🪙"
+        case .tienMat: return AppIcon.tienMat
+        case .chuyenKhoan: return AppIcon.chuyenKhoan
+        case .viXu: return AppIcon.viXu
         default: return nil
         }
     }
