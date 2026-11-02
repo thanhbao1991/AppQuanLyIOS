@@ -71,6 +71,8 @@ struct HoaDonListView: View {
         cachedSorted = searched
             .filter { item in activeFilter?.matches(item) ?? true }
             .sorted {
+                // Đang lọc: xếp thuần theo giờ (mới → cũ), bỏ nhóm ưu tiên — user 02/11/2026. Không lọc giữ như cũ.
+                if activeFilter != nil { return ($0.ngayGio ?? "") > ($1.ngayGio ?? "") }
                 let p0 = HoaDonFormatting.sortPriority($0)
                 let p1 = HoaDonFormatting.sortPriority($1)
                 if p0 != p1 { return p0 < p1 }
