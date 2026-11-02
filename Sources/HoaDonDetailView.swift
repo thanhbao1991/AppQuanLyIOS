@@ -182,7 +182,10 @@ struct HoaDonDetailView: View {
                                 .frame(width: 90, height: 90)
                         }
                     }
-                    if let gc = d.ghiChu, !gc.isEmpty { iconRow("note.text", gc) }
+                    if let gc = d.ghiChu, !gc.isEmpty {
+                        let (icon, text) = HoaDonFormatting.tachIconGhiChu(gc)
+                        iconRow(icon, text)
+                    }
                     if let tk = d.tenTaiKhoan, !tk.isEmpty { iconRow("person", "Tạo bởi: \(tk)") }
                 }
 

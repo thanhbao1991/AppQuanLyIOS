@@ -139,6 +139,21 @@ enum HoaDonFormatting {
         }
     }
 
+    /// Ghi chú đơn app khách mở đầu bằng emoji hình thức thanh toán (AppDatHangIOS CheckoutView /
+    /// Android CheckoutScreen: "🟡 Đã thanh toán bằng Xu", "💵 Thanh toán khi nhận hàng", "📱 Chuyển
+    /// khoản QR") — dữ liệu thật, app khách còn đọc lại nên không đổi ở nguồn; chỉ đổi sang SF Symbol
+    /// khi hiển thị. Emoji lạ khác ở đầu cũng bỏ, dùng icon ghi chú mặc định.
+    static func tachIconGhiChu(_ ghiChu: String) -> (icon: String, text: String) {
+        let map: [(String, String)] = [("💵", AppIcon.tienMat), ("📱", "qrcode"), ("🟡", AppIcon.viXu)]
+        for (emoji, icon) in map where ghiChu.hasPrefix(emoji) {
+            return (icon, ghiChu.dropFirst(emoji.count).trimmingCharacters(in: .whitespaces))
+        }
+        if let first = ghiChu.unicodeScalars.first, first.properties.isEmojiPresentation {
+            return ("note.text", String(ghiChu.drop { $0.unicodeScalars.first?.properties.isEmojiPresentation == true || $0 == " " }))
+        }
+        return ("note.text", ghiChu)
+    }
+
     static func phanLoaiColor(_ phanLoai: String?) -> Color {
         switch phanLoai {
         case "Tại Chỗ": return .successColor
