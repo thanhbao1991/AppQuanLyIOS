@@ -37,14 +37,24 @@ struct ThongBaoNoiBoListView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     List {
-                        ForEach(rows) { item in
-                            ThongBaoNoiBoRowView(item: item)
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    if let id = item.hoaDonId { openHoaDonId = id }
+                        ForEach(Self.nhomTheoNgay(rows), id: \.ten) { nhom in
+                            Section {
+                                ForEach(nhom.items) { item in
+                                    ThongBaoNoiBoRowView(item: item)
+                                        .contentShape(Rectangle())
+                                        .onTapGesture {
+                                            if let id = item.hoaDonId { openHoaDonId = id }
+                                        }
+                                        .listRowInsets(EdgeInsets(top: 4, leading: 14, bottom: 4, trailing: 14))
+                                        .listRowSeparator(.hidden)
+                                        .listRowBackground(Color.clear)
                                 }
-                                .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
-                                .listRowSeparator(.hidden)
+                            } header: {
+                                Text(nhom.ten)
+                                    .font(.footnote.weight(.semibold))
+                                    .foregroundColor(.textMuted)
+                                    .textCase(nil)
+                            }
                         }
                         if hasMore && searchDepthReached {
                             Button("Đã tìm trong \(items.count) thông báo gần nhất — Tìm tiếp") { searchDepth += 500 }
@@ -66,6 +76,8 @@ struct ThongBaoNoiBoListView: View {
                         }
                     }
                     .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .background(Color(.systemGroupedBackground))
                     .softScrollEdgeTop()
                     .refreshable { await load() }
                 }
@@ -95,6 +107,20 @@ struct ThongBaoNoiBoListView: View {
         }
     }
 
+    /// Gom thông báo (đã sắp mới → cũ) theo ngày: "Hôm nay", "Hôm qua", còn lại "dd/MM/yyyy".
+    private static func nhomTheoNgay(_ rows: [ThongBaoNoiBoDto]) -> [(ten: String, items: [ThongBaoNoiBoDto])] {
+        var ketQua: [(ten: String, items: [ThongBaoNoiBoDto])] = []
+        for r in rows {
+            let ten = ThongBaoNoiBoFormatting.tenNgay(r.taoLuc)
+            if let i = ketQua.indices.last, ketQua[i].ten == ten {
+                ketQua[i].items.append(r)
+            } else {
+                ketQua.append((ten, [r]))
+            }
+        }
+        return ketQua
+    }
+
     private func load() async {
         let first = await APIClient.shared.getThongBaoNoiBoList(take: pageSize)
         items = first
@@ -117,35 +143,46 @@ private struct ThongBaoNoiBoRowView: View {
     let item: ThongBaoNoiBoDto
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
+        HStack(alignment: .top, spacing: 12) {
             Text(ThongBaoNoiBoFormatting.emoji(item.loai))
-                .font(.body)
-                .frame(width: 22, height: 22)
+                .font(.system(size: 20))
+                .frame(width: 38, height: 38)
+                .background(Circle().fill(ThongBaoNoiBoFormatting.mau(item.loai).opacity(0.14)))
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(ThongBaoNoiBoFormatting.tieuDe(item.loai))
-                    .font(.subheadline.bold())
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(ThongBaoNoiBoFormatting.tieuDe(item.loai))
+                        .font(.footnote.weight(.bold))
+                        .foregroundColor(ThongBaoNoiBoFormatting.mau(item.loai))
+                    Spacer(minLength: 8)
+                    Text(ThongBaoNoiBoFormatting.gio(item.taoLuc))
+                        .font(.caption)
+                        .foregroundColor(.textMuted)
+                }
                 if item.loai == "HoaDonEdit" {
                     noiDungSua
                 } else {
-                    Text(item.noiDung)
-                        .font(.subheadline)
-                        .foregroundColor(.primary)
+                    let dong = item.noiDung.components(separatedBy: "\n").filter { !$0.isEmpty }
+                    ForEach(Array(dong.enumerated()), id: \.offset) { i, d in
+                        Text(d)
+                            .font(i == 0 ? .subheadline.weight(.semibold) : .footnote)
+                            .foregroundColor(i == 0 ? .primary : .textMuted)
+                    }
                 }
-                Text(ThongBaoNoiBoFormatting.thoiGian(item.taoLuc))
-                    .font(.caption)
-                    .foregroundColor(.textMuted)
             }
-
-            Spacer(minLength: 0)
 
             if item.hoaDonId != nil {
                 Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundColor(.textMuted)
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(Color(.tertiaryLabel))
+                    .padding(.top, 4)
             }
         }
-        .padding(.vertical, 4)
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(.secondarySystemGroupedBackground))
+        )
     }
 
     /// Thông báo "Sửa đơn": dòng đầu là tóm tắt đơn (in đậm), các dòng sau là thay đổi — "Nhãn: cũ → mới" (cũ gạch
@@ -248,6 +285,36 @@ enum ThongBaoNoiBoFormatting {
         case "Admin": return "⚙️"
         default: return "🔔"
         }
+    }
+
+    /// Màu nhấn theo nhóm: đơn mới xanh dương, sửa cam, xoá/nợ đỏ, tiền xanh lá.
+    static func mau(_ loai: String) -> Color {
+        switch loai {
+        case "HoaDonEdit": return Color(red: 0.90, green: 0.50, blue: 0.05)
+        case "HoaDonDel", "GhiNo": return .dangerColor
+        case "ThanhToanTienMat", "ThanhToanChuyenKhoan", "ThanhToanBanking", "ThanhToan": return .successColor
+        case "DangGiaoHang": return Color(red: 0.45, green: 0.30, blue: 0.80)
+        case "Admin": return .textMuted
+        default: return .brandPrimary
+        }
+    }
+
+    static func gio(_ iso: String) -> String {
+        guard let date = HoaDonFormatting.parseIso(iso) else { return "" }
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f.string(from: date)
+    }
+
+    static func tenNgay(_ iso: String) -> String {
+        guard let date = HoaDonFormatting.parseIso(iso) else { return "" }
+        let cal = Calendar.current
+        if cal.isDateInToday(date) { return "Hôm nay" }
+        if cal.isDateInYesterday(date) { return "Hôm qua" }
+        let f = DateFormatter()
+        f.dateFormat = "EEEE, dd/MM/yyyy"
+        f.locale = Locale(identifier: "vi_VN")
+        return f.string(from: date).capitalized
     }
 
     static func thoiGian(_ iso: String) -> String {
