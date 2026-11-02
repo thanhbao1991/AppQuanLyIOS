@@ -624,7 +624,6 @@ private struct HoaDonRowView: View {
             Text(HoaDonFormatting.phanLoaiEmoji(item.phanLoai))
                 .font(.system(size: 20))
                 .frame(width: 38, height: 38)
-                .background(Circle().fill(HoaDonFormatting.phanLoaiColor(item.phanLoai).opacity(0.16)))
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
@@ -695,11 +694,15 @@ private struct HoaDonRowView: View {
             }
         }
         .padding(12)
-        // 02/11/2026: thẻ nền trắng trên nền xám + icon tròn theo phân loại (thay dải màu 4px + nền pastel + bóng),
-        // cùng kiểu tab Thanh toán / màn chuông.
+        // 02/11/2026: cả thẻ đổ màu phân loại (đúng màu nền tròn icon cũ: 16% trên nền trắng) — icon
+        // tròn bỏ nền riêng vì giờ trùng màu thẻ.
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color(.secondarySystemGroupedBackground))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(HoaDonFormatting.phanLoaiColor(item.phanLoai).opacity(0.16))
+                )
         )
     }
 }
