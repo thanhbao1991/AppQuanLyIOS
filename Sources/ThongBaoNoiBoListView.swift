@@ -125,9 +125,13 @@ private struct ThongBaoNoiBoRowView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(ThongBaoNoiBoFormatting.tieuDe(item.loai))
                     .font(.subheadline.bold())
-                Text(item.noiDung)
-                    .font(.subheadline)
-                    .foregroundColor(.primary)
+                if item.loai == "HoaDonEdit" {
+                    noiDungSua
+                } else {
+                    Text(item.noiDung)
+                        .font(.subheadline)
+                        .foregroundColor(.primary)
+                }
                 Text(ThongBaoNoiBoFormatting.thoiGian(item.taoLuc))
                     .font(.caption)
                     .foregroundColor(.textMuted)
@@ -142,6 +146,58 @@ private struct ThongBaoNoiBoRowView: View {
             }
         }
         .padding(.vertical, 4)
+    }
+
+    /// Thông báo "Sửa đơn": dòng đầu là tóm tắt đơn (in đậm), các dòng sau là thay đổi — "Nhãn: cũ → mới" (cũ gạch
+    /// xám, mới đậm), "+ món" xanh, "- món" đỏ. Khớp HoaDonCrudService.UpdateAsync; thông báo cũ ghi "->" và để
+    /// trống phần mới cũng đọc được.
+    @ViewBuilder private var noiDungSua: some View {
+        let dong = item.noiDung.components(separatedBy: "\n").filter { !$0.isEmpty }
+        VStack(alignment: .leading, spacing: 3) {
+            ForEach(Array(dong.enumerated()), id: \.offset) { i, d in
+                if i == 0 {
+                    Text(d).font(.subheadline.weight(.semibold))
+                } else if d.hasPrefix("+ ") {
+                    Text(String(d.dropFirst(2))).font(.subheadline).foregroundColor(.green)
+                        .padding(.leading, 2)
+                } else if d.hasPrefix("- ") {
+                    Text(String(d.dropFirst(2))).font(.subheadline).foregroundColor(.red)
+                        .strikethrough().padding(.leading, 2)
+                } else if let (nhan, cu, moi) = Self.tachDoi(d) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(nhan).font(.caption).foregroundColor(.textMuted)
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Text(cu).strikethrough().foregroundColor(.textMuted)
+                            Image(systemName: "arrow.right").font(.caption2).foregroundColor(.textMuted)
+                            Text(moi).fontWeight(.semibold)
+                        }
+                        .font(.subheadline)
+                    }
+                } else {
+                    Text(d).font(.subheadline)
+                }
+            }
+        }
+    }
+
+    private static func tachDoi(_ d: String) -> (String, String, String)? {
+        guard let mocNhan = d.range(of: ": ") else { return nil }
+        let nhan = String(d[..<mocNhan.lowerBound])
+        let con = String(d[mocNhan.upperBound...])
+        for dau in [" → ", " -> "] {
+            if let r = con.range(of: dau) {
+                return (nhan, trong(String(con[..<r.lowerBound])), trong(String(con[r.upperBound...])))
+            }
+        }
+        // Thông báo cũ để trống phần mới: "Tên khách: A ->".
+        for dau in [" →", " ->"] where con.hasSuffix(dau) {
+            return (nhan, trong(String(con.dropLast(dau.count))), "(trống)")
+        }
+        return nil
+    }
+
+    private static func trong(_ s: String) -> String {
+        s.trimmingCharacters(in: .whitespaces).isEmpty ? "(trống)" : s
     }
 }
 
