@@ -359,6 +359,9 @@ struct TroLyView: View {
         "ban-chay": "trophy",
         "ban-chay-30-ngay": "calendar",
         "nap-xu": "banknote",
+        "thong-ke-xu": "dollarsign.circle",
+        "xu-khach-dang-giu": "wallet.pass",
+        "zalo-zns": "message",
         "khach-moi-cai-app": "person.badge.plus",
         "sap-len-hang": "arrow.up.circle",
         "thuong-thang-toi": "gift",
@@ -443,7 +446,7 @@ struct TroLyView: View {
 
     @ViewBuilder
     private func nhanCauHoi(_ c: TroLyCauHoi) -> some View {
-        Image(systemName: Self.icon[c.ma] ?? "questionmark.circle")
+        Image(systemName: Self.icon[c.ma] ?? "text.bubble")
             .font(.body.weight(.semibold))
             .foregroundColor(.brandPrimary)
             .frame(width: 24)
@@ -487,7 +490,7 @@ struct TroLyView: View {
         VStack(alignment: .leading, spacing: 10) {
             Button { bamCauHoi(c.ma) } label: {
                 HStack(spacing: 12) {
-                    Image(systemName: Self.icon[c.ma] ?? "questionmark.circle")
+                    Image(systemName: Self.icon[c.ma] ?? "text.bubble")
                         .font(.body.weight(.semibold))
                         .foregroundColor(.brandPrimary)
                         .frame(width: 24)

@@ -353,12 +353,14 @@ struct KhachHangNoDetailSheet: View {
                     List {
                         ForEach(filtered) { item in
                             CongNoRowView(item: item, onSelect: { selectedHoaDonId = item.id }, showName: false)
-                                .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+                                .listRowInsets(EdgeInsets(top: 4, leading: 14, bottom: 4, trailing: 14))
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
                         }
                     }
                     .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .background(Color(.systemGroupedBackground))
                     .softScrollEdgeTop()
 
                     Divider()

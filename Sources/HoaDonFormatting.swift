@@ -139,6 +139,18 @@ enum HoaDonFormatting {
         }
     }
 
+    /// Emoji phân loại trên thẻ đơn — cùng bộ với menu lọc (HoaDonQuickFilter.systemIcon).
+    static func phanLoaiEmoji(_ phanLoai: String?) -> String {
+        switch phanLoai {
+        case "Tại Chỗ": return "🪑"
+        case "Mv": return "🛍️"
+        case "Mh": return "✋"
+        case "App": return "📱"
+        case "AppDatHang": return "🛒"
+        default: return "🛵"
+        }
+    }
+
     static func phanLoaiColor(_ phanLoai: String?) -> Color {
         switch phanLoai {
         case "Tại Chỗ": return .successColor
@@ -156,12 +168,6 @@ enum HoaDonFormatting {
 
     static func phanLoaiTextColor(_ phanLoai: String?) -> Color {
         phanLoai == "Mv" ? amberText : phanLoaiColor(phanLoai)
-    }
-
-    /// Nền tint card theo PhanLoai — dùng chính màu accent/border đã có sẵn trên card (phanLoaiColor),
-    /// pha nhạt để làm nền cả card thay vì chỉ 1 thanh 4px bên trái.
-    static func phanLoaiBgColor(_ phanLoai: String?) -> Color {
-        phanLoaiColor(phanLoai).pastelBackground()
     }
 
     /// Khớp PhanLoai.NeedKhachHang (Desktop, HoaDonDomain.cs) — 4 phân loại này cần SĐT/địa chỉ giao.

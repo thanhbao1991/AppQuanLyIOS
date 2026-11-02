@@ -170,17 +170,16 @@ struct HoaDonListView: View {
                                 HoaDonRowView(item: item, now: now, showMon: !searchText.isEmpty)
                                     .contentShape(Rectangle())
                                     .onTapGesture { selectedId = item.id }
-                                    .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+                                    .listRowInsets(EdgeInsets(top: 4, leading: 14, bottom: 4, trailing: 14))
                                     .listRowBackground(Color.clear)
                                     .listRowSeparator(.hidden)
                             }
                         }
                     }
                     .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .background(Color(.systemGroupedBackground))
                     .softScrollEdgeTop()
-                    // +4pt để khớp khoảng cách header→card đầu tiên bên tab Thống kê (12pt) — mặc
-                    // định List chỉ có 8pt từ listRowInsets top của dòng đầu.
-                    .padding(.top, 4)
                     .refreshable { await load() }
                 }
 
@@ -618,10 +617,11 @@ private struct HoaDonRowView: View {
     }
 
     var body: some View {
-        HStack(spacing: 10) {
-            Rectangle()
-                .fill(HoaDonFormatting.phanLoaiColor(item.phanLoai))
-                .frame(width: 4)
+        HStack(alignment: .top, spacing: 12) {
+            Text(HoaDonFormatting.phanLoaiEmoji(item.phanLoai))
+                .font(.system(size: 20))
+                .frame(width: 38, height: 38)
+                .background(Circle().fill(HoaDonFormatting.phanLoaiColor(item.phanLoai).opacity(0.16)))
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
@@ -692,11 +692,12 @@ private struct HoaDonRowView: View {
             }
         }
         .padding(12)
-        .background(HoaDonFormatting.phanLoaiBgColor(item.phanLoai))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        // Shadow nhẹ để mỗi dòng nổi thành "card" giống khung form ở LoginView, thay vì phẳng dán
-        // liền nền list như trước.
-        .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
+        // 02/11/2026: thẻ nền trắng trên nền xám + icon tròn theo phân loại (thay dải màu 4px + nền pastel + bóng),
+        // cùng kiểu tab Thanh toán / màn chuông.
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(.secondarySystemGroupedBackground))
+        )
     }
 }
 

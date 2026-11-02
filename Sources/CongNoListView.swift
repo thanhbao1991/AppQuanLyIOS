@@ -71,7 +71,7 @@ struct CongNoListView: View {
                                     item: item,
                                     onSelect: { selectedId = item.id }
                                 )
-                                .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+                                .listRowInsets(EdgeInsets(top: 4, leading: 14, bottom: 4, trailing: 14))
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
                                 // Cố ý KHÔNG có nút Xoá — mọi đơn trong tab này đều đã ghi nợ, xoá
@@ -82,8 +82,9 @@ struct CongNoListView: View {
                         }
                     }
                     .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .background(Color(.systemGroupedBackground))
                     .softScrollEdgeTop()
-                    .padding(.top, 4)
                     .scrollDismissesKeyboard(.immediately)
                     .refreshable { await load() }
                 }
@@ -577,6 +578,7 @@ private struct BillSnapshotView: View {
             }
         }
         .background(Color.white)
+        .environment(\.colorScheme, .light)
     }
 }
 
@@ -591,8 +593,11 @@ struct CongNoRowView: View {
     var showName: Bool = true
 
     var body: some View {
-        HStack(spacing: 10) {
-            Rectangle().fill(Color.dangerColor).frame(width: 4)
+        HStack(spacing: 12) {
+            Text("🧾")
+                .font(.system(size: 20))
+                .frame(width: 38, height: 38)
+                .background(Circle().fill(Color.dangerColor.opacity(0.14)))
 
             VStack(alignment: .leading, spacing: 4) {
                 if showName {
@@ -616,9 +621,10 @@ struct CongNoRowView: View {
             }
         }
         .padding(12)
-        .background(Color.dangerColor.pastelBackground())
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(.secondarySystemGroupedBackground))
+        )
         .contentShape(Rectangle())
         .onTapGesture { onSelect?() }
     }

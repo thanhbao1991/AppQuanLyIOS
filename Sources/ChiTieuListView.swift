@@ -60,15 +60,16 @@ struct ChiTieuListView: View {
                         } else {
                             ForEach(rows) { item in
                                 ChiTieuRowView(item: item, onSelect: { selectedItem = item })
-                                    .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+                                    .listRowInsets(EdgeInsets(top: 4, leading: 14, bottom: 4, trailing: 14))
                                     .listRowBackground(Color.clear)
                                     .listRowSeparator(.hidden)
                             }
                         }
                     }
                     .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .background(Color(.systemGroupedBackground))
                     .softScrollEdgeTop()
-                    .padding(.top, 4)
                     .refreshable { await load() }
                 }
 
@@ -167,8 +168,11 @@ private struct ChiTieuRowView: View {
     }
 
     var body: some View {
-        HStack(spacing: 10) {
-            Rectangle().fill(borderColor).frame(width: 4)
+        HStack(spacing: 12) {
+            Text(item.nguonShopeeOrderId != nil ? "🛍️" : (item.billThang ? "📅" : "🧾"))
+                .font(.system(size: 20))
+                .frame(width: 38, height: 38)
+                .background(Circle().fill(borderColor.opacity(0.14)))
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
@@ -200,9 +204,10 @@ private struct ChiTieuRowView: View {
             }
         }
         .padding(12)
-        .background(borderColor.pastelBackground())
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(.secondarySystemGroupedBackground))
+        )
         .contentShape(Rectangle())
         .onTapGesture { onSelect?() }
     }
