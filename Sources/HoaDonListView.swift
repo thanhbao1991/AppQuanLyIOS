@@ -592,8 +592,9 @@ private struct HoaDonRowView: View {
         if item.conLai <= 0.0 {
             // isXu = trả hết bằng Xu; coXu = chỉ một phần bằng Xu (vd hết ví khi đặt, phần còn lại trả tiền mặt).
             if item.isXu == true { return "Ví Xu" }
-            let chinh = (item.isBank == true) ? "Chuyển khoản" : "Tiền mặt"
-            return item.coXu == true ? chinh + " + Xu" : chinh
+            // Có thêm Xu thì viết tắt "CK + Xu" / "TM + Xu" — chữ đầy đủ làm nhãn xuống 2 dòng.
+            if item.coXu == true { return (item.isBank == true) ? "CK + Xu" : "TM + Xu" }
+            return (item.isBank == true) ? "Chuyển khoản" : "Tiền mặt"
         }
         if !(item.ngayNo?.isEmpty ?? true) { return "Ghi nợ" }
         return laChoXacNhan ? "Chờ xác nhận" : "Chưa thoát"
