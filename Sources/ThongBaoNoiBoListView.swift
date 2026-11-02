@@ -147,7 +147,6 @@ private struct ThongBaoNoiBoRowView: View {
             Text(ThongBaoNoiBoFormatting.emoji(item.loai))
                 .font(.system(size: 20))
                 .frame(width: 38, height: 38)
-                .background(Circle().fill(ThongBaoNoiBoFormatting.mau(item.loai).opacity(0.14)))
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline) {
@@ -182,6 +181,11 @@ private struct ThongBaoNoiBoRowView: View {
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color(.secondarySystemGroupedBackground))
+                // 02/11/2026: cả thẻ đổ màu (đúng màu nền tròn icon cũ), đồng bộ tab Đơn.
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(ThongBaoNoiBoFormatting.mau(item.loai).opacity(0.14))
+                )
         )
     }
 

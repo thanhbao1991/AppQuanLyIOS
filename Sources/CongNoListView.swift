@@ -597,7 +597,6 @@ struct CongNoRowView: View {
             Text("🧾")
                 .font(.system(size: 20))
                 .frame(width: 38, height: 38)
-                .background(Circle().fill(Color.dangerColor.opacity(0.14)))
 
             VStack(alignment: .leading, spacing: 4) {
                 if showName {
@@ -624,6 +623,11 @@ struct CongNoRowView: View {
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color(.secondarySystemGroupedBackground))
+                // 02/11/2026: cả thẻ đổ màu (đúng màu nền tròn icon cũ), đồng bộ tab Đơn.
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color.dangerColor.opacity(0.14))
+                )
         )
         .contentShape(Rectangle())
         .onTapGesture { onSelect?() }

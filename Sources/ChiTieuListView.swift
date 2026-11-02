@@ -172,7 +172,6 @@ private struct ChiTieuRowView: View {
             Text(item.nguonShopeeOrderId != nil ? "🛍️" : (item.billThang ? "📅" : "🧾"))
                 .font(.system(size: 20))
                 .frame(width: 38, height: 38)
-                .background(Circle().fill(borderColor.opacity(0.14)))
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
@@ -207,6 +206,11 @@ private struct ChiTieuRowView: View {
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color(.secondarySystemGroupedBackground))
+                // 02/11/2026: cả thẻ đổ màu (đúng màu nền tròn icon cũ), đồng bộ tab Đơn.
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(borderColor.opacity(0.14))
+                )
         )
         .contentShape(Rectangle())
         .onTapGesture { onSelect?() }

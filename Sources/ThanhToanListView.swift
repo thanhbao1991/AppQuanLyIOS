@@ -280,7 +280,6 @@ private struct ThanhToanRowView: View {
             Text(methodEmoji)
                 .font(.system(size: 20))
                 .frame(width: 38, height: 38)
-                .background(Circle().fill(methodColor.opacity(0.14)))
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(item.ten).font(.subheadline.weight(.semibold)).lineLimit(1)
@@ -312,6 +311,11 @@ private struct ThanhToanRowView: View {
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color(.secondarySystemGroupedBackground))
+                // 02/11/2026: cả thẻ đổ màu phương thức (đúng màu nền tròn icon cũ), đồng bộ tab Đơn.
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(methodColor.opacity(0.14))
+                )
         )
     }
 }
