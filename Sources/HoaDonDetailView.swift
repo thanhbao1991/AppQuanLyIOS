@@ -1,4 +1,3 @@
-import MessageUI
 import SwiftUI
 import UIKit
 
@@ -16,7 +15,7 @@ struct HoaDonDetailView: View {
     @State private var showShipperPicker = false
     @State private var pendingAction: PendingAction?
     @State private var copiedFeedback = false
-    @State private var showSmsComposer = false
+    @State private var linkCopiedFeedback = false
     @State private var qrImage: UIImage?
     @State private var showEditForm = false
     /// SanPhamId -> HinhAnh — API /HoaDon/{id} không kèm ảnh (chỉ ChiTietHoaDon, không join SanPham),
@@ -91,16 +90,6 @@ struct HoaDonDetailView: View {
             HoaDonEditFormView(hoaDonId: hoaDonId) {
                 onChanged()
                 Task { await load() }
-            }
-        }
-        .sheet(isPresented: $showSmsComposer) {
-            if let detail {
-                // Không có SĐT vẫn mở soạn sẵn nội dung — nhân viên tự chọn người nhận trong app
-                // Tin nhắn, chỉ bỏ qua bước prefill recipient.
-                let phone = detail.soDienThoaiText?.isEmpty == false ? [detail.soDienThoaiText!] : []
-                SMSComposerView(recipients: phone, body: BillTextBuilder.smsText(detail)) {
-                    showSmsComposer = false
-                }
             }
         }
         .popupHost { host in
@@ -398,11 +387,6 @@ struct HoaDonDetailView: View {
         // xếp 4 cột thay vì 2 — chỉ Tiền mặt/Chuyển khoản (2 nút thu tiền chính) giữ nguyên cỡ lớn.
         let fourColumns = [GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6)]
 
-        // "Gửi SMS" luôn hiện kể cả hoá đơn không có SĐT — soạn sẵn nội dung, nhân viên tự chọn
-        // người nhận trong app Tin nhắn. Chỉ ẩn khi máy không hỗ trợ gửi SMS thật (không SIM/không
-        // cấu hình Tin nhắn — canSendText() false, hiện nút cũng không bấm được).
-        let canSms = MFMessageComposeViewController.canSendText()
-
         // Khớp guard UpdateAsync (Backend, HoaDonCrudService): đã có thanh toán VÀ không phải đơn
         // hôm nay thì server chặn sửa món/tiền — ẩn nút thay vì để bấm xong mới báo lỗi.
         let canEdit = payments.isEmpty || (d.ngayGio?.hasPrefix(DateNavFormat.queryDate.string(from: Date())) ?? true)
@@ -416,10 +400,11 @@ struct HoaDonDetailView: View {
                     Task { await copyBillImage(d) }
                 }
 
-                if canSms {
-                    ActionButtonView(icon: "💬", code: nil, caption: "Gửi SMS", color: .brandPrimary) {
-                        showSmsComposer = true
-                    }
+                ActionButtonView(
+                    icon: linkCopiedFeedback ? "✅" : "🔗", code: nil,
+                    caption: linkCopiedFeedback ? "Đã copy" : "Gửi link thanh toán", color: .brandPrimary
+                ) {
+                    copyPaymentLink(d)
                 }
             }
 
@@ -700,6 +685,18 @@ struct HoaDonDetailView: View {
             copiedFeedback = false
         }
     }
+
+    /// Copy lời nhắn kèm link trang thanh toán để dán vào chat (Messenger/Zalo) — cùng nội dung
+    /// Desktop dán ở tab Page (HoaDonTabControl.Actions.cs SetBillPasteLink).
+    private func copyPaymentLink(_ d: HoaDonDetailDto) {
+        UIPasteboard.general.string = BillTextBuilder.paymentLinkText(d)
+
+        linkCopiedFeedback = true
+        Task {
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            linkCopiedFeedback = false
+        }
+    }
 }
 
 /// Nội dung bill dạng hoá đơn giấy monospace — port 1:1 HoaDonPrinter.BuildContent/BuildFooterContent
@@ -711,17 +708,6 @@ enum BillTextBuilder {
 
     /// Khớp HoaDonPrinter.BuildMaHoaDon (Desktop) / buildMaHoaDonBill (Mobile JS).
     static func buildMaHoaDon(_ id: String) -> String { "HD" + id.prefix(8) }
-
-    /// Số tiền gộp nợ đơn khác (xem amount(_:)) — thay vì liệt kê hết (dễ vượt giới hạn ký tự nội
-    /// dung CK của ngân hàng, ~140-210 ký tự), chỉ ghi mã đơn hiện tại (đầu) và mã đơn nợ cuối cùng
-    /// (cuối), nối bằng " DEN " (chữ, không ký tự đặc biệt như "...." — nhiều app ngân hàng lọc bỏ
-    /// dấu chấm lặp trong nội dung CK). Khớp HoaDonPrinter.BuildAddInfo (Desktop). Việc ghi nhận
-    /// thanh toán KHÔNG phụ thuộc chuỗi này — xem ThuChuyenKhoanTuNganHangAsync chỉ cần mã đầu
-    /// tiên + tra nợ cũ từ DB.
-    static func buildCodesWithNoKhac(_ ma: String, _ maNoKhac: [String]?) -> String {
-        guard let maNoKhac, let last = maNoKhac.last else { return ma }
-        return "\(ma) DEN \(last)"
-    }
 
     /// Khớp HoaDonPrinter.GetAmount (Desktop): gộp cả nợ cũ (đã ghi nợ) LẪN đơn khác chưa ghi nợ,
     /// không thì còn lại/thành tiền.
@@ -742,40 +728,19 @@ enum BillTextBuilder {
         return upper ? folded.uppercased() : folded
     }
 
-    /// Tin SMS soạn sẵn cho khách không có Zalo/Facebook để nhận "Gửi Bill" — cố giữ GSM-7 thuần
-    /// (không dấu, không ký tự lạ) để 1 tin SMS đủ chứa (~160 ký tự), tránh vỡ thành 2 đoạn tốn
-    /// tiền hơn. KHÔNG kèm tên chủ TK (dài, đã có sẵn trên trang link QR) — chỉ STK + tên ngân
-    /// hàng đủ để khách nhận diện, đổi lại nhường chỗ cho link trang QR (xem HoaDonController.
-    /// GetBillQrByHoaDonId) tự vẽ đủ số tiền/QR/thông tin đầy đủ khi khách bấm vào.
-    static func smsText(_ d: HoaDonDetailDto) -> String {
-        // TongSoLuong (HoaDonDto, Backend) chưa từng được populate ở đâu — luôn 0, không dùng được.
-        // Tự cộng từ chiTietHoaDons (đã có sẵn trong HoaDonDetailDto) thay vì tin field đó.
-        let soLy = d.chiTietHoaDons?.reduce(0) { $0 + $1.soLuong } ?? 0
-        let amountVnd = Int(amount(d).rounded())
-        // ND chỉ ghi mã đơn (không kèm tên khách như billAddInfo dùng cho QR) — ThuChuyenKhoanTuNganHangAsync
-        // chỉ cần mã đầu tiên để đối chiếu tự động, không cần tên (xem buildCodesWithNoKhac).
-        let ma = buildMaHoaDon(d.id)
-        let maCode = buildCodesWithNoKhac(ma, d.maHoaDonNoKhac)
-        // "VietinBank" (viết hoa chữ đầu) chỉ để hiển thị đẹp trong SMS — d.bankName ("VIETINBANK")
-        // là mã ngân hàng dùng cho VietQR API, không đổi cách viết đó (giữ nguyên BankQrConfig).
-        let bankDisplay = "VietinBank"
-        let stk = d.bankAccountNo ?? ""
-        // Dùng mã ngắn "HDxxxxxxxx" thay vì Guid đầy đủ (36 ký tự) — Backend tự tra Guid thật từ 8
-        // hex đầu (xem HoaDonController.GetBillQrByHoaDonId/ResolveIdByShortCodeAsync).
-        // ĐÃ THỬ domain gốc denncoffee.uk (Prefs.publicBase) 2026-08-22 nhưng rollback ngay trong
-        // ngày — dùng chung cert với api.denncoffee.uk khiến app bị treo do HTTP/2 connection
-        // coalescing giữa 2 host (xem Prefs.swift + memory project_sms_qr_link_bare_domain).
-        let link = "\(Prefs.apiBase)/api/HoaDon/\(ma)/qr"
-        let amountFormatter = NumberFormatter()
-        amountFormatter.numberStyle = .decimal
-        amountFormatter.groupingSeparator = "."
-        let amountText = amountFormatter.string(from: NSNumber(value: amountVnd)) ?? "\(amountVnd)"
+    /// Lời nhắn kèm link trang thanh toán — y hệt câu Desktop dán ở tab Page (HoaDonTabControl.Actions.cs
+    /// SetBillPasteLink). Mã ngắn "HDxxxxxxxx" thay Guid đầy đủ — Backend tự tra Guid thật từ 8 hex đầu
+    /// (xem HoaDonController.GetBillQrByHoaDonId/ResolveIdByShortCodeAsync).
+    static func paymentLinkText(_ d: HoaDonDetailDto) -> String {
+        let link = "\(Prefs.apiBase)/api/HoaDon/\(buildMaHoaDon(d.id))/qr"
         return """
-            DENN: Cam on quy khach!
-            Don \(soLy) ly: \(amountText)d
-            \(bankDisplay) STK: \(stk)
-            ND: \(maCode)
-            Ma QR: \(link)
+            Đenn Coffee xin gửi bạn mã QR thanh toán hóa đơn.
+
+            Bạn vui lòng quét mã QR tại đường link bên dưới để thanh toán nhé!
+
+            \(link)
+
+            Cảm ơn bạn đã ủng hộ Đenn!
             """
     }
 
