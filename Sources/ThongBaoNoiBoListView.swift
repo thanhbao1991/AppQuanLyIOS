@@ -189,15 +189,27 @@ private struct ThongBaoNoiBoRowView: View {
         )
     }
 
-    /// Thông báo "Sửa đơn": dòng đầu là tóm tắt đơn (in đậm), các dòng sau là thay đổi — "Nhãn: cũ → mới" (cũ gạch
-    /// xám, mới đậm), "+ món" xanh, "- món" đỏ. Khớp HoaDonCrudService.UpdateAsync; thông báo cũ ghi "->" và để
-    /// trống phần mới cũng đọc được.
+    /// Thông báo "Sửa đơn": trên cùng là kết luận sửa gì (in đậm), rồi tóm tắt đơn, rồi chi tiết — "Nhãn: cũ → mới"
+    /// (cũ gạch xám, mới đậm), "+ món" xanh, "- món" đỏ. Khớp HoaDonCrudService.UpdateAsync; thông báo cũ ghi "->"
+    /// và để trống phần mới cũng đọc được. Dòng cũ = mới (vd "(trống) → (trống)" ở thông báo cũ) bỏ qua.
     @ViewBuilder private var noiDungSua: some View {
-        let dong = item.noiDung.components(separatedBy: "\n").filter { !$0.isEmpty }
+        let tatCa = item.noiDung.components(separatedBy: "\n").filter { !$0.isEmpty }
+        let chiTiet = tatCa.dropFirst().filter { d in
+            guard !Self.laDongMon(d), let (_, cu, moi) = Self.tachDoi(d) else { return true }
+            return cu != moi
+        }
+        let ketLuan = Self.ketLuan(Array(chiTiet))
+        // Chỉ đổi tiền: kết luận đã nói đủ, không lặp lại dòng chi tiết.
+        let dong = (tatCa.first.map { [$0] } ?? []) + (ketLuan.chiDoiTien ? [] : chiTiet)
         VStack(alignment: .leading, spacing: 3) {
+            if !ketLuan.text.isEmpty {
+                Text(ketLuan.text).font(.subheadline.weight(.semibold))
+            }
             ForEach(Array(dong.enumerated()), id: \.offset) { i, d in
                 if i == 0 {
-                    Text(d).font(.subheadline.weight(.semibold))
+                    Text(d)
+                        .font(ketLuan.text.isEmpty ? .subheadline.weight(.semibold) : .footnote)
+                        .foregroundColor(ketLuan.text.isEmpty ? .primary : .textMuted)
                 } else if d.hasPrefix("+ ") {
                     Text(String(d.dropFirst(2))).font(.subheadline).foregroundColor(.green)
                         .padding(.leading, 2)
@@ -239,6 +251,78 @@ private struct ThongBaoNoiBoRowView: View {
 
     private static func trong(_ s: String) -> String {
         s.trimmingCharacters(in: .whitespaces).isEmpty ? "(trống)" : s
+    }
+
+    /// 1 dòng món theo HoaDonCrudService.ChiTietDiffLine: "Tên (Size) xSL (topping) [ghi chú]" — size mặc định
+    /// không ghi.
+    private struct MonDong {
+        let ten: String
+        let size: String
+        let soLuong: String
+        let topping: String
+        let ghiChu: String
+    }
+
+    private static let monRegex = try! NSRegularExpression(
+        pattern: #"^(.+?)(?: \(([^()]*)\))? x(\d+)(?: \((.*?)\))?(?: \[(.*)\])?$"#)
+
+    private static func tachMon(_ s: String) -> MonDong? {
+        let ns = s as NSString
+        guard let m = monRegex.firstMatch(in: s, range: NSRange(location: 0, length: ns.length)) else { return nil }
+        func nhom(_ i: Int) -> String {
+            let r = m.range(at: i)
+            return r.location == NSNotFound ? "" : ns.substring(with: r)
+        }
+        return MonDong(ten: nhom(1), size: nhom(2), soLuong: nhom(3), topping: nhom(4), ghiChu: nhom(5))
+    }
+
+    /// Câu kết luận ngắn: món nào đổi gì (ghép dòng "-"/"+" cùng tên món), thêm/bỏ món, đổi thông tin khách.
+    /// Đổi tiền chỉ đưa vào kết luận khi đó là thay đổi duy nhất (thường do sửa giá/giảm giá).
+    static func ketLuan(_ chiTiet: [String]) -> (text: String, chiDoiTien: Bool) {
+        var them = chiTiet.filter { $0.hasPrefix("+ ") }.map { String($0.dropFirst(2)) }
+        let bo = chiTiet.filter { $0.hasPrefix("- ") }.map { String($0.dropFirst(2)) }
+        var cau: [String] = []
+
+        for b in bo {
+            if let mb = tachMon(b),
+               let j = them.firstIndex(where: { tachMon($0)?.ten == mb.ten }),
+               let mt = tachMon(them[j]) {
+                them.remove(at: j)
+                var doi: [String] = []
+                if mb.size != mt.size { doi.append("size \(trongSize(mb.size)) → \(trongSize(mt.size))") }
+                if mb.soLuong != mt.soLuong { doi.append("x\(mb.soLuong) → x\(mt.soLuong)") }
+                if mb.topping != mt.topping {
+                    doi.append(mt.topping.isEmpty ? "bỏ topping" : mb.topping.isEmpty ? "thêm \(mt.topping)" : "topping \(mt.topping)")
+                }
+                if mb.ghiChu != mt.ghiChu { doi.append(mt.ghiChu.isEmpty ? "bỏ ghi chú" : "ghi chú \"\(mt.ghiChu)\"") }
+                cau.append("\(mb.ten): \(doi.joined(separator: ", "))")
+            } else {
+                cau.append("Bỏ \(b)")
+            }
+        }
+        cau.append(contentsOf: them.map { "Thêm \($0)" })
+
+        var tien: (String, String)?
+        for d in chiTiet {
+            guard !laDongMon(d), let (nhan, cu, moi) = tachDoi(d), cu != moi else { continue }
+            switch nhan {
+            case "Tiền": tien = (cu, moi)
+            case "Phân loại": cau.append("Đổi \(cu) → \(moi)")
+            default: cau.append("Đổi \(nhan == "SĐT" ? nhan : nhan.lowercased())")
+            }
+        }
+
+        if cau.isEmpty, let (cu, moi) = tien {
+            let giam = (Double(cu.dropLast()) ?? 0) > (Double(moi.dropLast()) ?? 0)
+            return ("\(giam ? "Giảm" : "Tăng") tiền \(cu) → \(moi)", true)
+        }
+        return (cau.joined(separator: " · "), false)
+    }
+
+    private static func laDongMon(_ d: String) -> Bool { d.hasPrefix("+ ") || d.hasPrefix("- ") }
+
+    private static func trongSize(_ s: String) -> String {
+        s.isEmpty ? "chuẩn" : s.replacingOccurrences(of: "Size ", with: "")
     }
 }
 
