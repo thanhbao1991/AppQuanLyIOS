@@ -175,11 +175,11 @@ private struct GiaRiengEditSheet: View {
                         ForEach(khachSearchResults) { kh in
                             Button {
                                 khachHangId = kh.id
-                                khachDisplayName = kh.ten
+                                khachDisplayName = kh.tenHienThiUuTien
                                 khachSearchText = ""
                                 khachSearchResults = []
                             } label: {
-                                Text(kh.ten).foregroundColor(.primary)
+                                Text(kh.tenHienThiUuTien).foregroundColor(.primary)
                             }
                         }
                     }

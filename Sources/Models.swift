@@ -868,11 +868,31 @@ extension KhachHangDto {
 struct KhachHangDto: Codable, Identifiable {
     let id: String
     let ten: String
+    let tenHienThi: String?
     let soDu: Double
     let duocNhanVoucher: Bool
     let phones: [KhachHangPhoneDto]
     let addresses: [KhachHangAddressDto]
     let facebookThreadId: String?
+
+    /// Khớp KhachHangTenHelper.TenHoaDon (Backend): ưu tiên tên hệ thống nếu KHÔNG phải là SĐT, rồi
+    /// mới đến tên khách tự đặt trong app (TenHienThi) — khách đăng ký qua app mặc định Ten = SĐT.
+    var tenHienThiUuTien: String {
+        let tenHeThong = ten.trimmingCharacters(in: .whitespaces)
+        if !tenHeThong.isEmpty, !KhachHangDto.laSoDienThoai(tenHeThong) { return tenHeThong }
+        let tenTuDat = (tenHienThi ?? "").trimmingCharacters(in: .whitespaces)
+        if !tenTuDat.isEmpty { return tenTuDat }
+        return tenHeThong
+    }
+
+    private static func laSoDienThoai(_ s: String) -> Bool {
+        var digits = 0
+        for c in s {
+            if c.isNumber { digits += 1 }
+            else if c != "+" && c != " " && c != "." && c != "-" { return false }
+        }
+        return digits >= 8
+    }
 }
 
 struct KhachHangCreateRequest: Encodable {

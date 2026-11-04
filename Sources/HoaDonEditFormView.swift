@@ -253,7 +253,7 @@ struct HoaDonEditFormView: View {
                                 Button { selectKhach(kh) } label: {
                                     HStack {
                                         VStack(alignment: .leading, spacing: 2) {
-                                            Text(kh.ten).font(.subheadline.bold())
+                                            Text(kh.tenHienThiUuTien).font(.subheadline.bold())
                                             if let dt = kh.phones.first?.soDienThoai {
                                                 Text(dt).font(.caption).foregroundColor(.textMuted)
                                             }
@@ -377,7 +377,7 @@ struct HoaDonEditFormView: View {
     private func selectedKhachInfo(_ kh: KhachHangDto) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(kh.ten).font(.subheadline.bold())
+                Text(kh.tenHienThiUuTien).font(.subheadline.bold())
                 if let info = khachInfo, info.tongNo > 0 {
                     infoBadge("Nợ \(HoaDonFormatting.money(info.tongNo))", color: .dangerColor)
                 }
@@ -821,7 +821,7 @@ struct HoaDonEditFormView: View {
         let previousAddrId  = kh.addresses.first(where: { $0.diaChi == diaChi })?.id
 
         let payload = KhachHangDto(
-            id: kh.id, ten: tenMoi, soDu: kh.soDu, duocNhanVoucher: editVoucher,
+            id: kh.id, ten: tenMoi, tenHienThi: kh.tenHienThi, soDu: kh.soDu, duocNhanVoucher: editVoucher,
             phones: phones, addresses: addresses, facebookThreadId: kh.facebookThreadId
         )
         let result = await APIClient.shared.updateKhachHang(payload)

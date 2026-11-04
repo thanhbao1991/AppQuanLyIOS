@@ -23,7 +23,7 @@ struct KhachHangListView: View {
     private var filteredItems: [KhachHangDto] {
         guard !searchText.isEmpty else { return items }
         return items.filter {
-            anyMatchesSearch(searchText, $0.ten,
+            anyMatchesSearch(searchText, $0.ten, $0.tenHienThi ?? "",
                               $0.phones.map(\.soDienThoai).joined(separator: " "),
                               $0.addresses.map(\.diaChi).joined(separator: " "))
         }
@@ -160,7 +160,7 @@ private struct KhachHangRowView: View {
                             .foregroundColor(isSelected ? .brandPrimary : .textMuted)
                     }
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(item.ten)
+                        Text(item.tenHienThiUuTien)
                             .font(.subheadline).fontWeight(.semibold)
                             .foregroundColor(.primary)
                         if !item.phones.isEmpty {
@@ -362,7 +362,7 @@ private struct KhachHangEditSheet: View {
             // (SaveEditAsync cũng chỉ giữ nguyên, không cho sửa). Cờ này do rollout app kiểm soát
             // (bật hàng loạt khi publish App Store), không phải nhân viên tự bật/tắt từng khách.
             let payload = KhachHangDto(
-                id: existing.id, ten: tenMoi, soDu: existing.soDu, duocNhanVoucher: existing.duocNhanVoucher,
+                id: existing.id, ten: tenMoi, tenHienThi: existing.tenHienThi, soDu: existing.soDu, duocNhanVoucher: existing.duocNhanVoucher,
                 phones: phones, addresses: addresses, facebookThreadId: existing.facebookThreadId
             )
             let result = await APIClient.shared.updateKhachHang(payload)
