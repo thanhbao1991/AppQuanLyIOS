@@ -133,10 +133,11 @@ struct MainTabView: View {
         }
     }
 
-    /// Chỉ Kê/Tiền/Việc — Đơn, Nợ, Chi, Menu vào thẳng (user 01/11/2026).
-    private static let tabCanDuyet: Set<MainTab> = [.thongKe, .thanhToan, .congViec]
+    /// Chỉ Kê — Đơn, Tiền, Nợ, Chi, Việc, Menu vào thẳng (user 04/11/2026, trước đó 01/11/2026 áp cho
+    /// cả Tiền/Việc).
+    private static let tabCanDuyet: Set<MainTab> = [.thongKe]
 
-    /// Bấm tab Kê/Tiền/Việc: còn món chưa duyệt thì mở bảng duyệt món đầu (vừa bán gần nhất),
+    /// Bấm tab Kê: còn món chưa duyệt thì mở bảng duyệt món đầu (vừa bán gần nhất),
     /// duyệt xong mới chuyển tab. Tải lỗi / hết món thì vào thẳng — đừng khoá nhân viên vì mạng.
     private func chonTab(_ tab: MainTab) {
         guard Self.tabCanDuyet.contains(tab), tab != selection else {
