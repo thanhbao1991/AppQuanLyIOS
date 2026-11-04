@@ -638,15 +638,42 @@ private struct MergeReviewSheet: View {
                 .background(Color(.systemBackground))
                 .overlay(Divider(), alignment: .top)
             }
-            .popupHost { host in
-                host.alert("Xác nhận gộp khách", isPresented: $showConfirm) {
-                    Button("Huỷ", role: .cancel) { countdownTimer?.invalidate() }
-                    Button(countdown > 0 ? "Gộp sau \(countdown)s..." : "Gộp ngay", role: .destructive) {
-                        if countdown <= 0 { Task { await doMerge() } }
+            .overlay {
+                if showConfirm {
+                    ZStack {
+                        Color.black.opacity(0.35).ignoresSafeArea()
+                        VStack(spacing: 16) {
+                            Text("Xác nhận gộp khách").font(.headline)
+                            Text("Thao tác KHÔNG THỂ HOÀN TÁC. Kiểm tra lại thông tin trước khi tiếp tục.")
+                                .font(.subheadline)
+                                .multilineTextAlignment(.center)
+                                .foregroundColor(.textMuted)
+                            HStack(spacing: 12) {
+                                Button("Huỷ") {
+                                    countdownTimer?.invalidate()
+                                    showConfirm = false
+                                }
+                                .buttonStyle(.bordered)
+                                .frame(maxWidth: .infinity)
+
+                                Button(countdown > 0 ? "Gộp sau \(countdown)s..." : "Gộp ngay") {
+                                    guard countdown <= 0 else { return }
+                                    showConfirm = false
+                                    Task { await doMerge() }
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .tint(.dangerColor)
+                                .disabled(countdown > 0)
+                                .frame(maxWidth: .infinity)
+                            }
+                        }
+                        .padding(20)
+                        .background(Color(.systemBackground))
+                        .cornerRadius(16)
+                        .shadow(radius: 20)
+                        .padding(.horizontal, 40)
                     }
-                    .disabled(countdown > 0)
-                } message: {
-                    Text("Thao tác KHÔNG THỂ HOÀN TÁC. Kiểm tra lại thông tin trước khi tiếp tục.")
+                    .transition(.opacity)
                 }
             }
         }
