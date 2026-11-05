@@ -366,6 +366,7 @@ struct TroLyView: View {
         "sap-len-hang": "arrow.up.circle",
         "thuong-thang-toi": "gift",
         "phien-ban-app": "iphone",
+        "thong-ke-may": "iphone.gen3",
         "luot-tai-store": "arrow.down.app",
         "app-thong-ke-ngay": "sun.max",
         "app-thong-ke-thang": "calendar.circle",
