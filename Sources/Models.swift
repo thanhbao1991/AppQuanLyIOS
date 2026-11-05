@@ -107,6 +107,7 @@ struct ChiTietHoaDonResponseDto: Decodable, Identifiable {
 struct HoaDonPaymentBriefDto: Decodable, Identifiable {
     let id: String
     let phuongThucThanhToanId: String
+    let soTien: Double
     /// null = thu tay; có giá trị = SePay webhook tự thu — không cho "Đổi phương thức"/"Hoàn tác"
     /// (khớp guard Backend HoaDonTrangThaiService.RollbackAsync/ChiTietHoaDonThanhToanService.DoiPhuongThucAsync).
     let tuDongLuc: String?

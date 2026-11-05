@@ -227,6 +227,20 @@ struct HoaDonDetailView: View {
                     if d.daThu > 0 {
                         infoRow("Đã thu", HoaDonFormatting.money(d.daThu))
                     }
+                    // Thu lẫn nhiều phương thức (vd CK + Xu) thì tách rõ từng khoản — chỉ hiện "Đã thu"
+                    // gộp một dòng trước đây không biết được mỗi phương thức bao nhiêu tiền.
+                    if paymentBreakdown(d).count > 1 {
+                        VStack(alignment: .leading, spacing: 2) {
+                            ForEach(paymentBreakdown(d), id: \.label) { row in
+                                HStack {
+                                    Text(row.label).font(.caption).foregroundColor(.textMuted)
+                                    Spacer()
+                                    Text(HoaDonFormatting.money(row.soTien)).font(.caption).foregroundColor(.textMuted)
+                                }
+                            }
+                        }
+                        .padding(.leading, 12)
+                    }
                     Divider()
                     HStack {
                         Text("CÒN LẠI").font(.caption.bold()).foregroundColor(.textMuted)
@@ -462,13 +476,14 @@ struct HoaDonDetailView: View {
             // toggle 2 phân loại này) — cùng guard "không sửa được đơn đã thu tiền ngày cũ" với nút
             // Sửa đơn (canEdit), vì đổi phân loại cũng làm lệch báo cáo doanh thu theo phân loại hồi
             // tố y hệt sửa món/tiền.
-            let showDoiPhanLoai = (d.phanLoai == "Ship" || d.phanLoai == "Mv" || d.phanLoai == "AppDatHang") && canEdit
+            // AppDatHang KHÔNG được đổi phân loại (yêu cầu 2026-11-06) — đơn đặt qua app khách có
+            // luồng riêng, đổi sang Mua hộ hay bất kỳ phân loại nào khác đều phá guard đó.
+            let showDoiPhanLoai = (d.phanLoai == "Ship" || d.phanLoai == "Mv") && canEdit
             // Emoji/màu gợi liên tưởng đúng bộ icon PhanLoai dùng chung toàn app (HoaDonQuickFilter.
             // systemIcon: Ship="scooter", Mv="bag.fill" — HoaDonFormatting.phanLoaiColor) — hiện
             // icon/màu của phân loại SẼ CHUYỂN ĐẾN (giống cách doiPhuongThucColor ở trên tô màu theo
             // phương thức đích, không phải phương thức hiện tại).
-            // Đơn AppDatHang chỉ đổi một chiều sang Mua hộ (Mh), cùng vị trí nút vì chỉ hiện 1 trong 3.
-            let doiPhanLoaiDich = d.phanLoai == "AppDatHang" ? "Mh" : (d.phanLoai == "Ship" ? "Mv" : "Ship")
+            let doiPhanLoaiDich = d.phanLoai == "Ship" ? "Mv" : "Ship"
             let doiPhanLoaiCaption = "Đổi sang \(doiPhanLoaiDich)"
             let doiPhanLoaiIcon = AppIcon.phanLoai(doiPhanLoaiDich)
             let doiPhanLoaiColor = HoaDonFormatting.phanLoaiColor(doiPhanLoaiDich)
@@ -514,6 +529,23 @@ struct HoaDonDetailView: View {
         if payments.allSatisfy({ $0.phuongThucThanhToanId.lowercased() == PaymentMethod.chuyenKhoanId }) { return .brandPrimary }
         if payments.allSatisfy({ $0.phuongThucThanhToanId.lowercased() == PaymentMethod.tienMatId }) { return .successColor }
         return nil
+    }
+
+    /// Gộp các dòng ChiTietHoaDonThanhToan theo phương thức (nhiều dòng cùng phương thức, vd thu
+    /// tiền mặt 2 lần, cộng chung lại thành 1 dòng) để hiện breakdown khi thu lẫn (CK + Xu…).
+    private func paymentBreakdown(_ d: HoaDonDetailDto) -> [(label: String, soTien: Double)] {
+        let payments = d.payments ?? []
+        let order = [PaymentMethod.tienMatId, PaymentMethod.chuyenKhoanId, PaymentMethod.viXuId]
+        var totals: [String: Double] = [:]
+        for p in payments {
+            let key = p.phuongThucThanhToanId.lowercased()
+            totals[key, default: 0] += p.soTien
+        }
+        return order.compactMap { id in
+            guard let tong = totals[id], tong != 0 else { return nil }
+            let label = id == PaymentMethod.tienMatId ? "Tiền mặt" : (id == PaymentMethod.chuyenKhoanId ? "Chuyển khoản" : "Ví Xu")
+            return (label, tong)
+        }
     }
 
     /// "Mặc định"/"Size Chuẩn"/"Chuẩn" là biến thể mặc định — khớp HoaDonTabControl.Board.cs
