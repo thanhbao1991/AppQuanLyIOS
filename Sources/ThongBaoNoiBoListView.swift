@@ -380,12 +380,21 @@ enum ThongBaoNoiBoFormatting {
         }
     }
 
-    /// Màu nhấn theo nhóm: đơn mới xanh dương, sửa cam, xoá/nợ đỏ, tiền xanh lá.
+    /// Màu nhấn khớp bảng màu dùng chung toàn app: đơn mới theo PhanLoai (HoaDonFormatting.phanLoaiColor),
+    /// thanh toán theo EntityChangeBus (tiền mặt xanh lá, chuyển khoản/banking xanh dương), sửa dùng
+    /// .warningColor (khớp nút "Sửa đơn" ở HoaDonDetailView/EntityChangeBus), xoá/nợ đỏ.
     static func mau(_ loai: String) -> Color {
         switch loai {
-        case "HoaDonEdit": return Color(red: 0.90, green: 0.50, blue: 0.05)
+        case "HoaDonNewTaiCho": return HoaDonFormatting.phanLoaiColor("Tại Chỗ")
+        case "HoaDonNewMuaVe": return HoaDonFormatting.phanLoaiColor("Mv")
+        case "HoaDonNewMuaHo": return HoaDonFormatting.phanLoaiColor("Mh")
+        case "HoaDonNewApp": return HoaDonFormatting.phanLoaiColor("App")
+        case "HoaDonNewShip", "HoaDonNewAppDatHang": return HoaDonFormatting.phanLoaiColor("Ship")
+        case "HoaDonEdit": return .warningColor
         case "HoaDonDel", "GhiNo": return .dangerColor
-        case "ThanhToanTienMat", "ThanhToanChuyenKhoan", "ThanhToanBanking", "ThanhToan": return .successColor
+        case "ThanhToanTienMat": return .successColor
+        case "ThanhToanChuyenKhoan", "ThanhToanBanking": return .brandPrimary
+        case "ThanhToan": return .successColor
         case "DangGiaoHang": return Color(red: 0.45, green: 0.30, blue: 0.80)
         case "Admin": return .textMuted
         default: return .brandPrimary
