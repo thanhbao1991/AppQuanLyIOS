@@ -12,7 +12,8 @@ struct ContentView: View {
     @ObservedObject private var ketNoi = KetNoiMayChu.shared
     @ObservedObject private var dipLe = DipLe.shared
     /// Màn chào dịp lễ đang hiện (chỉ lúc mở app) — xem DipLe.swift.
-    @State private var manChao: DipLeTheme?
+    /// Có dịp lưu máy → hiện ngay từ khung hình đầu (không chờ server).
+    @State private var manChao: DipLeTheme? = DipLe.themeLuuMay()
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -115,9 +116,13 @@ struct ContentView: View {
         }
         .task {
             // Màn chào chỉ lúc mở app (cold launch), không hiện khi quay lại từ nền. Chạy song song, không chặn SignalR.
+            // Đã có dịp lưu máy thì màn chào đang hiện sẵn — chỉ tải lại ngầm. Chưa có (lần đầu vào dịp mới) thì
+            // chỉ hiện nếu server trả kịp ~1s; chậm hơn thì bỏ lần này, khỏi bật màn chào đè lúc đang dùng app.
+            let daHienSan = manChao != nil
+            let batDau = Date()
             Task {
                 await dipLe.load()
-                if let t = dipLe.active { manChao = t }
+                if !daHienSan, Date().timeIntervalSince(batDau) < 1.0, let t = dipLe.active { manChao = t }
             }
             if isLoggedIn {
                 await SignalRClient.shared.start { entity, action, id, voice in

@@ -85,19 +85,28 @@ final class DipLe: ObservableObject {
     var tieuDe: String { dip?.ten ?? "" }
     var moTa: String? { dip?.moTa }
 
-    private static let khoaLuu = "dipLe.dipQuanLy"
+    nonisolated private static let khoaLuu = "dipLe.dipQuanLy"
 
     private init() {
-        if let data = UserDefaults.standard.data(forKey: Self.khoaLuu),
-           let d = try? JSONDecoder().decode(DipLeHienThi.Dip.self, from: data),
-           !Self.daHet(d) {
-            dip = d
-        }
+        dip = Self.dipLuuMay()
         apDung()
     }
 
+    /// Dịp lưu máy từ lần mở trước (bỏ nếu đã hết) — đọc thẳng UserDefaults, không cần MainActor, để ContentView
+    /// hiện màn chào ngay khung hình đầu thay vì chờ server (trước đây chờ load() xong → màn chào hiện SAU danh sách đơn).
+    nonisolated static func dipLuuMay() -> DipLeHienThi.Dip? {
+        guard let data = UserDefaults.standard.data(forKey: khoaLuu),
+              let d = try? JSONDecoder().decode(DipLeHienThi.Dip.self, from: data),
+              !daHet(d) else { return nil }
+        return d
+    }
+
+    nonisolated static func themeLuuMay() -> DipLeTheme? {
+        dipLuuMay().flatMap { DipLeTheme(rawValue: $0.ma) }
+    }
+
     /// Bản lưu máy đã quá ngày kết thúc (lâu không mở app) thì bỏ, khỏi hiện dịp cũ trong lúc chờ server.
-    private static func daHet(_ d: DipLeHienThi.Dip) -> Bool {
+    nonisolated private static func daHet(_ d: DipLeHienThi.Dip) -> Bool {
         guard let kt = d.ngayKetThuc?.prefix(10) else { return false }
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd"
