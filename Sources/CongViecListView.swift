@@ -230,7 +230,7 @@ private struct CongViecRowView: View {
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: item.daHoanThanh ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(item.daHoanThanh ? .successColor : .textMuted)
+                    .foregroundColor(item.daHoanThanh ? .brandPrimary : .textMuted)
                     .font(.title3)
                 Text(item.ten)
                     .strikethrough(item.daHoanThanh)
