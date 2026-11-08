@@ -387,11 +387,6 @@ private struct MoreMenuView: View {
                     } label: {
                         Label("Cấu hình App nhân viên", systemImage: "bell.badge")
                     }
-                    NavigationLink {
-                        DipLeXemThuView()
-                    } label: {
-                        Label("Giao diện dịp lễ", systemImage: "sparkles.rectangle.stack")
-                    }
                 }
 
                 // Các màn chỉ để xem (Bản đồ, Bão hoà, Tính lương, Giờ vắng khách, Phiên bản app khách, Số dư AI, Số dư Zalo) đã

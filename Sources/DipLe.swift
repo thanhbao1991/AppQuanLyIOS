@@ -77,35 +77,13 @@ final class DipLe: ObservableObject {
 
     /// Dịp từ server (lưu máy để mở app là đúng màu ngay, không nháy navy → màu dịp).
     @Published private(set) var dip: DipLeHienThi.Dip?
-    /// Xem thử (Menu → Giao diện dịp lễ), không lưu — mở lại app là hết.
-    @Published var xemThu: DipLeTheme? { didSet { apDung() } }
     /// Đổi mỗi khi màu chủ đạo đổi — ContentView dùng làm .id để vẽ lại toàn bộ.
     @Published private(set) var phienBan = 0
 
     private var dipTheme: DipLeTheme? { dip.flatMap { DipLeTheme(rawValue: $0.ma) } }
-    var active: DipLeTheme? { xemThu ?? dipTheme }
-    /// Voucher thật của dịp đang xem thử (GET /dat-hang/dip-le?xemTruoc=MA) — để màn chào xem thử có câu chúc thật.
-    private var xemThuDip: DipLeHienThi.Dip?
-    var tieuDe: String {
-        if let xemThu { return xemThuDip?.ma == xemThu.ma ? xemThuDip!.ten : xemThu.ten }
-        return dip?.ten ?? ""
-    }
-    var moTa: String? {
-        if let xemThu { return xemThuDip?.ma == xemThu.ma ? xemThuDip?.moTa : nil }
-        return dip?.moTa
-    }
-
-    /// Tải tên + câu chúc thật của dịp xem thử. Lỗi mạng thì màn chào chỉ có tên dịp.
-    func taiXemThu(_ t: DipLeTheme) async {
-        guard let url = URL(string: Prefs.apiBase + "/api/dat-hang/dip-le?xemTruoc=\(t.ma)") else { return }
-        var req = URLRequest(url: url)
-        req.timeoutInterval = 4
-        guard let (data, resp) = try? await URLSession.shared.data(for: req),
-              (resp as? HTTPURLResponse)?.statusCode == 200,
-              let env = try? JSONDecoder().decode(ApiEnvelope<DipLeHienThi.Dip>.self, from: data),
-              env.isSuccess, let d = env.data else { return }
-        xemThuDip = d
-    }
+    var active: DipLeTheme? { dipTheme }
+    var tieuDe: String { dip?.ten ?? "" }
+    var moTa: String? { dip?.moTa }
 
     private static let khoaLuu = "dipLe.dipQuanLy"
 
@@ -151,29 +129,18 @@ final class DipLe: ObservableObject {
             UserDefaults.standard.removeObject(forKey: Self.khoaLuu)
         }
         apDung()
-        if xemThu == nil { doiIconTheoDip() }
+        doiIconTheoDip()
         // Chờ tải ảnh màn chào (tối đa 3s) để màn chào lúc mở app có ảnh ngay.
         if let d = dip { await ManChaoCache.taiNeuCan(ma: d.ma, duongDan: d.anhManChao ?? "/man-chao-dip-le/\(d.ma).jpg") }
-    }
-
-    func doiIconSauManChao() {
-        if let xemThu { DipLeIcon.capNhat(ma: xemThu.ma); return }
-        doiIconTheoDip()
     }
 
     /// Icon theo dịp server trả. iOS chỉ cho đổi khi app đang active → chờ chút sau khi mở.
     func doiIconTheoDip() {
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 1_000_000_000)
-            guard xemThu == nil, UIApplication.shared.applicationState == .active else { return }
+            guard UIApplication.shared.applicationState == .active else { return }
             DipLeIcon.capNhat(ma: dip?.ma)
         }
-    }
-
-    /// Tắt xem thử → icon về theo dịp thật (không có dịp thì icon app quản lý).
-    func tatXemThu() {
-        xemThu = nil
-        DipLeIcon.capNhat(ma: dip?.ma)
     }
 }
 
@@ -190,9 +157,6 @@ extension Color {
 /// Đổi icon app sang AppIcon-<MA> (đóng gói sẵn, khai ở project.yml). iOS luôn hiện popup khi đổi, không tắt được.
 /// Không giãn cách như app khách — app quản lý đổi đúng ngày sang dịp (chủ quán 2026-11-08).
 enum DipLeIcon {
-    private static let khoaLoi = "dipLe.iconLoi"
-    /// Lỗi lần đổi icon gần nhất (hiện ở màn "Giao diện dịp lễ" để biết vì sao không đổi).
-    static var loiGanNhat: String? { UserDefaults.standard.string(forKey: khoaLoi) }
     static let maCoIcon = Set(DipLeTheme.allCases.map(\.ma))
 
     @MainActor
@@ -201,13 +165,7 @@ enum DipLeIcon {
         let muon = ma.flatMap { maCoIcon.contains($0) ? "AppIcon-\($0)" : nil }
         guard UIApplication.shared.alternateIconName != muon else { return }
         UIApplication.shared.setAlternateIconName(muon) { error in
-            DispatchQueue.main.async {
-                if let error {
-                    UserDefaults.standard.set("\(muon ?? "icon chính"): \(error.localizedDescription)", forKey: khoaLoi)
-                } else {
-                    UserDefaults.standard.removeObject(forKey: khoaLoi)
-                }
-            }
+            if let error { print("[DipLeIcon] đổi icon \(muon ?? "chính") lỗi: \(error)") }
         }
     }
 }
@@ -331,56 +289,4 @@ struct DipLeManChaoView: View {
         withAnimation(.easeIn(duration: 0.25)) { visible = false }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { onDone() }
     }
-}
-
-/// Menu → "Giao diện dịp lễ": xem thử màu + màn chào + icon của 15 dịp (không lưu, mở lại app là về dịp thật).
-struct DipLeXemThuView: View {
-    @ObservedObject private var dipLe = DipLe.shared
-
-    var body: some View {
-        List {
-            Section {
-                HStack {
-                    Text("Đang dùng")
-                    Spacer()
-                    Text(dipLe.active?.ten ?? "Giao diện thường").foregroundStyle(.secondary)
-                }
-                if dipLe.xemThu != nil {
-                    Button("Tắt xem thử") { dipLe.tatXemThu() }
-                }
-            } footer: {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Màu, màn chào và icon luôn theo dịp sắp tới: hết ngày lễ là chuyển ngay sang dịp kế (app khách chỉ đổi giao diện 2 ngày trước lễ). Chạm một dịp để xem thử.")
-                    Text("Icon hiện tại: \(UIApplication.shared.alternateIconName ?? "icon chính")")
-                    if let loi = DipLeIcon.loiGanNhat { Text("Lỗi đổi icon: \(loi)").foregroundStyle(.red) }
-                }
-            }
-            Section("Xem thử") {
-                ForEach(DipLeTheme.allCases) { t in
-                    Button {
-                        Task {
-                            async let anh: Void = ManChaoCache.taiNeuCan(ma: t.ma, duongDan: nil)
-                            async let chuc: Void = dipLe.taiXemThu(t)
-                            _ = await (anh, chuc)
-                            dipLe.xemThu = t
-                            NotificationCenter.default.post(name: .xemThuManChaoDipLe, object: nil)
-                        }
-                    } label: {
-                        HStack(spacing: 12) {
-                            Circle().fill(t.primary).frame(width: 18, height: 18)
-                            Text(t.ten).foregroundStyle(.primary)
-                            Spacer()
-                            if dipLe.xemThu == t { Image(systemName: "checkmark").foregroundStyle(t.primary) }
-                        }
-                    }
-                }
-            }
-        }
-        .navigationTitle("Giao diện dịp lễ")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
-extension Notification.Name {
-    static let xemThuManChaoDipLe = Notification.Name("xemThuManChaoDipLe")
 }

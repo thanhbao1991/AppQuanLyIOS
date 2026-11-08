@@ -11,7 +11,7 @@ struct ContentView: View {
     @State private var sessionKey = UUID()
     @ObservedObject private var ketNoi = KetNoiMayChu.shared
     @ObservedObject private var dipLe = DipLe.shared
-    /// Màn chào dịp lễ đang hiện (chỉ lúc mở app / bấm xem thử) — xem DipLe.swift.
+    /// Màn chào dịp lễ đang hiện (chỉ lúc mở app) — xem DipLe.swift.
     @State private var manChao: DipLeTheme?
 
     var body: some View {
@@ -39,13 +39,9 @@ struct ContentView: View {
             if let theme = manChao {
                 DipLeManChaoView(theme: theme, tieuDe: dipLe.tieuDe, moTa: dipLe.moTa) {
                     manChao = nil
-                    dipLe.doiIconSauManChao()
                 }
                 .zIndex(10)
             }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .xemThuManChaoDipLe)) { _ in
-            manChao = dipLe.active
         }
         .onReceive(NotificationCenter.default.publisher(for: .sessionExpired)) { _ in
             isLoggedIn = false
