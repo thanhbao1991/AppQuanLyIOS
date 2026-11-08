@@ -368,6 +368,7 @@ struct TroLyView: View {
         "phien-ban-app": "iphone",
         "thong-ke-may": "iphone.gen3",
         "luot-tai-store": "arrow.down.app",
+        "app-phan-tich": "chart.xyaxis.line",
         "app-thong-ke-ngay": "sun.max",
         "app-thong-ke-thang": "calendar.circle",
         "man-gio-vang-khach": "clock",
@@ -586,6 +587,11 @@ struct TroLyTraLoiView: View {
                 }
             } else if let bd = traLoi.bieuDo, !bd.diem.isEmpty {
                 switch bd.loai {
+                case "duong" where bd.donVi == "ngay":
+                    // Trục ngày trong tháng — "Tình hình khách dùng app" (08/11/2026): tháng này vs tháng trước.
+                    BieuDoCongDon(diem: bd.diem.map {
+                        DiemCongDon(x: Int($0.nhan) ?? 0, giaTri: $0.giaTri, laKyNay: $0.nhom == "Tháng này")
+                    }, nhanNay: "Tháng này", nhanTruoc: "Tháng trước", nhanX: { "\($0)" }, buocX: 5)
                 case "duong":
                     BieuDoCongDon(diem: bd.diem.map {
                         DiemCongDon(x: Int($0.nhan) ?? 0, giaTri: $0.giaTri, laKyNay: $0.nhom == "Hôm nay")
