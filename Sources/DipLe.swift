@@ -84,8 +84,28 @@ final class DipLe: ObservableObject {
 
     private var dipTheme: DipLeTheme? { dip.flatMap { DipLeTheme(rawValue: $0.ma) } }
     var active: DipLeTheme? { xemThu ?? dipTheme }
-    var tieuDe: String { xemThu?.ten ?? dip?.ten ?? "" }
-    var moTa: String? { xemThu != nil ? nil : dip?.moTa }
+    /// Voucher thật của dịp đang xem thử (GET /dat-hang/dip-le?xemTruoc=MA) — để màn chào xem thử có câu chúc thật.
+    private var xemThuDip: DipLeHienThi.Dip?
+    var tieuDe: String {
+        if let xemThu { return xemThuDip?.ma == xemThu.ma ? xemThuDip!.ten : xemThu.ten }
+        return dip?.ten ?? ""
+    }
+    var moTa: String? {
+        if let xemThu { return xemThuDip?.ma == xemThu.ma ? xemThuDip?.moTa : nil }
+        return dip?.moTa
+    }
+
+    /// Tải tên + câu chúc thật của dịp xem thử. Lỗi mạng thì màn chào chỉ có tên dịp.
+    func taiXemThu(_ t: DipLeTheme) async {
+        guard let url = URL(string: Prefs.apiBase + "/api/dat-hang/dip-le?xemTruoc=\(t.ma)") else { return }
+        var req = URLRequest(url: url)
+        req.timeoutInterval = 4
+        guard let (data, resp) = try? await URLSession.shared.data(for: req),
+              (resp as? HTTPURLResponse)?.statusCode == 200,
+              let env = try? JSONDecoder().decode(ApiEnvelope<DipLeHienThi.Dip>.self, from: data),
+              env.isSuccess, let d = env.data else { return }
+        xemThuDip = d
+    }
 
     private static let khoaLuu = "dipLe.dipQuanLy"
 
@@ -339,7 +359,9 @@ struct DipLeXemThuView: View {
                 ForEach(DipLeTheme.allCases) { t in
                     Button {
                         Task {
-                            await ManChaoCache.taiNeuCan(ma: t.ma, duongDan: nil)
+                            async let anh: Void = ManChaoCache.taiNeuCan(ma: t.ma, duongDan: nil)
+                            async let chuc: Void = dipLe.taiXemThu(t)
+                            _ = await (anh, chuc)
                             dipLe.xemThu = t
                             NotificationCenter.default.post(name: .xemThuManChaoDipLe, object: nil)
                         }
