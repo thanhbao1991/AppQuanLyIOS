@@ -285,6 +285,7 @@ struct MainTabView: View {
 private struct MoreMenuView: View {
     @Binding var isLoggedIn: Bool
     @State private var isSyncingContacts = false
+    @AppStorage(ContactSyncService.khoaLanChay) private var danhBaLanChay = ""
     @State private var syncResultMessage: String?
     @State private var showAccessDeniedAlert = false
     @State private var showLogoutConfirm = false
@@ -433,7 +434,16 @@ private struct MoreMenuView: View {
                         Task { await syncContacts() }
                     } label: {
                         HStack {
-                            Label("Đồng bộ danh bạ", systemImage: "person.crop.rectangle.stack")
+                            Label {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Đồng bộ danh bạ")
+                                    if !danhBaLanChay.isEmpty {
+                                        Text(danhBaLanChay).font(.caption).foregroundStyle(.secondary)
+                                    }
+                                }
+                            } icon: {
+                                Image(systemName: "person.crop.rectangle.stack")
+                            }
                             Spacer()
                             if isSyncingContacts {
                                 ProgressView()
@@ -550,6 +560,7 @@ private struct MoreMenuView: View {
         do {
             let result = try await ContactSyncService.sync(khachHangs: khachHangs)
             if result.failed == 0 { ContactSyncService.luuVanTay(khachHangs) }
+            ContactSyncService.ghiLanChay(result.summary.lowercased())
             syncResultMessage = result.summary
         } catch ContactSyncService.SyncError.accessDenied {
             showAccessDeniedAlert = true

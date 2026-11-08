@@ -53,12 +53,31 @@ enum ContactSyncService {
         guard CNContactStore.authorizationStatus(for: .contacts) == .authorized, !dangChayNgam else { return }
         dangChayNgam = true
         defer { dangChayNgam = false }
-        guard let khachHangs = await APIClient.shared.getAllKhachHangOrNil(), !khachHangs.isEmpty else { return }
-        let vanTay = vanTay(khachHangs)
-        guard UserDefaults.standard.string(forKey: khoaVanTay) != vanTay else { return }
-        if let kq = try? await sync(khachHangs: khachHangs), kq.failed == 0 {
-            UserDefaults.standard.set(vanTay, forKey: khoaVanTay)
+        guard let khachHangs = await APIClient.shared.getAllKhachHangOrNil(), !khachHangs.isEmpty else {
+            ghiLanChay("không tải được danh sách khách")
+            return
         }
+        let vanTay = vanTay(khachHangs)
+        guard UserDefaults.standard.string(forKey: khoaVanTay) != vanTay else {
+            ghiLanChay("không có thay đổi")
+            return
+        }
+        do {
+            let kq = try await sync(khachHangs: khachHangs)
+            if kq.failed == 0 { UserDefaults.standard.set(vanTay, forKey: khoaVanTay) }
+            ghiLanChay(kq.summary.lowercased())
+        } catch {
+            ghiLanChay("lỗi: \(error.localizedDescription)")
+        }
+    }
+
+    /// Lần chạy gần nhất (ngầm hoặc bấm nút) — Menu hiện dưới nút "Đồng bộ danh bạ" (@AppStorage cùng khoá).
+    static let khoaLanChay = "danhBa.lanChayCuoi"
+
+    static func ghiLanChay(_ ketQua: String) {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm dd/MM"
+        UserDefaults.standard.set("Lần chạy cuối: \(f.string(from: Date())) · \(ketQua)", forKey: khoaLanChay)
     }
 
     /// Băm đúng những gì sync ghi vào danh bạ (thứ tự, id, tên, SĐT, FacebookThreadId).
