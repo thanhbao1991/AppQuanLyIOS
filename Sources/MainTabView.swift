@@ -549,6 +549,7 @@ private struct MoreMenuView: View {
         }
         do {
             let result = try await ContactSyncService.sync(khachHangs: khachHangs)
+            if result.failed == 0 { ContactSyncService.luuVanTay(khachHangs) }
             syncResultMessage = result.summary
         } catch ContactSyncService.SyncError.accessDenied {
             showAccessDeniedAlert = true

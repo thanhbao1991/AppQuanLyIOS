@@ -103,6 +103,7 @@ struct ContentView: View {
                 // user báo dù có beginBackgroundTask.
                 if isLoggedIn {
                     Task { await TtsSoundSync.sync() }
+                    Task { await ContactSyncService.dongBoNgamNeuCan() }
                     Task {
                         if await !SignalRClient.shared.isConnected {
                             await SignalRClient.shared.kickReconnect()
@@ -126,6 +127,8 @@ struct ContentView: View {
                 PushNotifications.requestAndRegister()
                 await TtsSoundSync.sync()
                 await ThongBaoBadge.shared.refresh()
+                // Danh bạ chạy ngầm, im lặng — chỉ ghi khi danh sách khách đổi (ContactSyncService.dongBoNgamNeuCan).
+                await ContactSyncService.dongBoNgamNeuCan()
             }
         }
     }
