@@ -65,6 +65,8 @@ struct DipLeHienThi: Decodable {
     }
     let maIcon: String?
     let anhManChaoIcon: String?
+    /// Icon server đang cho app khách hiện (30 ngày trước → 3 ngày sau lễ, giữa 2 dịp giữ icon dịp vừa qua).
+    let maIconHienTai: String?
     let giaoDien: GiaoDien?
 }
 
@@ -131,6 +133,8 @@ final class DipLe: ObservableObject {
             UserDefaults.standard.removeObject(forKey: Self.khoaLuu)
         }
         apDung()
+        maIconServer = kq.maIconHienTai
+        if xemThu == nil { doiIconTheoLich() }
         // Ảnh màn chào dịp sắp tới tải sẵn ngầm; dịp đang hiện thì chờ tải (tối đa 3s) để màn chào có ảnh ngay.
         if let ma = kq.maIcon, let u = kq.anhManChaoIcon, ma != kq.giaoDien?.ma {
             Task { await ManChaoCache.taiNeuCan(ma: ma, duongDan: u) }
@@ -142,14 +146,28 @@ final class DipLe: ObservableObject {
     /// thường — giữ tới dịp sau (mỗi lần đổi iOS hiện popup, đổi về rồi lại đổi = gấp đôi popup).
     func doiIconSauManChao() {
         if let xemThu { DipLeIcon.capNhat(ma: xemThu.ma, boQuaGianCach: true); return }
-        guard let gd = dipThat, gd.doiIcon == true else { return }
-        DipLeIcon.capNhat(ma: gd.ma)
+        doiIconTheoLich()
+    }
+
+    /// Icon theo lịch icon của server (cùng icon app khách đang hiện — 2026-11-08 chủ quán: "chưa đổi icon" khi app khách
+    /// đã lên icon Nhà giáo mà app quản lý vẫn icon thường). iOS chỉ cho đổi khi app đang active → chờ chút sau khi mở.
+    private var maIconServer: String? {
+        get { UserDefaults.standard.string(forKey: "dipLe.maIconServer") }
+        set { UserDefaults.standard.set(newValue, forKey: "dipLe.maIconServer") }
+    }
+
+    func doiIconTheoLich() {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            guard xemThu == nil, UIApplication.shared.applicationState == .active else { return }
+            DipLeIcon.capNhat(ma: maIconServer)
+        }
     }
 
     /// Tắt xem thử → icon về theo dịp dipThat (không có dịp thì icon app quản lý).
     func tatXemThu() {
         xemThu = nil
-        DipLeIcon.capNhat(ma: dipThat?.doiIcon == true ? dipThat?.ma : nil, boQuaGianCach: true)
+        DipLeIcon.capNhat(ma: maIconServer, boQuaGianCach: true)
     }
 }
 
@@ -168,6 +186,9 @@ extension Color {
 enum DipLeIcon {
     static let soNgayToiThieu = 7
     private static let khoaLanDoiCuoi = "dipLe.iconLanDoiCuoi"
+    private static let khoaLoi = "dipLe.iconLoi"
+    /// Lỗi lần đổi icon gần nhất (hiện ở màn "Giao diện dịp lễ" để biết vì sao không đổi).
+    static var loiGanNhat: String? { UserDefaults.standard.string(forKey: khoaLoi) }
     static let maCoIcon = Set(DipLeTheme.allCases.map(\.ma))
 
     @MainActor
@@ -178,8 +199,14 @@ enum DipLeIcon {
         if !boQuaGianCach, let cuoi = UserDefaults.standard.object(forKey: khoaLanDoiCuoi) as? Date,
            Date().timeIntervalSince(cuoi) < Double(soNgayToiThieu) * 86_400 { return }
         UIApplication.shared.setAlternateIconName(muon) { error in
-            if let error { print("[DipLeIcon] đổi icon \(muon ?? "chính") lỗi: \(error)"); return }
-            DispatchQueue.main.async { UserDefaults.standard.set(Date(), forKey: khoaLanDoiCuoi) }
+            DispatchQueue.main.async {
+                if let error {
+                    UserDefaults.standard.set("\(muon ?? "icon chính"): \(error.localizedDescription)", forKey: khoaLoi)
+                    return
+                }
+                UserDefaults.standard.removeObject(forKey: khoaLoi)
+                UserDefaults.standard.set(Date(), forKey: khoaLanDoiCuoi)
+            }
         }
     }
 }
@@ -321,7 +348,11 @@ struct DipLeXemThuView: View {
                     Button("Tắt xem thử") { dipLe.tatXemThu() }
                 }
             } footer: {
-                Text("App tự đổi màu, icon và hiện màn chào từ 2 ngày trước lễ đến hết ngày lễ — cùng lịch với app khách. Chạm một dịp để xem thử (đổi cả icon).")
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Màu và màn chào: từ 2 ngày trước lễ đến hết ngày lễ. Icon: cùng icon app khách đang hiện (đổi trước lễ ~30 ngày). Chạm một dịp để xem thử (đổi cả icon).")
+                    Text("Icon hiện tại: \(UIApplication.shared.alternateIconName ?? "icon chính")")
+                    if let loi = DipLeIcon.loiGanNhat { Text("Lỗi đổi icon: \(loi)").foregroundStyle(.red) }
+                }
             }
             Section("Xem thử") {
                 ForEach(DipLeTheme.allCases) { t in
