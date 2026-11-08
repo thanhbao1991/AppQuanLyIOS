@@ -85,9 +85,18 @@ final class DipLe: ObservableObject {
     /// Đổi mỗi khi màu chủ đạo đổi — ContentView dùng làm .id để vẽ lại toàn bộ.
     @Published private(set) var phienBan = 0
 
-    var active: DipLeTheme? { xemThu ?? dipThat.flatMap { DipLeTheme(rawValue: $0.ma) } }
-    var tieuDe: String { xemThu?.ten ?? dipThat?.ten ?? "" }
-    var moTa: String? { xemThu != nil ? nil : dipThat?.moTa }
+    /// Chủ quán 2026-11-08: "app quản lý cho đổi icon, giao diện và màn chào đến dịp tiếp theo, không cần đợi" — app quản lý
+    /// KHÔNG chờ cửa sổ giao diện 2 ngày như app khách: màu + màn chào + icon đều theo dịp của lịch icon server
+    /// (maIconHienTai: ~30 ngày trước lễ, giữa 2 dịp giữ dịp vừa qua) → gần như luôn mang dịp sắp tới.
+    var active: DipLeTheme? {
+        xemThu ?? maIconServer.flatMap { DipLeTheme(rawValue: $0) } ?? dipThat.flatMap { DipLeTheme(rawValue: $0.ma) }
+    }
+    /// Tên/câu chúc thật của voucher khi đang trong cửa sổ giao diện app khách; ngoài cửa sổ thì tên dịp.
+    var tieuDe: String {
+        guard let t = active else { return "" }
+        return xemThu == nil && dipThat?.ma == t.ma ? (dipThat?.ten ?? t.ten) : t.ten
+    }
+    var moTa: String? { xemThu == nil && dipThat?.ma == active?.ma ? dipThat?.moTa : nil }
 
     private static let khoaLuu = "dipLe.giaoDien"
 
@@ -132,13 +141,14 @@ final class DipLe: ObservableObject {
         } else {
             UserDefaults.standard.removeObject(forKey: Self.khoaLuu)
         }
+        maIconServer = kq.maIconHienTai.flatMap { DipLeTheme(rawValue: $0) != nil ? $0 : nil }
         apDung()
-        maIconServer = kq.maIconHienTai
         if xemThu == nil { doiIconTheoLich() }
-        // Ảnh màn chào dịp sắp tới tải sẵn ngầm; dịp đang hiện thì chờ tải (tối đa 3s) để màn chào có ảnh ngay.
-        if let ma = kq.maIcon, let u = kq.anhManChaoIcon, ma != kq.giaoDien?.ma {
-            Task { await ManChaoCache.taiNeuCan(ma: ma, duongDan: u) }
+        // Ảnh màn chào của dịp app quản lý đang mang (có thể chưa tới cửa sổ giao diện app khách nên server chưa trả ?v).
+        if let ma = maIconServer, ma != dipThat?.ma {
+            await ManChaoCache.taiNeuCan(ma: ma, duongDan: (ma == kq.maIcon ? kq.anhManChaoIcon : nil) ?? "/man-chao-dip-le/\(ma).jpg")
         }
+        // Ảnh màn chào dịp sắp tới tải sẵn ngầm; dịp đang hiện thì chờ tải (tối đa 3s) để màn chào có ảnh ngay.
         if let gd = dipThat, gd.anhManChao != nil { await ManChaoCache.taiNeuCan(ma: gd.ma, duongDan: gd.anhManChao) }
     }
 
@@ -177,7 +187,7 @@ enum DipLeMau {
 }
 
 extension Color {
-    /// Màu chủ đạo app — navy, hoặc màu dịp lễ trong cửa sổ giao diện (xem DipLe).
+    /// Màu chủ đạo app — navy, hoặc màu dịp lễ (xem DipLe.active).
     static var brandPrimary: Color { DipLeMau.hienTai }
 }
 
@@ -349,7 +359,7 @@ struct DipLeXemThuView: View {
                 }
             } footer: {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Màu và màn chào: từ 2 ngày trước lễ đến hết ngày lễ. Icon: cùng icon app khách đang hiện (đổi trước lễ ~30 ngày). Chạm một dịp để xem thử (đổi cả icon).")
+                    Text("Màu, màn chào và icon theo dịp sắp tới — đổi sẵn từ ~30 ngày trước lễ, giữ tới khi sang dịp sau (app khách chỉ đổi giao diện 2 ngày trước lễ). Chạm một dịp để xem thử.")
                     Text("Icon hiện tại: \(UIApplication.shared.alternateIconName ?? "icon chính")")
                     if let loi = DipLeIcon.loiGanNhat { Text("Lỗi đổi icon: \(loi)").foregroundStyle(.red) }
                 }
