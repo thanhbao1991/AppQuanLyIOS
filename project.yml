@@ -47,10 +47,48 @@ targets:
           - remote-notification
           - voip
           - audio
+        # Icon dịp lễ (2026-11-08, cùng bộ icon app khách): icon chính là icon app quản lý, đổi sang icon phụ
+        # AppIcon-<MA> sau màn chào dịp lễ (xem DipLe.swift). Thêm dịp: chép appiconset + khai ở đây + DipLeIcon.maCoIcon.
+        CFBundleIcons:
+          CFBundlePrimaryIcon:
+            CFBundleIconName: AppIcon
+          CFBundleAlternateIcons:
+            AppIcon-NOEL:
+              CFBundleIconName: AppIcon-NOEL
+            AppIcon-VALENTINE:
+              CFBundleIconName: AppIcon-VALENTINE
+            AppIcon-TETAL:
+              CFBundleIconName: AppIcon-TETAL
+            AppIcon-TETDUONG:
+              CFBundleIconName: AppIcon-TETDUONG
+            AppIcon-QTPHUNU:
+              CFBundleIconName: AppIcon-QTPHUNU
+            AppIcon-PHUNUVN:
+              CFBundleIconName: AppIcon-PHUNUVN
+            AppIcon-GIOTO:
+              CFBundleIconName: AppIcon-GIOTO
+            AppIcon-GIAIPHONG:
+              CFBundleIconName: AppIcon-GIAIPHONG
+            AppIcon-THIEUNHI:
+              CFBundleIconName: AppIcon-THIEUNHI
+            AppIcon-DOANNGO:
+              CFBundleIconName: AppIcon-DOANNGO
+            AppIcon-THUONGBINH:
+              CFBundleIconName: AppIcon-THUONGBINH
+            AppIcon-VULAN:
+              CFBundleIconName: AppIcon-VULAN
+            AppIcon-QUOCKHANH:
+              CFBundleIconName: AppIcon-QUOCKHANH
+            AppIcon-TRUNGTHU:
+              CFBundleIconName: AppIcon-TRUNGTHU
+            AppIcon-NHAGIAO:
+              CFBundleIconName: AppIcon-NHAGIAO
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.denncoffee.appquanly
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # Bắt buộc để đóng gói cả các AppIcon-*.appiconset phụ — thiếu thì setAlternateIconName thất bại âm thầm.
+        ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: YES
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_VERSION: "5.0"
         CODE_SIGN_ENTITLEMENTS: AppMobileIOS.entitlements

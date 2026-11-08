@@ -10,6 +10,9 @@ struct ContentView: View {
     @State private var backgroundTaskId: UIBackgroundTaskIdentifier = .invalid
     @State private var sessionKey = UUID()
     @ObservedObject private var ketNoi = KetNoiMayChu.shared
+    @ObservedObject private var dipLe = DipLe.shared
+    /// Màn chào dịp lễ đang hiện (chỉ lúc mở app / bấm xem thử) — xem DipLe.swift.
+    @State private var manChao: DipLeTheme?
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -23,6 +26,8 @@ struct ContentView: View {
                     LoginView(isLoggedIn: $isLoggedIn)
                 }
             }
+            // Đổi dịp lễ (màu chủ đạo) → dựng lại toàn bộ để mọi màn ăn màu mới (Color.brandPrimary là static).
+            .id(dipLe.phienBan)
             // Mất kết nối máy chủ/mạng — đẩy nội dung xuống thay vì che ô tìm kiếm (xem KetNoiMayChu).
             .safeAreaInset(edge: .top, spacing: 0) { KetNoiMayChuBanner() }
             .animation(.easeInOut(duration: 0.25), value: ketNoi.trangThai)
@@ -31,6 +36,16 @@ struct ContentView: View {
             // tự nằm trong safe area giống DaySearchBar/SearchBar, cùng gốc toạ độ nên căn đúng vị trí
             // ô tìm kiếm mà không cần hardcode offset theo tai thỏ/Dynamic Island từng máy.
             SignalToastBanner()
+            if let theme = manChao {
+                DipLeManChaoView(theme: theme, tieuDe: dipLe.tieuDe, moTa: dipLe.moTa) {
+                    manChao = nil
+                    dipLe.doiIconSauManChao()
+                }
+                .zIndex(10)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .xemThuManChaoDipLe)) { _ in
+            manChao = dipLe.active
         }
         .onReceive(NotificationCenter.default.publisher(for: .sessionExpired)) { _ in
             isLoggedIn = false
@@ -80,6 +95,7 @@ struct ContentView: View {
                 // nhìn thấy màn hình (khác SignalR, không cần giữ "sống" qua background).
                 DesktopScreenStore.shared.stop()
             } else if newPhase == .active {
+                Task { await dipLe.load() }
                 if backgroundTaskId != .invalid {
                     UIApplication.shared.endBackgroundTask(backgroundTaskId)
                     backgroundTaskId = .invalid
@@ -101,6 +117,11 @@ struct ContentView: View {
             }
         }
         .task {
+            // Màn chào chỉ lúc mở app (cold launch), không hiện khi quay lại từ nền. Chạy song song, không chặn SignalR.
+            Task {
+                await dipLe.load()
+                if let t = dipLe.active { manChao = t }
+            }
             if isLoggedIn {
                 await SignalRClient.shared.start { entity, action, id, voice in
                     EntityChangeBus.shared.post(entity, action, id, voice: voice)
