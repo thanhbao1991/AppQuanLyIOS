@@ -160,8 +160,9 @@ enum HoaDonFormatting {
         case "Mv": return .warningColor
         case "Mh": return .pinkColor
         case "App": return .dangerColor
-        // AppDatHang rơi vào default (.brandPrimary) là ĐÚNG — cùng tông màu Ship, khớp quyết định
-        // đã áp dụng ở Desktop (HoaDonDomain.AccentResourceKey). Không cần case riêng.
+        // App Đenn (đơn khách đặt qua app) màu tím riêng — chủ quán 2026-11-08: "Ship và App Đenn đang bị trùng màu"
+        // (trước đây cố ý dùng chung màu Ship như Desktop).
+        case "AppDatHang": return .thongKePurple
         default: return .brandPrimary
         }
     }
