@@ -129,18 +129,38 @@ struct GioThapDiemView: View {
 
 /// "Giờ vắng khách" bung tại chỗ trong Trợ lý ảo (user 29/10/2026: không cần màn riêng, hạn chế biểu đồ) — chỉ kết
 /// luận giờ + thứ vắng nhất, cùng cách tính GioThapDiemView (màn đó vẫn giữ cho form voucher "Dùng gợi ý này").
+/// Thẻ trong Trợ lý ảo — cùng kiểu các thẻ khác (user 08/11/2026: thẻ "ⓘ + tiêu đề" cũ lạc lõng): số lớn = khung giờ
+/// vắng, dòng mô tả = thứ vắng, biểu đồ cột doanh thu từng giờ mở bán (khung vắng tô cam).
 struct GioVangKhachTomTat: View {
-    @State private var ketQua: (gio: (batDau: Int, ketThuc: Int)?, thu: Set<Int>)?
+    @State private var ketQua: (gio: (batDau: Int, ketThuc: Int)?, thu: Set<Int>, items: [PhanBoDonTheoGioItemDto])?
 
     var body: some View {
         Group {
             if let ketQua {
                 if let gio = ketQua.gio {
-                    TheKetLuan(
-                        mucDo: .trungTinh,
-                        tieuDe: "Vắng nhất: \(gio.batDau)h–\(gio.ketThuc)h",
-                        moTa: (ketQua.thu.isEmpty ? "" :
-                            ketQua.thu.sorted().compactMap { tenThuTrongTuan[$0] }.joined(separator: ", ") + " · ") + "30 ngày gần đây")
+                    VStack(alignment: .leading, spacing: 12) {
+                        SoLon(giaTri: "\(gio.batDau)h–\(gio.ketThuc)h",
+                              moTa: (ketQua.thu.isEmpty ? "Khung giờ vắng nhất" :
+                                "Vắng nhất tuần: " + ketQua.thu.sorted().compactMap { tenThuTrongTuan[$0] }.joined(separator: ", "))
+                                + " · 30 ngày gần đây")
+                        Chart(ketQua.items) { d in
+                            BarMark(x: .value("Giờ", d.gio), y: .value("Doanh thu", d.doanhThu))
+                                .foregroundStyle(d.gio >= gio.batDau && d.gio < gio.ketThuc ? Color.orange : Color.brandPrimary.opacity(0.35))
+                                .cornerRadius(2)
+                        }
+                        .chartXAxis {
+                            AxisMarks(values: .stride(by: 3)) { v in
+                                AxisValueLabel { if let x = v.as(Int.self) { Text("\(x)h") } }
+                            }
+                        }
+                        .chartYAxis {
+                            AxisMarks(position: .leading) { v in
+                                AxisGridLine()
+                                AxisValueLabel { if let y = v.as(Double.self) { Text(BaoCaoSo.rutGon(y)) } }
+                            }
+                        }
+                        .frame(height: 140)
+                    }
                 } else {
                     Text("Chưa đủ dữ liệu 30 ngày gần đây.").font(.subheadline).foregroundColor(.textMuted)
                 }
@@ -159,6 +179,6 @@ struct GioVangKhachTomTat: View {
         let mo = config?.gioMoCua ?? 0, dong = config?.gioDongCua ?? 24
         let gioMoCua = gio.filter { $0.gio >= mo && $0.gio < dong }
         ketQua = (gioMoCua.allSatisfy { $0.doanhThu == 0 } ? nil : GioThapDiemView.goiYGio(gioMoCua),
-                  GioThapDiemView.goiYThu(thu))
+                  GioThapDiemView.goiYThu(thu), gioMoCua.sorted { $0.gio < $1.gio })
     }
 }
