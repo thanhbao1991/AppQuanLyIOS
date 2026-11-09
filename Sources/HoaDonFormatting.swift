@@ -9,6 +9,8 @@ extension Color {
     static let dangerColor = Color(red: 0xDC / 255, green: 0x35 / 255, blue: 0x45 / 255)
     static let warningColor = Color(red: 0xFF / 255, green: 0xC1 / 255, blue: 0x07 / 255)
     static let pinkColor = Color(red: 0xD6 / 255, green: 0x33 / 255, blue: 0x84 / 255)
+    /// Navy gốc #1E4E8C, KHÔNG đổi theo dịp lễ (khác brandPrimary) — màu phân loại Ship.
+    static let navyCoDinh = Color(red: 0x1E / 255, green: 0x4E / 255, blue: 0x8C / 255)
 
     /// Trộn với trắng ra bản pastel đặc (không dùng opacity) — dùng làm nền card, giống cách Mobile
     /// web tô nền card bằng 1 màu pastel cố định thay vì border color mờ đi (opacity phụ thuộc nền
@@ -233,9 +235,9 @@ enum HoaDonFormatting {
         case "Mv": return .warningColor
         case "Mh": return .pinkColor
         case "App": return .dangerColor
-        // Ship và App Đenn tách màu (chủ quán 2026-11-08: "Ship và App Đenn đang bị trùng màu"); 2026-11-09 chủ quán
-        // yêu cầu tráo: Ship tím, App Đenn (đơn khách đặt qua app) navy màu chủ đạo.
-        case "Ship": return .thongKePurple
+        // Chủ quán 2026-11-09: Ship navy CỐ ĐỊNH (không đổi theo dịp lễ); App Đenn (đơn khách đặt qua app) theo màu
+        // chủ đạo động — ngày thường cũng navy, dịp lễ đổi màu theo DipLe.
+        case "Ship": return .navyCoDinh
         case "AppDatHang": return .brandPrimary
         default: return .brandPrimary
         }
