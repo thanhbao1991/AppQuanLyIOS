@@ -6,8 +6,9 @@ import UIKit
 /// (đã bỏ 2 nút Tiền mặt/Chuyển khoản thu nhanh trên card — quay lại luồng mở sheet).
 struct CongNoListView: View {
     let notificationBell: AnyView
-    @State private var items: [HoaDonListDto] = []
-    @State private var hasLoaded = false
+    // 09/11/2026: quay lại tab hiện ngay danh sách lần trước (BoNhoTam), load() vẫn tải lại rồi thay vào.
+    @State private var items: [HoaDonListDto] = BoNhoTam.lay("congNo") ?? []
+    @State private var hasLoaded = BoNhoTam.lay("congNo") as [HoaDonListDto]? != nil
     /// Lượt tải gần nhất lỗi — hiện banner "Thử lại" và GIỮ danh sách đang có: tab nợ mà tự trắng +
     /// tổng 0đ khi rớt mạng thì trông y như khách đã trả hết.
     @State private var loadFailed = false
@@ -107,7 +108,7 @@ struct CongNoListView: View {
 
     private func load() async {
         let fresh = await APIClient.shared.getCongNoList()
-        if let fresh { items = fresh }
+        if let fresh { items = fresh; BoNhoTam.luu("congNo", fresh) }
         loadFailed = fresh == nil
         hasLoaded = true
     }

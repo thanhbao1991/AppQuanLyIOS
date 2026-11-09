@@ -335,6 +335,13 @@ struct HoaDonListView: View {
 
         // Sang ngày khác: đơn ngày cũ không được ở lại dưới tiêu đề ngày mới. Cùng ngày (refresh /
         // EntityChanged / thử lại): giữ danh sách đang có trong lúc chờ.
+        // 09/11/2026: quay lại tab cùng ngày → hiện ngay số liệu lần trước (BoNhoTam), vẫn tải lại bên dưới.
+        if dateIso != loadedKey, let daCo: [HoaDonListDto] = BoNhoTam.lay("hoaDon|\(dateIso)") {
+            items = daCo
+            loadedKey = dateIso
+            hasLoaded = true
+            recomputeSorted()
+        }
         if dateIso != loadedKey {
             items = []
             recomputeSorted()
@@ -344,7 +351,7 @@ struct HoaDonListView: View {
         let fetched = await APIClient.shared.getHoaDonListByDay(dateIso)
         guard generation == loadGeneration else { return }   // đã có lượt load mới hơn — bỏ kết quả cũ
 
-        if let fetched { items = fetched }
+        if let fetched { items = fetched; BoNhoTam.luu("hoaDon|\(dateIso)", fetched) }
         loadFailed = fetched == nil
         loadedKey = dateIso
         hasLoaded = true

@@ -283,6 +283,14 @@ struct ThongKeView: View {
 
         // Sang ngày khác: số của ngày cũ không được ở lại trên màn (kể cả khi API ngày mới lỗi).
         // Cùng ngày (kéo refresh/thử lại): giữ số cũ, API nào lỗi thì thẻ đó không bị mất.
+        // 09/11/2026: quay lại tab cùng ngày → hiện ngay số liệu lần trước (BoNhoTam), vẫn tải lại bên dưới.
+        if key != loadedKey, let s: ThongKeSnap = BoNhoTam.lay("thongKe|\(key)") {
+            chiTieu = s.chiTieu; congNo = s.congNo; thanhToan = s.thanhToan; doanhThu = s.doanhThu
+            traNo = s.traNo; chuaThanhToan = s.chuaThanhToan; tongNo = s.tongNo; giamGia = s.giamGia; nhip = s.nhip
+            chiTieuDayItems = s.chiTieuDayItems
+            loadedKey = key
+            hasLoaded = true
+        }
         if key != loadedKey {
             chiTieu = nil; congNo = nil; thanhToan = nil; doanhThu = nil
             traNo = nil; chuaThanhToan = nil; tongNo = nil; giamGia = nil; nhip = nil
@@ -320,7 +328,23 @@ struct ThongKeView: View {
             || r.5 == nil || r.6 == nil || r.7 == nil || r.8 == nil
         loadedKey = key
         hasLoaded = true
+        BoNhoTam.luu("thongKe|\(key)", ThongKeSnap(chiTieu: chiTieu, congNo: congNo, thanhToan: thanhToan, doanhThu: doanhThu,
+            traNo: traNo, chuaThanhToan: chuaThanhToan, tongNo: tongNo, giamGia: giamGia, nhip: nhip, chiTieuDayItems: chiTieuDayItems))
     }
+}
+
+/// Ảnh chụp số liệu 1 ngày của ThongKeView để BoNhoTam giữ giữa các lần chuyển tab.
+private struct ThongKeSnap {
+    let chiTieu: ThongKeChiTieuDto?
+    let congNo: ThongKeCongNoDto?
+    let thanhToan: ThongKeThanhToanDto?
+    let doanhThu: ThongKeDoanhThuNgayDto?
+    let traNo: ThongKeTraNoNgayDto?
+    let chuaThanhToan: ThongKeDonChuaThanhToanDto?
+    let tongNo: TongNoDto?
+    let giamGia: ThongKeGiamGiaDto?
+    let nhip: NhipDoanhThuDto?
+    let chiTieuDayItems: [ChiTieuHangNgayDto]
 }
 
 /// Định danh cho sheet(item:) khi bấm vào 1 khách trong card "Khách trả nợ" — cần cả `isShipper` vì

@@ -6,8 +6,9 @@ import SwiftUI
 /// /api/KhachHang (Create/Update tái dùng APIClient.createKhachHang/updateKhachHang đã có sẵn cho
 /// flow sửa khách trong HoaDonCreateFormView).
 struct KhachHangListView: View {
-    @State private var items: [KhachHangDto] = []
-    @State private var hasLoaded = false
+    // 09/11/2026: mở lại màn hiện ngay danh sách lần trước (BoNhoTam), load() vẫn tải lại rồi thay vào.
+    @State private var items: [KhachHangDto] = BoNhoTam.lay("khachHang") ?? []
+    @State private var hasLoaded = BoNhoTam.lay("khachHang") as [KhachHangDto]? != nil
     @State private var searchText = ""
     @State private var showAdd = false
     @State private var editing: KhachHangDto?
@@ -135,7 +136,7 @@ struct KhachHangListView: View {
 
     private func load() async {
         let fresh = await APIClient.shared.getAllKhachHangOrNil()
-        if let fresh { items = fresh }
+        if let fresh { items = fresh; BoNhoTam.luu("khachHang", fresh) }
         loadFailed = fresh == nil
         hasLoaded = true
     }

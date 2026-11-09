@@ -207,6 +207,13 @@ struct ThanhToanListView: View {
 
         // Sang ngày khác: dòng ngày cũ không được ở lại dưới tiêu đề ngày mới. Cùng ngày (refresh /
         // EntityChanged / thử lại): giữ danh sách đang có trong lúc chờ.
+        // 09/11/2026: quay lại tab cùng ngày → hiện ngay số liệu lần trước (BoNhoTam), vẫn tải lại bên dưới.
+        if dateIso != loadedKey, let daCo: [ChiTietHoaDonThanhToanDto] = BoNhoTam.lay("thanhToan|\(dateIso)") {
+            items = daCo
+            loadedKey = dateIso
+            hasLoaded = true
+            recomputeFiltered()
+        }
         if dateIso != loadedKey {
             items = []
             recomputeFiltered()
@@ -216,7 +223,7 @@ struct ThanhToanListView: View {
         let fetched = await APIClient.shared.getThanhToanByDay(dateIso)
         guard generation == loadGeneration else { return }   // đã có lượt load mới hơn — bỏ kết quả cũ
 
-        if let fetched { items = fetched }
+        if let fetched { items = fetched; BoNhoTam.luu("thanhToan|\(dateIso)", fetched) }
         loadFailed = fetched == nil
         loadedKey = dateIso
         hasLoaded = true

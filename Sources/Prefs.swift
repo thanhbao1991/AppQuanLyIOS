@@ -68,6 +68,7 @@ enum Prefs {
     }
 
     static func clear() {
+        BoNhoTam.xoa()
         token = nil
         refreshToken = nil
         displayName = nil
