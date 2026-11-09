@@ -233,9 +233,10 @@ enum HoaDonFormatting {
         case "Mv": return .warningColor
         case "Mh": return .pinkColor
         case "App": return .dangerColor
-        // App Đenn (đơn khách đặt qua app) màu tím riêng — chủ quán 2026-11-08: "Ship và App Đenn đang bị trùng màu"
-        // (trước đây cố ý dùng chung màu Ship như Desktop).
-        case "AppDatHang": return .thongKePurple
+        // Ship và App Đenn tách màu (chủ quán 2026-11-08: "Ship và App Đenn đang bị trùng màu"); 2026-11-09 chủ quán
+        // yêu cầu tráo: Ship tím, App Đenn (đơn khách đặt qua app) navy màu chủ đạo.
+        case "Ship": return .thongKePurple
+        case "AppDatHang": return .brandPrimary
         default: return .brandPrimary
         }
     }

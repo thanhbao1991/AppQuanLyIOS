@@ -382,7 +382,8 @@ enum ThongBaoNoiBoFormatting {
         case "HoaDonNewMuaVe": return HoaDonFormatting.phanLoaiColor("Mv")
         case "HoaDonNewMuaHo": return HoaDonFormatting.phanLoaiColor("Mh")
         case "HoaDonNewApp": return HoaDonFormatting.phanLoaiColor("App")
-        case "HoaDonNewShip", "HoaDonNewAppDatHang": return HoaDonFormatting.phanLoaiColor("Ship")
+        case "HoaDonNewShip": return HoaDonFormatting.phanLoaiColor("Ship")
+        case "HoaDonNewAppDatHang": return HoaDonFormatting.phanLoaiColor("AppDatHang")
         case "HoaDonEdit": return .warningColor
         case "HoaDonDel", "GhiNo": return .dangerColor
         case "ThanhToanTienMat": return .successColor
