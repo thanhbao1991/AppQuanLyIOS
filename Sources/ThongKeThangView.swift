@@ -218,6 +218,14 @@ struct ThongKeThangView: View {
 
         // Sang tháng khác: số tháng cũ không được ở lại trên màn. Cùng tháng (refresh/thử lại): giữ
         // số cũ, API nào lỗi thì thẻ đó không bị mất.
+        // 09/11/2026: mở lại cùng tháng → hiện ngay số liệu lần trước (BoNhoTam), vẫn tải lại bên dưới.
+        if key != loadedKey, let s: ThongKeThangSnap = BoNhoTam.lay("thongKeThang|\(key)") {
+            chiTieu = s.chiTieu; thanhToan = s.thanhToan; doanhThu = s.doanhThu
+            chuaThanhToan = s.chuaThanhToan; tongNo = s.tongNo; giamGia = s.giamGia; nhip = s.nhip
+            chiTieuMonthItems = s.chiTieuMonthItems
+            loadedKey = key
+            hasLoaded = true
+        }
         if key != loadedKey {
             chiTieu = nil; thanhToan = nil; doanhThu = nil
             chuaThanhToan = nil; tongNo = nil; giamGia = nil; nhip = nil
@@ -251,7 +259,21 @@ struct ThongKeThangView: View {
         loadFailed = r.0 == nil || r.1 == nil || r.2 == nil || r.3 == nil || r.4 == nil || r.6 == nil
         loadedKey = key
         hasLoaded = true
+        BoNhoTam.luu("thongKeThang|\(key)", ThongKeThangSnap(chiTieu: chiTieu, thanhToan: thanhToan, doanhThu: doanhThu,
+            chuaThanhToan: chuaThanhToan, tongNo: tongNo, giamGia: giamGia, nhip: nhip, chiTieuMonthItems: chiTieuMonthItems))
     }
+}
+
+/// Ảnh chụp số liệu 1 tháng của ThongKeThangView để BoNhoTam giữ giữa các lần mở màn.
+private struct ThongKeThangSnap {
+    let chiTieu: ThongKeChiTieuDto?
+    let thanhToan: ThongKeThanhToanDto?
+    let doanhThu: ThongKeDoanhThuNgayDto?
+    let chuaThanhToan: ThongKeDonChuaThanhToanDto?
+    let tongNo: TongNoDto?
+    let giamGia: ThongKeGiamGiaDto?
+    let nhip: NhipDoanhThuDto?
+    let chiTieuMonthItems: [ChiTieuHangNgayDto]
 }
 
 /// Không private — ThongKeView (bản ngày) tái dùng chung để bấm vào món chi tiêu/thanh toán/doanh

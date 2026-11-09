@@ -5,9 +5,10 @@ import SwiftUI
 /// /api/AppOrder/{sync-store-status,push-san-pham,rename-san-pham,store-visibility,push-topping,push-size-xl},
 /// bố cục list + sheet sửa giống VoucherListView.
 struct SanPhamListView: View {
-    @State private var items: [SanPhamAdminDto] = []
-    @State private var nhoms: [NhomSanPhamDto] = []
-    @State private var hasLoaded = false
+    // 09/11/2026: mở lại màn hiện ngay danh sách lần trước (BoNhoTam), load() vẫn tải lại rồi thay vào.
+    @State private var items: [SanPhamAdminDto] = BoNhoTam.lay("sanPham") ?? []
+    @State private var nhoms: [NhomSanPhamDto] = BoNhoTam.lay("nhomSanPham") ?? []
+    @State private var hasLoaded = BoNhoTam.lay("sanPham") as [SanPhamAdminDto]? != nil
     @State private var searchText = ""
     @State private var showNgungBan = false
     @State private var showAdd = false
@@ -128,8 +129,11 @@ struct SanPhamListView: View {
         async let itemsTask = APIClient.shared.getSanPhamAdminOrNil()
         async let nhomsTask = APIClient.shared.getNhomSanPhamOrNil()
         let (freshItems, freshNhoms) = await (itemsTask, nhomsTask)
-        if let freshItems { items = freshItems }
-        if let freshNhoms { nhoms = freshNhoms.sorted { $0.ten.localizedStandardCompare($1.ten) == .orderedAscending } }
+        if let freshItems { items = freshItems; BoNhoTam.luu("sanPham", freshItems) }
+        if let freshNhoms {
+            nhoms = freshNhoms.sorted { $0.ten.localizedStandardCompare($1.ten) == .orderedAscending }
+            BoNhoTam.luu("nhomSanPham", nhoms)
+        }
         loadFailed = freshItems == nil || freshNhoms == nil
         hasLoaded = true
     }

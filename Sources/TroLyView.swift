@@ -91,17 +91,27 @@ final class CanhBaoBadge: ObservableObject {
 /// Các màn chỉ để xem trong Menu (Giờ vắng khách, Bão hoà, Bản đồ, Phiên bản app khách, Tính lương, Số dư AI) đã dời
 /// vào đây (28/10/2026) — xem `mucTrenMay`; Menu chỉ còn việc sửa. Từ 29/10/2026 Duyệt công thức + card Chi Phí nằm
 /// trên cùng (trên cả Cần xử lý).
+/// Ảnh chụp lần tải gần nhất của TroLyView — BoNhoTam giữ để mở lại màn hiện ngay (09/11/2026).
+private struct TroLySnap {
+    let tongQuan: TroLyTraLoi?
+    let cauHoiGoc: [TroLyCauHoi]
+    let canhBao: [CanhBaoHeThong]?
+    let capNhatLuc: Date?
+}
+
 struct TroLyView: View {
-    @State private var tongQuan: TroLyTraLoi?
-    @State private var cauHoi: [TroLyCauHoi] = []
-    @State private var cauHoiGoc: [TroLyCauHoi] = []
+    // 09/11/2026: mở lại màn hiện ngay số liệu lần trước (BoNhoTam), .task vẫn tải lại rồi thay vào.
+    @State private var tongQuan: TroLyTraLoi? = (BoNhoTam.lay("troLy") as TroLySnap?)?.tongQuan
+    @State private var cauHoi: [TroLyCauHoi] = (BoNhoTam.lay("troLy") as TroLySnap?)?.cauHoiGoc ?? []
+    @State private var cauHoiGoc: [TroLyCauHoi] = (BoNhoTam.lay("troLy") as TroLySnap?)?.cauHoiGoc ?? []
     @State private var traLoi: [String: TroLyTraLoi] = [:]
     @State private var moRa: Set<String> = []
     @State private var dangHoi: Set<String> = []
     @State private var dangTai = true
-    @State private var capNhatLuc: Date?
+    @State private var daTaiLanMo = false
+    @State private var capNhatLuc: Date? = (BoNhoTam.lay("troLy") as TroLySnap?)?.capNhatLuc
     /// nil = không phải Admin / lỗi → ẩn mục Cần xử lý.
-    @State private var canhBao: [CanhBaoHeThong]?
+    @State private var canhBao: [CanhBaoHeThong]? = (BoNhoTam.lay("troLy") as TroLySnap?)?.canhBao
     @State private var daXuLy: [CanhBaoHeThong] = []
     @State private var xemDaXuLy = false
     @State private var moCanhBao: Set<String> = []
@@ -160,7 +170,13 @@ struct TroLyView: View {
         .sheet(item: $suaTon) { d in
             SuaTonNhanhSheet(dong: d) { Task { await taiLai() } }
         }
-        .task { if cauHoi.isEmpty { await taiLai() } }
+        // Mở màn thì tải lại 1 lần (kể cả đang hiện bản nhớ BoNhoTam); quay về từ màn con push vào thì không tải lại
+        // (.task chạy lại mỗi lần view xuất hiện — trước đây chặn bằng cauHoi.isEmpty).
+        .task {
+            guard !daTaiLanMo else { return }
+            daTaiLanMo = true
+            await taiLai()
+        }
     }
 
     @ViewBuilder private var theTinhTrang: some View {
@@ -189,15 +205,16 @@ struct TroLyView: View {
         async let ds = APIClient.shared.getTroLyCauHoi()
         async let cbs = APIClient.shared.getCanhBao()
         let (t, d, c) = await (tq, ds, cbs)
-        tongQuan = t
+        // Lỗi mạng (t == nil) mà đang hiện bản nhớ thì giữ nguyên số cũ + giờ cập nhật cũ, không xoá trắng.
+        if let t { tongQuan = t; capNhatLuc = Date() } else if tongQuan == nil { capNhatLuc = Date() }
         if let c {
             canhBao = c
             CanhBaoBadge.shared.soViec = c.count
         }
         if xemDaXuLy { await taiDaXuLy() }
         if !d.isEmpty { cauHoiGoc = d + Self.mucTrenMay; cauHoi = cauHoiGoc }
-        capNhatLuc = Date()
         dangTai = false
+        BoNhoTam.luu("troLy", TroLySnap(tongQuan: tongQuan, cauHoiGoc: cauHoiGoc, canhBao: canhBao, capNhatLuc: capNhatLuc))
         // Câu nào đang mở thì làm mới luôn; câu đã tải mà đang đóng thì bỏ để lần mở sau tải số mới.
         traLoi = traLoi.filter { moRa.contains($0.key) }
         for ma in moRa where !Self.khongQuaChiTiet.contains(ma) { Task { await hoi(ma) } }

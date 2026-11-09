@@ -4,11 +4,13 @@ import SwiftUI
 /// Mở sheet này tự đánh dấu TẤT CẢ đã xem (xoá badge đỏ), khớp hành vi mở kênh Discord đọc hết trước đây.
 struct ThongBaoNoiBoListView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var items: [ThongBaoNoiBoDto] = []
-    @State private var hasLoaded = false
+    // 09/11/2026: mở lại hiện ngay trang đầu lần trước (BoNhoTam), load() vẫn tải lại rồi thay vào. Đang hiện bản
+    // nhớ thì hasMore=false để chưa tải trang cũ hơn (tránh nối trang cũ vào danh sách sắp bị thay) — load() bật lại.
+    @State private var items: [ThongBaoNoiBoDto] = BoNhoTam.lay("thongBaoNoiBo") ?? []
+    @State private var hasLoaded = BoNhoTam.lay("thongBaoNoiBo") as [ThongBaoNoiBoDto]? != nil
     @State private var openHoaDonId: String?
     @State private var loadingMore = false
-    @State private var hasMore = true
+    @State private var hasMore = BoNhoTam.lay("thongBaoNoiBo") as [ThongBaoNoiBoDto]? == nil
     @State private var searchText = ""
     /// Đang tìm thì tự tải thêm trang cũ để tìm sâu hơn, nhưng dừng ở mốc này (bấm "Tìm tiếp" để nới)
     /// — không thì 1 từ khoá không khớp gì sẽ kéo về toàn bộ lịch sử thông báo.
@@ -123,7 +125,10 @@ struct ThongBaoNoiBoListView: View {
 
     private func load() async {
         let first = await APIClient.shared.getThongBaoNoiBoList(take: pageSize)
+        // API trả [] cả khi lỗi mạng → đừng xoá trắng bản nhớ đang hiện.
+        if first.isEmpty && !items.isEmpty { hasLoaded = true; return }
         items = first
+        BoNhoTam.luu("thongBaoNoiBo", first)
         hasMore = first.count >= pageSize
         hasLoaded = true
     }

@@ -3,8 +3,9 @@ import SwiftUI
 /// Quản trị danh mục Topping (Menu > Topping) — thêm/sửa/xoá, thay cho phải mở Desktop
 /// (ToppingWindow). GET/POST/PUT/DELETE /api/Topping, bố cục list + sheet sửa.
 struct ToppingListView: View {
-    @State private var items: [ToppingDto] = []
-    @State private var hasLoaded = false
+    // 09/11/2026: mở lại màn hiện ngay danh sách lần trước (BoNhoTam), load() vẫn tải lại rồi thay vào.
+    @State private var items: [ToppingDto] = BoNhoTam.lay("topping") ?? []
+    @State private var hasLoaded = BoNhoTam.lay("topping") as [ToppingDto]? != nil
     @State private var searchText = ""
     @State private var showNgungBan = false
     @State private var showAdd = false
@@ -75,7 +76,7 @@ struct ToppingListView: View {
 
     private func load() async {
         let fresh = await APIClient.shared.getToppingAdminOrNil()
-        if let fresh { items = fresh }
+        if let fresh { items = fresh; BoNhoTam.luu("topping", fresh) }
         loadFailed = fresh == nil
         hasLoaded = true
     }
