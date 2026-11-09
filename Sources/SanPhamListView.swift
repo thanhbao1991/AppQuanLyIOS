@@ -62,7 +62,7 @@ struct SanPhamListView: View {
         }
         .navigationTitle("Sản phẩm")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+        .toolbarBackground(Color.brandGradient, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
@@ -319,7 +319,7 @@ private struct SanPhamEditSheet: View {
             }
             .navigationTitle(existing == nil ? "Thêm sản phẩm" : "Sửa sản phẩm")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(Color.brandGradient, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {

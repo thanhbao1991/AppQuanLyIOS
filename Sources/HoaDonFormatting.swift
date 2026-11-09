@@ -21,6 +21,45 @@ extension Color {
     }
 }
 
+// 09/11/2026: style app khách (AppDatHangIOS Theme.swift) — gradient chéo màu chủ đạo → tối cho thanh trên,
+// nền xám #F5F5F5, thẻ trắng bo 18 có bóng nhẹ.
+extension Color {
+    /// Nền xám trung tính — cùng Theme.bg app khách (thay systemGroupedBackground ở các tab chính).
+    static let appNen = Color(red: 0xF5 / 255, green: 0xF5 / 255, blue: 0xF5 / 255)
+    /// Bản tối của màu chủ đạo (navy #1E4E8C → ~#15375F, khớp primaryDark app khách) — tính theo màu hiện tại để dịp
+    /// lễ đổi màu thì gradient đổi theo.
+    static var brandPrimaryDark: Color { brandPrimary.toiHon(0.7) }
+    /// Gradient chéo sáng→tối — thanh trên (header tự vẽ + toolbarBackground) và nút chính.
+    static var brandGradient: LinearGradient {
+        LinearGradient(colors: [.brandPrimary, .brandPrimaryDark], startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+
+    func toiHon(_ heSo: CGFloat) -> Color {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        UIColor(self).getRed(&r, green: &g, blue: &b, alpha: &a)
+        return Color(red: r * heSo, green: g * heSo, blue: b * heSo)
+    }
+}
+
+/// Nền thẻ ở các tab chính: trắng bo 18 có bóng nhẹ (cùng cardBoxStyle app khách), tuỳ chọn phủ màu nhạt (vd màu
+/// phân loại đơn). Dùng trong `.background(TheNen(...))`.
+struct TheNen: View {
+    var phu: Color? = nil
+    var vien: Color? = nil
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 18, style: .continuous)
+            .fill(Color.white)
+            .shadow(color: .black.opacity(0.05), radius: 8, y: 2)
+            .overlay {
+                if let phu { RoundedRectangle(cornerRadius: 18, style: .continuous).fill(phu) }
+            }
+            .overlay {
+                if let vien { RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(vien, lineWidth: 1.5) }
+            }
+    }
+}
+
 /// Vòng loading toàn màn hình dùng chung mọi tab — mặc định ProgressView() màu xám hệ thống, kích
 /// thước nhỏ, dễ tưởng app treo trên nền sáng (cùng feedback đã sửa bên AppDatHangIOS 2026-09-18:
 /// "mờ lắm, cứ tưởng app bị treo"). Phóng to 1.4x + tint brandPrimary cho rõ ràng là đang tải.

@@ -53,7 +53,7 @@ struct ToppingListView: View {
         }
         .navigationTitle("Topping")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+        .toolbarBackground(Color.brandGradient, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
@@ -161,7 +161,7 @@ private struct ToppingEditSheet: View {
             }
             .navigationTitle(existing == nil ? "Thêm topping" : "Sửa topping")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(Color.brandGradient, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {

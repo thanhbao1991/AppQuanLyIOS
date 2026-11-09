@@ -87,7 +87,7 @@ struct TonKhoListView: View {
         }
         .navigationTitle("Tồn kho")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+        .toolbarBackground(Color.brandGradient, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
@@ -235,7 +235,7 @@ struct TonKhoChiTietView: View {
         }
         .navigationTitle(item.map { TonKhoFormatting.tenGon($0.ten) } ?? "Tồn kho")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+        .toolbarBackground(Color.brandGradient, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .refreshable { await load() }

@@ -221,6 +221,7 @@ struct ThongKeView: View {
                         }
                         .padding(12)
                     }
+                    .background(Color.appNen)
                     .refreshable { await load() }
                 }
             }
@@ -401,9 +402,8 @@ struct StatCard<Content: View>: View {
                 }
             }
         }
-        .background(color.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
+        // 09/11/2026: thẻ trắng bo 18 có bóng (style app khách), phủ nhẹ màu mục.
+        .background(TheNen(phu: color.opacity(0.06)))
     }
 }
 

@@ -151,7 +151,7 @@ struct NguyenLieuEditSheet: View {
             }
             .navigationTitle(existing == nil ? "Thêm nguyên liệu" : "Sửa nguyên liệu")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(Color.brandGradient, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {

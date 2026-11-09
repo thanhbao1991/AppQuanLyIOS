@@ -144,7 +144,7 @@ struct ThongKeThangView: View {
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(Color.brandGradient, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
@@ -304,7 +304,7 @@ struct ChiTieuThangDetailSheet: View {
             .softScrollEdgeTop()
             .navigationTitle(ten)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(Color.brandGradient, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
@@ -371,7 +371,7 @@ struct KhachHangNoDetailSheet: View {
             }
             .navigationTitle(tenKhachHang)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(Color.brandGradient, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
@@ -447,7 +447,7 @@ struct ThanhToanChiTietSheet: View {
             }
             .navigationTitle(ten)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(Color.brandGradient, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
@@ -541,7 +541,7 @@ struct DoanhThuChiTietSheet: View {
             }
             .navigationTitle(ten)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(Color.brandGradient, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
@@ -621,7 +621,7 @@ struct GiamGiaChiTietSheet: View {
             .softScrollEdgeTop()
             .navigationTitle(label)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(Color.brandGradient, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {

@@ -72,7 +72,7 @@ struct BanDoKhachHangView: View {
         .id(reloadToken)
         .navigationTitle("Bản đồ khách hàng")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+        .toolbarBackground(Color.brandGradient, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
     }

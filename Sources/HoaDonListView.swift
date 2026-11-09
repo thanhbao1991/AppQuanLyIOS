@@ -180,7 +180,7 @@ struct HoaDonListView: View {
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
-                    .background(Color(.systemGroupedBackground))
+                    .background(Color.appNen)
                     .softScrollEdgeTop()
                     .refreshable { await load() }
                 }
@@ -694,14 +694,8 @@ private struct HoaDonRowView: View {
         .padding(12)
         // 02/11/2026: cả thẻ đổ màu phân loại (đúng màu nền tròn icon cũ: 16% trên nền trắng) — icon
         // tròn bỏ nền riêng vì giờ trùng màu thẻ.
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color(.secondarySystemGroupedBackground))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(HoaDonFormatting.phanLoaiColor(item.phanLoai).opacity(0.16))
-                )
-        )
+        // 09/11/2026: thẻ trắng bo 18 có bóng nhẹ (style app khách), vẫn phủ màu phân loại.
+        .background(TheNen(phu: HoaDonFormatting.phanLoaiColor(item.phanLoai).opacity(0.16)))
     }
 }
 
@@ -809,7 +803,7 @@ private struct AddHoaDonSheet: View {
             }
             .navigationTitle("Thêm hoá đơn")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(Color.brandGradient, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
@@ -940,7 +934,7 @@ private struct ImageOrderPickerSheet: View {
             .padding(.top)
             .navigationTitle("Bắt đơn từ ảnh")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(Color.brandGradient, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
@@ -1068,7 +1062,7 @@ private struct TextOrderPickerSheet: View {
             .padding(.top)
             .navigationTitle("Bắt đơn từ tin nhắn")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(Color.brandGradient, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
@@ -1182,7 +1176,7 @@ private struct AppOrderPickerSheet: View {
             }
             .navigationTitle("Bắt đơn App")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(Color.brandGradient, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
@@ -1271,7 +1265,7 @@ private struct KhachGoiSomSheet: View {
             }
             .navigationTitle("Khách hay gọi trước 7h")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(Color.brandGradient, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {

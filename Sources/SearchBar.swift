@@ -26,7 +26,7 @@ struct SearchBar: View {
             .background(
                 Group {
                     if tinted {
-                        LinearGradient(colors: [Color.brandPrimary, Color.brandPrimary.opacity(0.85)], startPoint: .top, endPoint: .bottom)
+                        Color.brandGradient
                             .ignoresSafeArea(edges: .top)
                     }
                 }

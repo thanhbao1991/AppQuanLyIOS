@@ -77,14 +77,14 @@ struct ThongBaoNoiBoListView: View {
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
-                    .background(Color(.systemGroupedBackground))
+                    .background(Color.appNen)
                     .softScrollEdgeTop()
                     .refreshable { await load() }
                 }
             }
             .navigationTitle("Thông báo")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(Color.brandGradient, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
@@ -176,15 +176,8 @@ private struct ThongBaoNoiBoRowView: View {
             }
         }
         .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color(.secondarySystemGroupedBackground))
-                // 02/11/2026: cả thẻ đổ màu (đúng màu nền tròn icon cũ), đồng bộ tab Đơn.
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(ThongBaoNoiBoFormatting.mau(item.loai).opacity(0.14))
-                )
-        )
+        // 02/11/2026: cả thẻ đổ màu (đúng màu nền tròn icon cũ), đồng bộ tab Đơn. 09/11: thẻ bo 18 có bóng (style app khách).
+        .background(TheNen(phu: ThongBaoNoiBoFormatting.mau(item.loai).opacity(0.14)))
     }
 
     /// Thông báo "Sửa đơn": trên cùng là kết luận sửa gì (in đậm), rồi tóm tắt đơn, rồi chi tiết — "Nhãn: cũ → mới"

@@ -94,7 +94,7 @@ struct BaoHoaView: View {
         }
         .navigationTitle("Phân tích bão hoà")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+        .toolbarBackground(Color.brandGradient, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .task { await load() }

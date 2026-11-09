@@ -140,7 +140,7 @@ private struct ShopeeImportSheet: View {
             }
             .navigationTitle(orders == nil ? "Shopee" : "Chọn đơn của quán")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(Color.brandGradient, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {

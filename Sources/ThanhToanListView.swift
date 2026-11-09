@@ -147,7 +147,7 @@ struct ThanhToanListView: View {
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
-                    .background(Color(.systemGroupedBackground))
+                    .background(Color.appNen)
                     .softScrollEdgeTop()
                     .refreshable { await load() }
                 }
@@ -311,15 +311,8 @@ private struct ThanhToanRowView: View {
                 .foregroundColor(methodColor)
         }
         .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color(.secondarySystemGroupedBackground))
-                // 02/11/2026: cả thẻ đổ màu phương thức (đúng màu nền tròn icon cũ), đồng bộ tab Đơn.
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(methodColor.opacity(0.14))
-                )
-        )
+        // 02/11/2026: cả thẻ đổ màu phương thức (đúng màu nền tròn icon cũ), đồng bộ tab Đơn. 09/11: thẻ bo 18 có bóng.
+        .background(TheNen(phu: methodColor.opacity(0.14)))
     }
 }
 

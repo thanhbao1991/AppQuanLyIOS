@@ -153,7 +153,7 @@ struct TroLyView: View {
         }
         .navigationTitle("Trợ lý ảo")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+        .toolbarBackground(Color.brandGradient, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .refreshable { await taiLai() }

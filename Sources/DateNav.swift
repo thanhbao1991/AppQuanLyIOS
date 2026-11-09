@@ -92,7 +92,7 @@ struct DaySearchBar: View {
                     // ignoresSafeArea(.top) để gradient tô luôn phần status bar/tai thỏ phía trên,
                     // không dừng lại ngay dưới đó — chỉ áp cho lớp nền, nội dung (nút ngày/ô tìm
                     // kiếm) vẫn giữ nguyên vị trí trong safe area.
-                    LinearGradient(colors: [Color.brandPrimary, Color.brandPrimary.opacity(0.85)], startPoint: .top, endPoint: .bottom)
+                    Color.brandGradient
                         .ignoresSafeArea(edges: .top)
                 }
             }
@@ -155,7 +155,7 @@ struct DayDateBar: View {
         .background(
             Group {
                 if tinted {
-                    LinearGradient(colors: [Color.brandPrimary, Color.brandPrimary.opacity(0.85)], startPoint: .top, endPoint: .bottom)
+                    Color.brandGradient
                         .ignoresSafeArea(edges: .top)
                 }
             }

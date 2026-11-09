@@ -68,7 +68,7 @@ struct ChiTieuListView: View {
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
-                    .background(Color(.systemGroupedBackground))
+                    .background(Color.appNen)
                     .softScrollEdgeTop()
                     .refreshable { await load() }
                 }
@@ -202,15 +202,8 @@ private struct ChiTieuRowView: View {
             }
         }
         .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color(.secondarySystemGroupedBackground))
-                // 02/11/2026: cả thẻ đổ màu (đúng màu nền tròn icon cũ), đồng bộ tab Đơn.
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(borderColor.opacity(0.14))
-                )
-        )
+        // 02/11/2026: cả thẻ đổ màu (đúng màu nền tròn icon cũ), đồng bộ tab Đơn. 09/11: thẻ bo 18 có bóng.
+        .background(TheNen(phu: borderColor.opacity(0.14)))
         .contentShape(Rectangle())
         .onTapGesture { onSelect?() }
     }
@@ -271,7 +264,7 @@ private struct ChiTieuDetailSheet: View {
             .padding()
             .navigationTitle("Chi tiết chi tiêu")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(Color.brandGradient, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
@@ -365,7 +358,7 @@ private struct EditExpenseSheet: View {
             }
             .navigationTitle("Sửa chi tiêu")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(Color.brandGradient, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
@@ -559,7 +552,7 @@ struct AddExpenseSheet: View {
             }
             .navigationTitle("Thêm chi tiêu")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(Color.brandGradient, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {

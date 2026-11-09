@@ -264,8 +264,8 @@ struct TongQuanDoanhThuCard: View {
             }
         }
         .padding(14)
-        .background(Color.thongKeGreen.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        // 09/11/2026: thẻ trắng bo 18 có bóng (style app khách).
+        .background(TheNen(phu: Color.thongKeGreen.opacity(0.06)))
         .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
     }
 }

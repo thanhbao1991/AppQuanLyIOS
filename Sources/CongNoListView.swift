@@ -47,7 +47,7 @@ struct CongNoListView: View {
                 .padding(.horizontal)
                 .padding(.vertical, HeaderBarMetrics.verticalPadding)
                 .background(
-                    LinearGradient(colors: [Color.brandPrimary, Color.brandPrimary.opacity(0.85)], startPoint: .top, endPoint: .bottom)
+                    Color.brandGradient
                         .ignoresSafeArea(edges: .top)
                 )
 
@@ -83,7 +83,7 @@ struct CongNoListView: View {
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
-                    .background(Color(.systemGroupedBackground))
+                    .background(Color.appNen)
                     .softScrollEdgeTop()
                     .scrollDismissesKeyboard(.immediately)
                     .refreshable { await load() }
@@ -618,15 +618,8 @@ struct CongNoRowView: View {
             }
         }
         .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color(.secondarySystemGroupedBackground))
-                // 02/11/2026: cả thẻ đổ màu (đúng màu nền tròn icon cũ), đồng bộ tab Đơn.
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color.dangerColor.opacity(0.14))
-                )
-        )
+        // 02/11/2026: cả thẻ đổ màu (đúng màu nền tròn icon cũ), đồng bộ tab Đơn. 09/11: thẻ bo 18 có bóng.
+        .background(TheNen(phu: Color.dangerColor.opacity(0.14)))
         .contentShape(Rectangle())
         .onTapGesture { onSelect?() }
     }

@@ -85,7 +85,7 @@ struct ThanhToanDetailView: View {
             .overlay { if busy { ProgressView() } }
             .navigationTitle("Chi tiết thanh toán")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(Color.brandGradient, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {

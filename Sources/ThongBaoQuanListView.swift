@@ -47,7 +47,7 @@ struct ThongBaoQuanListView: View {
         }
         .navigationTitle("Thông báo/Khuyến mãi")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+        .toolbarBackground(Color.brandGradient, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
@@ -167,7 +167,7 @@ private struct ThongBaoQuanEditSheet: View {
             }
             .navigationTitle(existing == nil ? "Thêm thông báo" : "Sửa thông báo")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.brandPrimary, for: .navigationBar)
+            .toolbarBackground(Color.brandGradient, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
