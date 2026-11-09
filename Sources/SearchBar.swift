@@ -28,6 +28,8 @@ struct SearchBar: View {
                     if tinted {
                         Color.brandGradient
                             .ignoresSafeArea(edges: .top)
+                    } else {
+                        Color.appNen
                     }
                 }
             )
@@ -67,10 +69,15 @@ struct SearchFieldRow: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
+        // 09/11/2026: ô trắng có bóng nhẹ trên nền xám #F5F5F5 (style app khách), không viền khi chưa focus.
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.white)
+                .shadow(color: .black.opacity(0.05), radius: 6, y: 2)
+        )
         .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .strokeBorder(isFocused ? Color.brandPrimary : Color(.separator).opacity(0.4), lineWidth: isFocused ? 1.5 : 1)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(isFocused ? Color.brandPrimary : Color.clear, lineWidth: 1.5)
         )
         .animation(.easeInOut(duration: 0.15), value: isFocused)
     }

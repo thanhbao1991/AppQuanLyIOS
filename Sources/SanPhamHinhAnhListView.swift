@@ -44,7 +44,9 @@ struct SanPhamHinhAnhListView: View {
                         )
                     }
                 }
-                .listStyle(.plain)
+                .listStyle(.insetGrouped)
+                .scrollContentBackground(.hidden)
+                .background(Color.appNen)
                 .softScrollEdgeTop()
                 .padding(.top, 4)
                 .refreshable { await load() }

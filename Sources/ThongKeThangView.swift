@@ -300,7 +300,9 @@ struct ChiTieuThangDetailSheet: View {
                     }
                 }
             }
-            .listStyle(.plain)
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+            .background(Color.appNen)
             .softScrollEdgeTop()
             .navigationTitle(ten)
             .navigationBarTitleDisplayMode(.inline)
@@ -360,7 +362,7 @@ struct KhachHangNoDetailSheet: View {
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
-                    .background(Color(.systemGroupedBackground))
+                    .background(Color.appNen)
                     .softScrollEdgeTop()
 
                     Divider()
@@ -441,7 +443,9 @@ struct ThanhToanChiTietSheet: View {
                             }
                         }
                     }
-                    .listStyle(.plain)
+                    .listStyle(.insetGrouped)
+                    .scrollContentBackground(.hidden)
+                    .background(Color.appNen)
                     .softScrollEdgeTop()
                 }
             }
@@ -535,7 +539,9 @@ struct DoanhThuChiTietSheet: View {
                             }
                         }
                     }
-                    .listStyle(.plain)
+                    .listStyle(.insetGrouped)
+                    .scrollContentBackground(.hidden)
+                    .background(Color.appNen)
                     .softScrollEdgeTop()
                 }
             }
@@ -617,7 +623,9 @@ struct GiamGiaChiTietSheet: View {
                     }
                 }
             }
-            .listStyle(.plain)
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+            .background(Color.appNen)
             .softScrollEdgeTop()
             .navigationTitle(label)
             .navigationBarTitleDisplayMode(.inline)

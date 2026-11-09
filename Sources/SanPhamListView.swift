@@ -55,7 +55,9 @@ struct SanPhamListView: View {
                         }
                     }
                 }
-                .listStyle(.plain)
+                .listStyle(.insetGrouped)
+                .scrollContentBackground(.hidden)
+                .background(Color.appNen)
                 .softScrollEdgeTop()
                 .refreshable { await load() }
             }

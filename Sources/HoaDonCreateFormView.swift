@@ -147,6 +147,7 @@ struct HoaDonCreateFormView: View {
                 }
                 .padding()
             }
+            .background(Color.appNen)
             .navigationTitle(HoaDonFormatting.phanLoaiLabel(phanLoai))
             .navigationBarTitleDisplayMode(.inline)
             .confirmationDialog("Giao đến địa chỉ nào?", isPresented: $showAddressPicker, titleVisibility: .visible) {
@@ -176,16 +177,13 @@ struct HoaDonCreateFormView: View {
                         .fontWeight(.bold)
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.brandPrimary)
-                .controlSize(.large)
+                .buttonStyle(.gradientProminent)
                 .disabled(saving || applyingPresets || items.isEmpty)
                 .padding(.horizontal, 16)
                 .padding(.top, 10)
                 .padding(.bottom, 8)
-                // Color(.systemBackground) thay vì .background(.bar) — xem HoaDonEditFormView.
-                .background(Color(.systemBackground))
-                .overlay(Divider(), alignment: .top)
+                // Nền đặc (không .bar) — xem HoaDonEditFormView. 09/11/2026: cùng nền xám màn, nút gradient (style app khách).
+                .background(Color.appNen)
             }
         }
         .task {
@@ -235,7 +233,7 @@ struct HoaDonCreateFormView: View {
                     newKhachForm
                 } else {
                     TextField("Tìm khách theo tên/SĐT...", text: $khachSearchText)
-                        .textFieldStyle(.roundedBorder)
+                        .textFieldStyle(.oNhap)
                         .focused($khachSearchFocused)
                         .onChange(of: khachSearchText) { q in scheduleKhachSearch(q) }
 
@@ -297,7 +295,7 @@ struct HoaDonCreateFormView: View {
         VStack(alignment: .leading, spacing: 10) {
             fieldLabel("Tên khách", icon: "person")
             TextField("Tên khách", text: $editTen)
-                .textFieldStyle(.roundedBorder)
+                .textFieldStyle(.oNhap)
 
             fieldLabel("Số điện thoại", icon: "phone")
             contactRowsEditor($editPhoneRows, placeholder: "Số điện thoại", keyboard: .phonePad)
@@ -357,7 +355,7 @@ struct HoaDonCreateFormView: View {
                         TenDuongTextField(text: rows[i].value, placeholder: placeholder, keyboard: keyboard)
                     } else {
                         TextField(placeholder, text: rows[i].value)
-                            .textFieldStyle(.roundedBorder)
+                            .textFieldStyle(.oNhap)
                             .keyboardType(keyboard)
                     }
                     Button {
@@ -489,8 +487,8 @@ struct HoaDonCreateFormView: View {
 
     private var newKhachForm: some View {
         VStack(alignment: .leading, spacing: 8) {
-            TextField("Tên khách", text: $newKhachTen).textFieldStyle(.roundedBorder)
-            TextField("Số điện thoại (không bắt buộc)", text: $newKhachSdt).textFieldStyle(.roundedBorder).keyboardType(.phonePad)
+            TextField("Tên khách", text: $newKhachTen).textFieldStyle(.oNhap)
+            TextField("Số điện thoại (không bắt buộc)", text: $newKhachSdt).textFieldStyle(.oNhap).keyboardType(.phonePad)
             TenDuongTextField(text: $newKhachDiaChi)
             if let newKhachError {
                 Text(newKhachError).foregroundColor(.dangerColor).font(.caption)
@@ -657,7 +655,7 @@ struct HoaDonCreateFormView: View {
                     .keyboardType(.numberPad)
                     .multilineTextAlignment(.trailing)
                     .frame(width: 100)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(.oNhap)
                 Text("đ")
             }
         }
@@ -1122,7 +1120,7 @@ struct ProductPickerPanel: View {
         VStack(alignment: .leading, spacing: 16) {
             if editingItem == nil && pickingSanPham == nil {
                 TextField("Tìm món để thêm...", text: $searchText)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(.oNhap)
                     .focused($searchFocused)
                     .onSubmit {
                         if let first = filteredProducts.first(where: { !$0.bienThe.isEmpty }) {
@@ -1139,8 +1137,8 @@ struct ProductPickerPanel: View {
             }
         }
         .padding(12)
-        .background(editingItem != nil ? Color.orange.opacity(0.15) : Color(.tertiarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(editingItem != nil ? Color.orange.opacity(0.15) : Color.brandPrimary.opacity(0.05))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .onAppear {
             preloadEditing()
             if editingItem == nil && autoFocusSearchOnAppear { searchFocused = true }
@@ -1332,7 +1330,7 @@ struct ProductPickerPanel: View {
                         TextField("0", value: donGiaNghinBinding, format: .number)
                             .keyboardType(.numberPad)
                             .multilineTextAlignment(.trailing)
-                            .textFieldStyle(.roundedBorder)
+                            .textFieldStyle(.oNhap)
                             .disabled(khoaSuaGia)
                         Button {
                             donGia += 5000
@@ -1405,7 +1403,7 @@ struct ProductPickerPanel: View {
     private var noteSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             TextField("Ghi chú món...", text: $noteText)
-                .textFieldStyle(.roundedBorder)
+                .textFieldStyle(.oNhap)
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), alignment: .top), count: 4), spacing: 10) {
                 ForEach(quickNoteGroups, id: \.title) { group in
                     VStack(alignment: .leading, spacing: 4) {

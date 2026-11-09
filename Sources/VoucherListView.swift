@@ -53,6 +53,7 @@ struct VoucherListView: View {
                                         deleting = item
                                     }
                                     .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+                                    .listRowBackground(Color.clear)
                                     .listRowSeparator(.hidden)
                                 }
                             } header: {
@@ -64,6 +65,8 @@ struct VoucherListView: View {
                     }
                 }
                 .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .background(Color.appNen)
                 .softScrollEdgeTop()
                 .refreshable { await load() }
             }
@@ -184,8 +187,8 @@ private struct VoucherRowView: View {
             }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.brandPrimary.pastelBackground())
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            // 09/11/2026: thẻ trắng bo 18 có bóng (style app khách).
+            .background(TheNen(phu: Color.brandPrimary.opacity(0.06)))
         }
         .buttonStyle(.plain)
         .swipeActions(edge: .trailing) {

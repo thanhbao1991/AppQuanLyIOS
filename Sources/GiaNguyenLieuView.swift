@@ -140,7 +140,9 @@ struct GiaNguyenLieuView: View {
                     }
                 }
             }
-            .listStyle(.plain)
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+            .background(Color.appNen)
             .softScrollEdgeTop()
             .refreshable { await load() }
         }

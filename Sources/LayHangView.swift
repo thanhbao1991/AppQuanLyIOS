@@ -453,7 +453,9 @@ struct MatHangDaiLyView: View {
                 .buttonStyle(.plain)
             }
         }
-        .listStyle(.plain)
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+        .background(Color.appNen)
         .searchable(text: $timKiem, placement: .navigationBarDrawer(displayMode: .always), prompt: "Tìm nguyên liệu")
         .navigationTitle(daiLy.ten)
         .navigationBarTitleDisplayMode(.inline)

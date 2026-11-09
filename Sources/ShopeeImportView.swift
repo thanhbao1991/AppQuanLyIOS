@@ -135,7 +135,7 @@ private struct ShopeeImportSheet: View {
                 ShopeeWebView(webView: web.webView)
                 if let orders {
                     orderList(orders)
-                        .background(Color(.systemGroupedBackground))
+                        .background(Color.appNen)
                 }
             }
             .navigationTitle(orders == nil ? "Shopee" : "Chọn đơn của quán")

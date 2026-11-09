@@ -62,7 +62,7 @@ struct TenDuongTextField: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             TextField(placeholder, text: $text)
-                .textFieldStyle(.roundedBorder)
+                .textFieldStyle(.oNhap)
                 .keyboardType(keyboard)
                 .focused($focused)
 

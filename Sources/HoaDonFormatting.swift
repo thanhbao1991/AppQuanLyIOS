@@ -60,6 +60,40 @@ struct TheNen: View {
     }
 }
 
+/// Ô nhập kiểu app khách (TKONhap): nền xám nhạt bo 12, không viền — thay .roundedBorder.
+struct ONhapStyle: TextFieldStyle {
+    func _body(configuration: TextField<Self._Label>) -> some View {
+        configuration
+            .padding(.horizontal, 12).padding(.vertical, 10)
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.appNen))
+    }
+}
+
+extension TextFieldStyle where Self == ONhapStyle {
+    static var oNhap: ONhapStyle { ONhapStyle() }
+}
+
+/// Nút chính nền gradient (thay .borderedProminent) — cùng GradientProminentButtonStyle app khách.
+struct GradientProminentButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundColor(isEnabled ? .white : .textMuted)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background {
+                if isEnabled { Color.brandGradient } else { Color.textMuted.opacity(0.15) }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .opacity(configuration.isPressed ? 0.85 : 1)
+    }
+}
+
+extension ButtonStyle where Self == GradientProminentButtonStyle {
+    static var gradientProminent: GradientProminentButtonStyle { GradientProminentButtonStyle() }
+}
+
 /// Vòng loading toàn màn hình dùng chung mọi tab — mặc định ProgressView() màu xám hệ thống, kích
 /// thước nhỏ, dễ tưởng app treo trên nền sáng (cùng feedback đã sửa bên AppDatHangIOS 2026-09-18:
 /// "mờ lắm, cứ tưởng app bị treo"). Phóng to 1.4x + tint brandPrimary cho rõ ràng là đang tải.

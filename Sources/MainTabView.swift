@@ -463,6 +463,8 @@ private struct MoreMenuView: View {
             // Bỏ hẳn thanh tiêu đề "Menu" phía trên (không cần vùng top màu như các tab khác, và
             // không cần chuông thông báo ở đây theo yêu cầu) — tabBar bên dưới đã tự có nhãn "Menu"
             // rồi (2026-09-28).
+            .scrollContentBackground(.hidden)
+            .background(Color.appNen)
             .navigationBarHidden(true)
             .tint(.brandPrimary)
             .popupHost { host in

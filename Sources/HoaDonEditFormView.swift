@@ -151,6 +151,7 @@ struct HoaDonEditFormView: View {
                         }
                         .padding()
                     }
+                    .background(Color.appNen)
                     .disabled(saving)
                     .overlay { if saving { ProgressView() } }
                     // safeAreaInset (không phải VStack + Button sibling) để hợp tác đúng với
@@ -173,6 +174,7 @@ struct HoaDonEditFormView: View {
                         // brandPrimary mặc định lúc chưa đụng gì tới hoá đơn.
                         .tint(hasChanges ? .warningColor : .brandPrimary)
                         .controlSize(.large)
+                        .buttonBorderShape(.roundedRectangle(radius: 14))
                         .disabled(saving || items.isEmpty)
                         .padding(.horizontal, 16)
                         .padding(.top, 10)
@@ -180,8 +182,7 @@ struct HoaDonEditFormView: View {
                         // Color(.systemBackground) thay vì .background(.bar) — Material vẽ lại theo
                         // thời gian thực nên nhấp nháy mỗi lần view re-render (sửa bàn/khách/món/giảm
                         // giá đều đổi state cả màn hình), màu đặc không có vấn đề này.
-                        .background(Color(.systemBackground))
-                        .overlay(Divider(), alignment: .top)
+                        .background(Color.appNen)
                     }
                 }
             }
@@ -243,7 +244,7 @@ struct HoaDonEditFormView: View {
                     newKhachForm
                 } else {
                     TextField("Tìm khách theo tên/SĐT...", text: $khachSearchText)
-                        .textFieldStyle(.roundedBorder)
+                        .textFieldStyle(.oNhap)
                         .focused($khachSearchFocused)
                         .onChange(of: khachSearchText) { q in scheduleKhachSearch(q) }
 
@@ -297,7 +298,7 @@ struct HoaDonEditFormView: View {
         VStack(alignment: .leading, spacing: 10) {
             fieldLabel("Tên khách", icon: "person")
             TextField("Tên khách", text: $editTen)
-                .textFieldStyle(.roundedBorder)
+                .textFieldStyle(.oNhap)
 
             fieldLabel("Số điện thoại", icon: "phone")
             contactRowsEditor($editPhoneRows, placeholder: "Số điện thoại", keyboard: .phonePad)
@@ -357,7 +358,7 @@ struct HoaDonEditFormView: View {
                         TenDuongTextField(text: rows[i].value, placeholder: placeholder, keyboard: keyboard)
                     } else {
                         TextField(placeholder, text: rows[i].value)
-                            .textFieldStyle(.roundedBorder)
+                            .textFieldStyle(.oNhap)
                             .keyboardType(keyboard)
                     }
                     Button {
@@ -489,8 +490,8 @@ struct HoaDonEditFormView: View {
 
     private var newKhachForm: some View {
         VStack(alignment: .leading, spacing: 8) {
-            TextField("Tên khách", text: $newKhachTen).textFieldStyle(.roundedBorder)
-            TextField("Số điện thoại (không bắt buộc)", text: $newKhachSdt).textFieldStyle(.roundedBorder).keyboardType(.phonePad)
+            TextField("Tên khách", text: $newKhachTen).textFieldStyle(.oNhap)
+            TextField("Số điện thoại (không bắt buộc)", text: $newKhachSdt).textFieldStyle(.oNhap).keyboardType(.phonePad)
             TenDuongTextField(text: $newKhachDiaChi)
             if let newKhachError {
                 Text(newKhachError).foregroundColor(.dangerColor).font(.caption)
@@ -635,7 +636,7 @@ struct HoaDonEditFormView: View {
                     .keyboardType(.numberPad)
                     .multilineTextAlignment(.trailing)
                     .frame(width: 100)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(.oNhap)
                 Text("đ")
             }
         }

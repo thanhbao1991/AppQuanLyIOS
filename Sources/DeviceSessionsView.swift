@@ -52,7 +52,7 @@ struct DeviceSessionsView: View {
                 .listStyle(.plain)
                 .softScrollEdgeTop()
                 .scrollContentBackground(.hidden)
-                .background(Color(.systemGroupedBackground))
+                .background(Color.appNen)
                 .refreshable { await load() }
             }
         }
@@ -170,8 +170,7 @@ private struct SessionRowView: View {
             }
         }
         .padding(12)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(TheNen())
     }
 }
 

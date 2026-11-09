@@ -451,7 +451,7 @@ private struct QuantityPriceRow: View {
                 TextField("0", value: $thanhTien, format: .number)
                     .keyboardType(.numberPad)
                     .multilineTextAlignment(.trailing)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(.oNhap)
                     .frame(width: unit * 1.3, alignment: .center)
 
                 VStack(alignment: .trailing, spacing: 1) {

@@ -1170,7 +1170,9 @@ private struct AppOrderPickerSheet: View {
                         }
                         .disabled(fetchingId != nil)
                     }
-                    .listStyle(.plain)
+                    .listStyle(.insetGrouped)
+                    .scrollContentBackground(.hidden)
+                    .background(Color.appNen)
                     .softScrollEdgeTop()
                 }
             }
@@ -1259,7 +1261,9 @@ private struct KhachGoiSomSheet: View {
                             }
                         }
                     }
-                    .listStyle(.plain)
+                    .listStyle(.insetGrouped)
+                    .scrollContentBackground(.hidden)
+                    .background(Color.appNen)
                     .softScrollEdgeTop()
                 }
             }

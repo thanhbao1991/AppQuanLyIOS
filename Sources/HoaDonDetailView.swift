@@ -38,6 +38,8 @@ struct HoaDonDetailView: View {
                     Text("Không tải được hoá đơn").foregroundColor(.textMuted)
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.appNen)
             .navigationTitle("Chi tiết hoá đơn")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Color.brandGradient, for: .navigationBar)
@@ -936,8 +938,9 @@ struct DetailCard<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) { content }
             .padding(14)
-            .background(tint?.pastelBackground() ?? Color(.secondarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            // 09/11/2026: thẻ trắng bo 18 có bóng (style app khách); có tint thì phủ màu nhạt.
+            .background(TheNen(phu: tint?.opacity(0.14)))
     }
 }
 

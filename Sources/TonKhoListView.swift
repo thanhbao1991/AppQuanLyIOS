@@ -81,7 +81,9 @@ struct TonKhoListView: View {
                         }
                     }
                 }
-                .listStyle(.plain)
+                .listStyle(.insetGrouped)
+                .scrollContentBackground(.hidden)
+                .background(Color.appNen)
                 .refreshable { await load() }
             }
         }

@@ -58,7 +58,9 @@ struct KhachHangListView: View {
                         )
                     }
                 }
-                .listStyle(.plain)
+                .listStyle(.insetGrouped)
+                .scrollContentBackground(.hidden)
+                .background(Color.appNen)
                 .softScrollEdgeTop()
                 .refreshable { await load() }
             }
@@ -198,7 +200,7 @@ private struct KhachHangRowView: View {
                 .buttonStyle(.borderless)
             }
         }
-        .listRowBackground(isSelected ? Color.brandPrimary.opacity(0.12) : Color.clear)
+        .listRowBackground(isSelected ? Color.brandPrimary.opacity(0.12) : Color.white)
         .swipeActions(edge: .trailing) {
             if !isMergeMode {
                 Button(action: onDelete) {
@@ -420,7 +422,9 @@ private struct ViTienHistoryView: View {
                             }
                         }
                     }
-                    .listStyle(.plain)
+                    .listStyle(.insetGrouped)
+                    .scrollContentBackground(.hidden)
+                    .background(Color.appNen)
                     .softScrollEdgeTop()
                 }
             }
@@ -486,7 +490,9 @@ private struct KhachHangLichSuView: View {
                             }
                         }
                     }
-                    .listStyle(.plain)
+                    .listStyle(.insetGrouped)
+                    .scrollContentBackground(.hidden)
+                    .background(Color.appNen)
                     .softScrollEdgeTop()
                 }
             }
