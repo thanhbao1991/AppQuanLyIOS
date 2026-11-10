@@ -814,8 +814,9 @@ struct TroLyBieuDoCot: View {
     }
 }
 
-/// Khách chờ duyệt tên gửi trong tin Zalo ZNS (GET /api/TroLy/ten-zalo, 30/10/2026). "Dùng tên" lưu tên gợi ý (đã bỏ
-/// đuôi " App"/ghi chú trong ngoặc), "Xưng bạn" giữ xưng bạn — đều không hỏi lại khách đó.
+/// Khách chờ duyệt tên gửi trong tin Zalo ZNS (GET /api/TroLy/ten-zalo, 30/10/2026). Mỗi tên là 1 nút (10/11/2026): tên quán
+/// đặt (đã bỏ đuôi " App"/ghi chú trong ngoặc), tên khách tự đặt trong app (nếu có, khác tên quán đặt), và "SĐT" = tin chào
+/// bằng số điện thoại — chọn xong không hỏi lại khách đó.
 struct TenZaloDuyetList: View {
     var onXong: () -> Void
     @State private var ds: [TenZaloChoDuyet]?
@@ -826,19 +827,13 @@ struct TenZaloDuyetList: View {
             if let ds {
                 if ds.isEmpty { Text("Đã duyệt hết.").font(.caption).foregroundColor(.textMuted) }
                 ForEach(ds) { k in
-                    HStack(spacing: 8) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(k.goiY.isEmpty ? k.ten : k.goiY).font(.subheadline.weight(.medium))
-                            Text([k.goiY == k.ten ? nil : k.ten, k.sdt].compactMap { $0 }.joined(separator: " · "))
-                                .font(.caption2).foregroundColor(.textMuted)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text([k.ten, k.sdt].compactMap { $0 }.joined(separator: " · "))
+                            .font(.caption).foregroundColor(.textMuted)
+                        ViewThatFits(in: .horizontal) {
+                            HStack(spacing: 8) { nutChon(k) }
+                            VStack(alignment: .leading, spacing: 6) { nutChon(k) }
                         }
-                        Spacer(minLength: 4)
-                        Button("Dùng tên") { Task { await duyet(k, dungTen: true) } }
-                            .buttonStyle(.borderedProminent).controlSize(.small)
-                            .disabled(dangLuu.contains(k.id) || k.goiY.isEmpty)
-                        Button("Xưng bạn") { Task { await duyet(k, dungTen: false) } }
-                            .buttonStyle(.bordered).controlSize(.small)
-                            .disabled(dangLuu.contains(k.id))
                     }
                     .padding(.vertical, 6)
                     Divider()
@@ -850,9 +845,23 @@ struct TenZaloDuyetList: View {
         .task { ds = await APIClient.shared.getTenZaloChoDuyet() ?? [] }
     }
 
-    private func duyet(_ k: TenZaloChoDuyet, dungTen: Bool) async {
+    @ViewBuilder private func nutChon(_ k: TenZaloChoDuyet) -> some View {
+        let khoa = dangLuu.contains(k.id)
+        if !k.goiY.isEmpty {
+            Button(k.goiY) { Task { await duyet(k, dungTen: true, ten: k.goiY) } }
+                .buttonStyle(.borderedProminent).controlSize(.small).lineLimit(1).disabled(khoa)
+        }
+        if let tuDat = k.goiYTuDat, !tuDat.isEmpty {
+            Button(tuDat) { Task { await duyet(k, dungTen: true, ten: tuDat) } }
+                .buttonStyle(.borderedProminent).controlSize(.small).lineLimit(1).disabled(khoa)
+        }
+        Button("SĐT") { Task { await duyet(k, dungTen: false, ten: nil) } }
+            .buttonStyle(.bordered).controlSize(.small).disabled(khoa)
+    }
+
+    private func duyet(_ k: TenZaloChoDuyet, dungTen: Bool, ten: String?) async {
         dangLuu.insert(k.id)
-        let ok = await APIClient.shared.duyetTenZalo(khachHangId: k.id, dungTen: dungTen)
+        let ok = await APIClient.shared.duyetTenZalo(khachHangId: k.id, dungTen: dungTen, ten: ten)
         dangLuu.remove(k.id)
         guard ok else { return }
         ds?.removeAll { $0.id == k.id }
@@ -865,5 +874,6 @@ struct TenZaloChoDuyet: Decodable, Identifiable {
     let ten: String
     let goiY: String
     let sdt: String?
+    let goiYTuDat: String?   // tên khách tự đặt trong app (10/11/2026), null nếu không có / trùng goiY
     var id: String { khachHangId }
 }

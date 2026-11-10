@@ -790,8 +790,10 @@ actor APIClient {
         return env.data ?? []
     }
 
-    func duyetTenZalo(khachHangId: String, dungTen: Bool) async -> Bool {
-        let req = makeRequest("/api/TroLy/ten-zalo/\(khachHangId)", method: "POST", body: jsonBody(["dungTen": dungTen]))
+    /// ten: tên trên nút đã chọn (tên quán đặt / tên khách tự đặt); nil = backend dùng tên gợi ý (dungTen) hoặc SĐT.
+    func duyetTenZalo(khachHangId: String, dungTen: Bool, ten: String? = nil) async -> Bool {
+        struct Body: Encodable { let dungTen: Bool; let ten: String? }
+        let req = makeRequest("/api/TroLy/ten-zalo/\(khachHangId)", method: "POST", body: jsonBody(Body(dungTen: dungTen, ten: ten)))
         return await executeAction(req).success
     }
 
