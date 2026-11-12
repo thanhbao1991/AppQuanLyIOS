@@ -594,6 +594,16 @@ struct GanTenDuongOsmRequest: Encodable {
     var ten: String?
     /// true = đoạn này không phải đường đó (bỏ tên tự suy sai).
     var khongTen: Bool = false
+    /// Chọn nhiều khúc: server gán đúng các khúc này (bỏ qua wayId/noiDai).
+    var wayIds: [Int64]? = nil
+}
+
+/// Số nhà gán tay trên bản đồ offline. id nil = thêm mới.
+struct LuuSoNhaBanDoRequest: Encodable {
+    var id: String?
+    var so: String
+    var lat: Double
+    var long: Double
 }
 
 struct LuuDuongVeRequest: Encodable {

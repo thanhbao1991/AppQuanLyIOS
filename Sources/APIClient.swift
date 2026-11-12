@@ -915,6 +915,16 @@ actor APIClient {
         return await executeAction(req)
     }
 
+    func luuSoNhaBanDo(_ body: LuuSoNhaBanDoRequest) async -> ActionResult {
+        let req = makeRequest("/api/Map/ban-do/so-nha", method: "PUT", body: jsonBody(body))
+        return await executeAction(req)
+    }
+
+    func xoaSoNhaBanDo(id: String) async -> ActionResult {
+        let req = makeRequest("/api/Map/ban-do/so-nha/\(id)", method: "DELETE")
+        return await executeAction(req)
+    }
+
     func boGanTenDuongOsm(wayId: Int64) async -> ActionResult {
         let req = makeRequest("/api/Map/ban-do/gan-ten?wayId=\(wayId)&noiDai=true", method: "DELETE")
         return await executeAction(req)

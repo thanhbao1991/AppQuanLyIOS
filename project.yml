@@ -41,6 +41,7 @@ targets:
           - UIInterfaceOrientationPortrait
         UIRequiresFullScreen: true
         ITSAppUsesNonExemptEncryption: false
+        NSLocationWhenInUseUsageDescription: Bản đồ khách hàng — đứng tại nhà khách để gán số nhà và xác nhận tên khúc đường đang đứng.
         NSContactsUsageDescription: Đồng bộ tên khách hàng vào Danh bạ để hiện tên khi khách gọi đến.
         NSCameraUsageDescription: Chụp ảnh hoá đơn mua hàng để đọc tự động vào Chi tiêu, và chụp ảnh món cho menu.
         NSMicrophoneUsageDescription: Bộ đàm quầy — giữ nút hoặc nghe cuộc gọi để nói chuyện với máy quầy.
