@@ -406,7 +406,7 @@ private struct BanDoMapLibreView: UIViewRepresentable {
             } : []
             (style.source(withIdentifier: "doithu") as? MLNShapeSource)?.shape = MLNShapeCollectionFeature(shapes: doiThu)
 
-            for id in ["duong-ten-osm", "ten-tu", "ten-tay", "ten-khu"] {
+            for id in ["duong-ten-osm", "ten-tu", "ten-tay", "ten-khu", "so-nha"] {
                 style.layer(withIdentifier: id)?.isVisible = m.hienTenDuong
             }
             if m.chon == nil {
@@ -441,7 +441,8 @@ private struct BanDoMapLibreView: UIViewRepresentable {
 
 // MARK: - Style
 
-/// Màu/độ rộng đường theo cấp OSM (c = highway). Tên OSM (ít) + tên quán (lớp "ten": g = tu|tay, điểm g = khu).
+/// Màu/độ rộng đường theo cấp OSM (c = highway). Tên OSM (ít) + tên quán (lớp "ten": g = tu|tay, điểm g = khu,
+/// g = sn là SỐ NHÀ). Tên địa điểm OSM (đa số "QT …" = quầy thuốc) KHÔNG hiện — user chỉ cần số nhà (12/11/2026).
 private let styleJSON = #"""
 {
   "version": 8,
@@ -515,9 +516,10 @@ private let styleJSON = #"""
      "layout": {"text-field": ["get", "n"], "text-font": ["Noto Sans Italic"],
                 "text-size": ["match", ["get", "c"], "town", 15, ["village", "suburb"], 13, 11]},
      "paint": {"text-color": "#6B5B8A", "text-halo-color": "#FFFFFF", "text-halo-width": 1.5}},
-    {"id": "dia-diem", "type": "symbol", "source": "nen", "minzoom": 15, "filter": ["==", ["get", "k"], "poi"],
-     "layout": {"text-field": ["get", "n"], "text-font": ["Noto Sans Regular"], "text-size": 10, "text-optional": true},
-     "paint": {"text-color": "#8A6A3A", "text-halo-color": "#FFFFFF", "text-halo-width": 1.2}},
+    {"id": "so-nha", "type": "symbol", "source": "ten", "minzoom": 15.5, "filter": ["==", ["get", "g"], "sn"],
+     "layout": {"text-field": ["get", "n"], "text-font": ["Noto Sans Regular"],
+                "text-size": ["interpolate", ["linear"], ["zoom"], 15.5, 9, 18, 12]},
+     "paint": {"text-color": "#8A6A3A", "text-halo-color": "#FFFFFF", "text-halo-width": 1.4}},
     {"id": "doithu", "type": "circle", "source": "doithu",
      "paint": {"circle-color": "#B03030", "circle-radius": 6, "circle-stroke-color": "#FFFFFF", "circle-stroke-width": 1.5}},
     {"id": "doithu-ten", "type": "symbol", "source": "doithu", "minzoom": 14,
