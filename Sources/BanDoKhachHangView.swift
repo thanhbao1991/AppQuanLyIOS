@@ -367,55 +367,95 @@ private final class TenDuongPolyline: MKPolyline {}
 /// Nét đang vẽ dở.
 private final class DuongDangVePolyline: MKPolyline {}
 
-private final class TenDuongAnnotation: NSObject, MKAnnotation {
-    let coordinate: CLLocationCoordinate2D
-    let duong: MapTenDuongDto
-    init(coordinate: CLLocationCoordinate2D, duong: MapTenDuongDto) {
-        self.coordinate = coordinate
-        self.duong = duong
-    }
-    var title: String? { duong.ten }
-}
-
 private final class DiemVeAnnotation: NSObject, MKAnnotation {
     let coordinate: CLLocationCoordinate2D
     init(coordinate: CLLocationCoordinate2D) { self.coordinate = coordinate }
 }
 
-/// Nhãn chữ nhỏ nền trắng, giống chữ tên đường trên bản đồ. MapKit tự ẩn nhãn chồng nhau (collision).
-private final class TenDuongLabelView: MKAnnotationView {
-    private let label = UILabel()
+/// MỌI nhãn tên đường vẽ trên 1 overlay duy nhất — KHÔNG dùng MKAnnotationView. Bản đầu (12/11/2026)
+/// dùng ~100 annotation view có collisionMode: MapKit tính lại va chạm từng khung hình khi zoom/xoay
+/// → lag rồi ĐƠ màn (user báo cùng ngày), y hệt bài học chấm khách 29/10 (CustomerDotsOverlay).
+private final class TenDuongNhanOverlay: NSObject, MKOverlay {
+    struct Nhan {
+        let point: MKMapPoint
+        let duong: MapTenDuongDto
+        /// Kích thước chữ (pt màn hình) đo sẵn 1 lần trên main thread.
+        let rongPt: CGFloat
+        let caoPt: CGFloat
+    }
+    /// Đã xếp theo ưu tiên: vẽ tay trước, rồi đường nhiều khách — nhãn sau chồng nhãn trước thì bị ẩn.
+    let nhans: [Nhan]
+    let boundingMapRect: MKMapRect
+    let coordinate: CLLocationCoordinate2D
 
-    override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
-        super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
-        label.font = .systemFont(ofSize: 11, weight: .semibold)
-        label.textAlignment = .center
-        label.layer.cornerRadius = 4
-        label.layer.masksToBounds = true
-        addSubview(label)
-        collisionMode = .rectangle
-        canShowCallout = false
+    static let coChu: CGFloat = 11
+    static let dem: CGFloat = 4 // đệm ngang mỗi bên (pt)
+
+    init(duongs: [MapTenDuongDto], boQuaId: String?) {
+        let font = UIFont.systemFont(ofSize: Self.coChu, weight: .semibold)
+        var ds: [Nhan] = []
+        for d in duongs where d.id != boQuaId {
+            let coords = d.diem.compactMap { p -> CLLocationCoordinate2D? in
+                p.count == 2 ? CLLocationCoordinate2D(latitude: p[0], longitude: p[1]) : nil
+            }
+            guard !coords.isEmpty else { continue }
+            let size = (d.ten as NSString).size(withAttributes: [.font: font])
+            for c in viTriNhan(coords) where CLLocationCoordinate2DIsValid(c) {
+                ds.append(Nhan(point: MKMapPoint(c), duong: d,
+                               rongPt: ceil(size.width) + 2 * Self.dem, caoPt: ceil(size.height) + 2))
+            }
+        }
+        nhans = ds.sorted {
+            if $0.duong.tuDong != $1.duong.tuDong { return !$0.duong.tuDong }
+            return $0.duong.soKhach > $1.duong.soKhach
+        }
+        let rect = ds.reduce(MKMapRect.null) { $0.union(MKMapRect(origin: $1.point, size: MKMapSize(width: 1, height: 1))) }
+        boundingMapRect = (rect.isNull ? MKMapRect(origin: MKMapPoint(storeCoordinate), size: MKMapSize(width: 1, height: 1)) : rect)
+            .insetBy(dx: -5000, dy: -5000)
+        coordinate = storeCoordinate
     }
 
-    required init?(coder: NSCoder) { fatalError() }
+    /// Nhãn được hiện ở mức zoom này + khung (map point) của nó. Tham lam theo thứ tự ưu tiên, giống
+    /// hệt nhau ở mọi ô (tile) nên nhãn không bị nửa hiện nửa ẩn giữa 2 ô.
+    func boTri(zoomScale: MKZoomScale) -> [(nhan: Nhan, khung: MKMapRect)] {
+        guard zoomScale > 0 else { return [] }
+        var giu: [(nhan: Nhan, khung: MKMapRect)] = []
+        let cach = 6 / zoomScale // khoảng hở tối thiểu giữa 2 nhãn (pt)
+        for n in nhans {
+            let w = Double(n.rongPt / zoomScale), h = Double(n.caoPt / zoomScale)
+            let khung = MKMapRect(x: n.point.x - w / 2, y: n.point.y - h / 2, width: w, height: h)
+            let khungCach = khung.insetBy(dx: -cach, dy: -cach)
+            if giu.contains(where: { $0.khung.intersects(khungCach) }) { continue }
+            giu.append((n, khung))
+        }
+        return giu
+    }
+}
 
-    override var annotation: MKAnnotation? {
-        didSet { capNhat() }
+private final class TenDuongNhanRenderer: MKOverlayRenderer {
+    private let nhanOverlay: TenDuongNhanOverlay
+
+    init(nhanOverlay: TenDuongNhanOverlay) {
+        self.nhanOverlay = nhanOverlay
+        super.init(overlay: nhanOverlay)
     }
 
-    func capNhat() {
-        guard let a = annotation as? TenDuongAnnotation else { return }
-        label.text = a.duong.ten
-        label.textColor = a.duong.tuDong ? streetUIColor : streetDrawnUIColor
-        label.backgroundColor = UIColor.white.withAlphaComponent(0.85)
-        let size = label.intrinsicContentSize
-        let w = size.width + 8, h = size.height + 4
-        label.frame = CGRect(x: 0, y: 0, width: w, height: h)
-        frame = CGRect(x: 0, y: 0, width: w, height: h)
-        centerOffset = .zero
-        // Đường vẽ tay ưu tiên hiện hơn nhãn tự suy khi chồng nhau.
-        displayPriority = a.duong.tuDong ? .defaultLow : .defaultHigh
-        zPriority = .min
+    override func draw(_ mapRect: MKMapRect, zoomScale: MKZoomScale, in context: CGContext) {
+        let ve = nhanOverlay.boTri(zoomScale: zoomScale).filter { $0.khung.intersects(mapRect) }
+        guard !ve.isEmpty else { return }
+        let font = UIFont.systemFont(ofSize: TenDuongNhanOverlay.coChu / zoomScale, weight: .semibold)
+        let nen = UIColor.white.withAlphaComponent(0.85).cgColor
+        UIGraphicsPushContext(context)
+        defer { UIGraphicsPopContext() }
+        for (n, khung) in ve {
+            let r = rect(for: khung)
+            context.setFillColor(nen)
+            context.addPath(UIBezierPath(roundedRect: r, cornerRadius: 4 / zoomScale).cgPath)
+            context.fillPath()
+            let mau = n.duong.tuDong ? streetUIColor : streetDrawnUIColor
+            let chu = r.insetBy(dx: TenDuongNhanOverlay.dem / zoomScale, dy: 1 / zoomScale)
+            (n.duong.ten as NSString).draw(in: chu, withAttributes: [.font: font, .foregroundColor: mau])
+        }
     }
 }
 
@@ -521,7 +561,6 @@ private struct NativeMapView: UIViewRepresentable {
                                          span: MKCoordinateSpan(latitudeDelta: 0.09, longitudeDelta: 0.09))
         map.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: "store")
         map.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: "competitor")
-        map.register(TenDuongLabelView.self, forAnnotationViewWithReuseIdentifier: "tenDuong")
         map.register(MKAnnotationView.self, forAnnotationViewWithReuseIdentifier: "diemVe")
         let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.chamBanDo(_:)))
         tap.delegate = context.coordinator
@@ -544,6 +583,7 @@ private struct NativeMapView: UIViewRepresentable {
         private var allCompetitorAnns: [CompetitorAnnotation] = []
         private var tenDuongDaVe: String?
         private var netVeDaVe: String?
+        private var nhanOverlay: TenDuongNhanOverlay?
 
         init(parent: NativeMapView) { self.parent = parent }
 
@@ -562,24 +602,34 @@ private struct NativeMapView: UIViewRepresentable {
         }
 
         private func veLopDuong(on map: MKMapView, model: BanDoTenDuongModel) {
-            map.removeOverlays(map.overlays.filter { $0 is TenDuongPolyline })
-            map.removeAnnotations(map.annotations.filter { $0 is TenDuongAnnotation })
+            map.removeOverlays(map.overlays.filter { $0 is TenDuongPolyline || $0 is TenDuongNhanOverlay })
+            nhanOverlay = nil
 
             // Đang vẽ thì vẫn hiện tên đường để vẽ cho khớp, chỉ bỏ đường đang được vẽ lại.
-            if model.hien || model.dangVe {
-                for d in model.duongs where d.id != model.veLai?.id {
-                    let coords = d.diem.compactMap { p -> CLLocationCoordinate2D? in
-                        p.count == 2 ? CLLocationCoordinate2D(latitude: p[0], longitude: p[1]) : nil
-                    }
-                    guard !coords.isEmpty else { continue }
-                    // Tự suy: CHỈ đặt nhãn — điểm là nhà khách chứ không phải tim đường, vẽ nét sẽ
-                    // cắt ngang dãy nhà (đã thử trên dữ liệu thật 12/11). Bản đồ Apple đã có hình đường.
-                    if !d.tuDong && coords.count >= 2 {
-                        map.addOverlay(TenDuongPolyline(coordinates: coords, count: coords.count), level: .aboveRoads)
-                    }
-                    map.addAnnotations(viTriNhan(coords).map { TenDuongAnnotation(coordinate: $0, duong: d) })
+            guard model.hien || model.dangVe else { return }
+            for d in model.duongs where d.id != model.veLai?.id && !d.tuDong && d.diem.count >= 2 {
+                // Tự suy KHÔNG vẽ nét — điểm là nhà khách chứ không phải tim đường, nét sẽ cắt ngang
+                // dãy nhà (đã thử trên dữ liệu thật 12/11). Bản đồ Apple đã có hình đường.
+                let coords = d.diem.compactMap { p -> CLLocationCoordinate2D? in
+                    p.count == 2 ? CLLocationCoordinate2D(latitude: p[0], longitude: p[1]) : nil
                 }
+                map.addOverlay(TenDuongPolyline(coordinates: coords, count: coords.count), level: .aboveRoads)
             }
+            let o = TenDuongNhanOverlay(duongs: model.duongs, boQuaId: model.veLai?.id)
+            if !o.nhans.isEmpty {
+                map.addOverlay(o, level: .aboveLabels)
+                nhanOverlay = o
+            }
+        }
+
+        /// Chạm trúng nhãn tên đường nào (theo đúng bố trí đang hiện ở mức zoom hiện tại).
+        private func nhanTaiDiem(_ p: CGPoint, on map: MKMapView) -> MapTenDuongDto? {
+            guard let o = nhanOverlay, map.visibleMapRect.size.width > 0 else { return nil }
+            let zoomScale = map.bounds.width / map.visibleMapRect.size.width
+            let mp = MKMapPoint(map.convert(p, toCoordinateFrom: map))
+            let noi = 8 / zoomScale // nới vùng chạm cho dễ trúng
+            return o.boTri(zoomScale: zoomScale)
+                .first { $0.khung.insetBy(dx: -noi, dy: -noi).contains(mp) }?.nhan.duong
         }
 
         private func veNetDangVe(on map: MKMapView, model: BanDoTenDuongModel) {
@@ -595,21 +645,17 @@ private struct NativeMapView: UIViewRepresentable {
         }
 
         @objc func chamBanDo(_ g: UITapGestureRecognizer) {
-            guard g.state == .ended, parent.tenDuong.dangVe, let map = g.view as? MKMapView else { return }
-            let coord = map.convert(g.location(in: map), toCoordinateFrom: map)
-            parent.tenDuong.diemVe.append(coord)
+            guard g.state == .ended, let map = g.view as? MKMapView else { return }
+            let p = g.location(in: map)
+            if parent.tenDuong.dangVe {
+                parent.tenDuong.diemVe.append(map.convert(p, toCoordinateFrom: map))
+            } else if let d = nhanTaiDiem(p, on: map) {
+                parent.tenDuong.chon = d
+            }
         }
 
         func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
             true
-        }
-
-        func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
-            guard let a = view.annotation as? TenDuongAnnotation else { return }
-            mapView.deselectAnnotation(a, animated: false)
-            // Đang vẽ thì chạm trúng nhãn cũng là thêm điểm (chamBanDo lo), không mở hộp chọn.
-            guard !parent.tenDuong.dangVe else { return }
-            parent.tenDuong.chon = a.duong
         }
 
         func load(into map: MKMapView) async {
@@ -675,6 +721,7 @@ private struct NativeMapView: UIViewRepresentable {
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
             if let dots = overlay as? CustomerDotsOverlay { return CustomerDotsRenderer(dotsOverlay: dots) }
+            if let nhan = overlay as? TenDuongNhanOverlay { return TenDuongNhanRenderer(nhanOverlay: nhan) }
             if let line = overlay as? DuongDangVePolyline {
                 let r = MKPolylineRenderer(polyline: line)
                 r.strokeColor = drawingUIColor
@@ -695,12 +742,6 @@ private struct NativeMapView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
-            if annotation is TenDuongAnnotation {
-                let view = mapView.dequeueReusableAnnotationView(withIdentifier: "tenDuong", for: annotation) as! TenDuongLabelView
-                view.annotation = annotation
-                view.capNhat()
-                return view
-            }
             if annotation is DiemVeAnnotation {
                 let view = mapView.dequeueReusableAnnotationView(withIdentifier: "diemVe", for: annotation)
                 let d: CGFloat = 12
