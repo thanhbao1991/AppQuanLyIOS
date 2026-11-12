@@ -92,6 +92,13 @@ struct BanDoOfflineView: View {
                             isPresented: Binding(get: { m.chon != nil && !hienChonTen },
                                                  set: { if !$0 && !hienChonTen { m.boChon() } }),
                             titleVisibility: .visible, presenting: m.chon) { c in
+            if let ten = c.ten, c.nguon == "tu" || c.nguon == "osm" {
+                // Xác nhận tên đoán/tên OSM là đúng → thành tên gán tay (khoá, không bị tự suy đổi nữa).
+                Button("✓ Tên đúng — khoá khúc này") {
+                    m.noiDaiKhiDatTen = false
+                    Task { await m.ganTen(c, tenDuongId: nil, ten: ten, khongTen: false) }
+                }
+            }
             Button(c.ten == nil ? "Đặt tên khúc này" : "Đổi tên khúc này") { m.noiDaiKhiDatTen = false; hienChonTen = true }
             Button("Đặt tên cả đoạn thẳng nối tiếp") { m.noiDaiKhiDatTen = true; hienChonTen = true }
             if c.nguon == "tay" {
@@ -115,7 +122,7 @@ struct BanDoOfflineView: View {
 
     private func moTa(_ c: DuongDangChon) -> String {
         switch c.nguon {
-        case "tay": return "Tên do nhân viên đặt. Áp dụng cho cả các đoạn thẳng nối tiếp."
+        case "tay": return "✓ Đã xác nhận (khoá) — nhân viên đặt/duyệt, không bị tự đoán đổi."
         case "tu": return "Tên tự đoán từ địa chỉ khách — có thể sai. Đặt lại tên nếu cần."
         case "osm": return "Tên có sẵn trong dữ liệu bản đồ."
         default: return "Khúc = từ ngã giao này tới ngã giao kế tiếp. Đặt tên từng khúc cho chắc, hoặc cả đoạn thẳng nối tiếp."
