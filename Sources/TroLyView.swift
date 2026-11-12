@@ -93,7 +93,6 @@ final class CanhBaoBadge: ObservableObject {
 /// trên cùng (trên cả Cần xử lý).
 /// Ảnh chụp lần tải gần nhất của TroLyView — BoNhoTam giữ để mở lại màn hiện ngay (09/11/2026).
 private struct TroLySnap {
-    let tongQuan: TroLyTraLoi?
     let cauHoiGoc: [TroLyCauHoi]
     let canhBao: [CanhBaoHeThong]?
     let capNhatLuc: Date?
@@ -101,11 +100,11 @@ private struct TroLySnap {
 
 struct TroLyView: View {
     // 09/11/2026: mở lại màn hiện ngay số liệu lần trước (BoNhoTam), .task vẫn tải lại rồi thay vào.
-    @State private var tongQuan: TroLyTraLoi? = (BoNhoTam.lay("troLy") as TroLySnap?)?.tongQuan
     @State private var cauHoi: [TroLyCauHoi] = (BoNhoTam.lay("troLy") as TroLySnap?)?.cauHoiGoc ?? []
     @State private var cauHoiGoc: [TroLyCauHoi] = (BoNhoTam.lay("troLy") as TroLySnap?)?.cauHoiGoc ?? []
     @State private var traLoi: [String: TroLyTraLoi] = [:]
-    @State private var moRa: Set<String> = []
+    /// "Cần nhập hàng gì?" luôn mở sẵn khi vào màn (user 12/11/2026 — thay thẻ tình trạng tồn kho đã bỏ).
+    @State private var moRa: Set<String> = ["can-nhap"]
     @State private var dangHoi: Set<String> = []
     @State private var dangTai = true
     @State private var daTaiLanMo = false
@@ -154,9 +153,7 @@ struct TroLyView: View {
                 }
             }
 
-            Section {
-                theTinhTrang
-            }
+            // 12/11/2026 (user): bỏ thẻ tình trạng tồn kho trên cùng — trùng "Cần nhập hàng gì?" (thẻ đó luôn mở sẵn).
 
             // 3 card theo nhóm (user 28/10/2026): Hàng Hoá · Bán Hàng · App Đặt Hàng. Kéo thả đổi thứ tự trong 1 nhóm.
             ForEach(nhomDuoi, id: \.self) { nhom in cardNhom(nhom) }
@@ -179,34 +176,12 @@ struct TroLyView: View {
         }
     }
 
-    @ViewBuilder private var theTinhTrang: some View {
-        let ok = tongQuan?.trangThai == "ok"
-        let capNhat = capNhatLuc.map { "Cập nhật \($0.formatted(date: .omitted, time: .shortened))" }
-        VStack(alignment: .leading, spacing: 12) {
-            if let tq = tongQuan {
-                TheKetLuan(mucDo: ok ? .tot : .canhBao,
-                           tieuDe: ok ? "Tồn kho ổn" : (tq.thongDiep ?? ""),
-                           moTa: ok ? tq.thongDiep : capNhat)
-            } else if dangTai {
-                HStack { ProgressView(); Text("Đang xem tồn kho…").foregroundColor(.textMuted) }
-            } else {
-                Text("Không tải được tồn kho.").foregroundColor(.textMuted)
-            }
-            if let tq = tongQuan, !tq.dong.isEmpty {
-                TroLyDongList(dong: tq.dong, onSua: { suaTon = $0 })
-            }
-        }
-        .padding(.vertical, 6)
-    }
-
     private func taiLai() async {
         dangTai = true
-        async let tq = APIClient.shared.getTroLyTongQuan()
         async let ds = APIClient.shared.getTroLyCauHoi()
         async let cbs = APIClient.shared.getCanhBao()
-        let (t, d, c) = await (tq, ds, cbs)
-        // Lỗi mạng (t == nil) mà đang hiện bản nhớ thì giữ nguyên số cũ + giờ cập nhật cũ, không xoá trắng.
-        if let t { tongQuan = t; capNhatLuc = Date() } else if tongQuan == nil { capNhatLuc = Date() }
+        let (d, c) = await (ds, cbs)
+        capNhatLuc = Date()
         if let c {
             canhBao = c
             CanhBaoBadge.shared.soViec = c.count
@@ -214,7 +189,7 @@ struct TroLyView: View {
         if xemDaXuLy { await taiDaXuLy() }
         if !d.isEmpty { cauHoiGoc = d + Self.mucTrenMay; cauHoi = cauHoiGoc }
         dangTai = false
-        BoNhoTam.luu("troLy", TroLySnap(tongQuan: tongQuan, cauHoiGoc: cauHoiGoc, canhBao: canhBao, capNhatLuc: capNhatLuc))
+        BoNhoTam.luu("troLy", TroLySnap(cauHoiGoc: cauHoiGoc, canhBao: canhBao, capNhatLuc: capNhatLuc))
         // Câu nào đang mở thì làm mới luôn; câu đã tải mà đang đóng thì bỏ để lần mở sau tải số mới.
         traLoi = traLoi.filter { moRa.contains($0.key) }
         for ma in moRa where !Self.khongQuaChiTiet.contains(ma) { Task { await hoi(ma) } }
