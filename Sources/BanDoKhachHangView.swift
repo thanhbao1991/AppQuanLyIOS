@@ -251,6 +251,17 @@ final class BanDoTenDuongModel: ObservableObject {
     @Published var hienChonTen = false
     @Published var dangLuu = false
     @Published var thongBao: String?
+    /// id đường tự suy → Apple Maps đã có tên đường này ở đúng chỗ đó chưa (true = có, ẩn nhãn của mình).
+    /// Chưa kiểm thì chưa hiện — tránh hiện trùng rồi mới ẩn (yêu cầu 12/11: chỉ hiện đường Apple không có).
+    @Published var appleCo: [String: Bool] = [:]
+    private var dangKiemApple = false
+    private static let khoaCache = "banDo.tenDuong.appleCo.v1"
+    private static let hanCacheGiay: TimeInterval = 30 * 24 * 3600
+
+    /// Nhãn nào được hiện: vẽ tay luôn hiện; tự suy chỉ hiện khi Apple KHÔNG có tên đó.
+    var duongHien: [MapTenDuongDto] {
+        duongs.filter { !$0.tuDong || appleCo[$0.id] == false }
+    }
 
     /// Thay đổi khi cần vẽ lại lớp tên đường/nét đang vẽ — truyền vào NativeMapView để SwiftUI gọi updateUIView.
     var chuKy: String { chuKyDuong + "#" + chuKyVe }
@@ -259,7 +270,7 @@ final class BanDoTenDuongModel: ObservableObject {
     /// hàng chục nhãn (nhấp nháy).
     var chuKyDuong: String {
         "\(hien)|\(dangVe)|\(veLai?.id ?? "")|"
-            + duongs.map { "\($0.id)\($0.tuDong)\($0.diem.count)\($0.diem.first?.first ?? 0)" }.joined()
+            + duongHien.map { "\($0.id)\($0.tuDong)\($0.diem.count)\($0.diem.first?.first ?? 0)" }.joined()
     }
 
     var chuKyVe: String {
@@ -269,6 +280,67 @@ final class BanDoTenDuongModel: ObservableObject {
     @MainActor
     func tai() async {
         if let d = await APIClient.shared.getMapTenDuong() { duongs = d }
+        await kiemTraApple()
+    }
+
+    /// Hỏi Apple (reverse geocode) tên đường tại điểm giữa nhãn; trùng tên mình thì coi như Apple đã có.
+    /// Lưu máy 30 ngày theo id + toạ độ. CLGeocoder giới hạn tần suất → hỏi lần lượt, cách nhau ~1,2s.
+    @MainActor
+    private func kiemTraApple() async {
+        guard !dangKiemApple else { return }
+        dangKiemApple = true
+        defer { dangKiemApple = false }
+
+        var cache = (UserDefaults.standard.dictionary(forKey: Self.khoaCache) as? [String: [String: Any]]) ?? [:]
+        let bayGio = Date().timeIntervalSince1970
+        for d in duongs where d.tuDong {
+            guard !d.diem.isEmpty, d.diem[d.diem.count / 2].count == 2 else { continue }
+            let p = d.diem[d.diem.count / 2]
+            let khoa = "\(d.id)|\(String(format: "%.4f,%.4f", p[0], p[1]))"
+            if let c = cache[khoa], let co = c["co"] as? Bool, let luc = c["luc"] as? Double, bayGio - luc < Self.hanCacheGiay {
+                appleCo[d.id] = co
+            }
+        }
+
+        let geocoder = CLGeocoder()
+        for d in duongs where d.tuDong && appleCo[d.id] == nil {
+            guard !d.diem.isEmpty, d.diem[d.diem.count / 2].count == 2 else { continue }
+            let p = d.diem[d.diem.count / 2]
+            let khoa = "\(d.id)|\(String(format: "%.4f,%.4f", p[0], p[1]))"
+            var tenApple: [String]?
+            for lan in 0..<2 {
+                do {
+                    let ps = try await geocoder.reverseGeocodeLocation(
+                        CLLocation(latitude: p[0], longitude: p[1]), preferredLocale: Locale(identifier: "vi_VN"))
+                    tenApple = ps.flatMap { [$0.thoroughfare, $0.name].compactMap { $0 } }
+                    break
+                } catch {
+                    // Bị giới hạn tần suất/mất mạng: chờ rồi thử lại 1 lần, vẫn lỗi thì để lần mở sau.
+                    if lan == 0 { try? await Task.sleep(nanoseconds: 5_000_000_000) }
+                }
+            }
+            guard let tenApple else { continue }
+            let ten = Self.chuan(d.ten)
+            let co = tenApple.contains { t in
+                let a = Self.chuan(t)
+                return !a.isEmpty && (a.contains(ten) || (a.count >= 4 && ten.contains(a)))
+            }
+            appleCo[d.id] = co
+            cache[khoa] = ["co": co, "luc": bayGio]
+            UserDefaults.standard.set(cache, forKey: Self.khoaCache)
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+        }
+    }
+
+    /// "Đường Lê Duẩn" → "le duan" để so tên Apple với tên mình.
+    private static func chuan(_ s: String) -> String {
+        var t = s.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "vi_VN"))
+            .replacingOccurrences(of: "đ", with: "d")
+            .trimmingCharacters(in: .whitespaces)
+        for tienTo in ["duong ", "pho ", "hem ", "kiet "] where t.hasPrefix(tienTo) {
+            t = String(t.dropFirst(tienTo.count))
+        }
+        return t
     }
 
     func batDauVe(_ duong: MapTenDuongDto?) {
@@ -615,7 +687,7 @@ private struct NativeMapView: UIViewRepresentable {
                 }
                 map.addOverlay(TenDuongPolyline(coordinates: coords, count: coords.count), level: .aboveRoads)
             }
-            let o = TenDuongNhanOverlay(duongs: model.duongs, boQuaId: model.veLai?.id)
+            let o = TenDuongNhanOverlay(duongs: model.duongHien, boQuaId: model.veLai?.id)
             if !o.nhans.isEmpty {
                 map.addOverlay(o, level: .aboveLabels)
                 nhanOverlay = o
