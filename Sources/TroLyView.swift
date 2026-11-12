@@ -415,7 +415,8 @@ struct TroLyView: View {
     @ViewBuilder private static func manXem(_ ma: String) -> some View {
         switch ma {
         case "man-bao-hoa": BaoHoaView()
-        case "man-ban-do-khach": BanDoKhachHangView()
+        // Bản đồ offline (12/11/2026); bản Apple Maps cũ mở bằng nút quả táo trên thanh tiêu đề của màn này.
+        case "man-ban-do-khach": BanDoOfflineView()
         default: EmptyView()
         }
     }

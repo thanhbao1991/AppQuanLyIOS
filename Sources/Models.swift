@@ -586,6 +586,16 @@ struct MapTenDuongDto: Decodable, Identifiable, Equatable {
     let soKhach: Int
 }
 
+/// PUT /api/Map/ban-do/gan-ten — đặt tên cho đoạn đường OSM (noiDai: cả các đoạn thẳng nối tiếp).
+struct GanTenDuongOsmRequest: Encodable {
+    var wayId: Int64
+    var noiDai: Bool = true
+    var tenDuongId: String?
+    var ten: String?
+    /// true = đoạn này không phải đường đó (bỏ tên tự suy sai).
+    var khongTen: Bool = false
+}
+
 struct LuuDuongVeRequest: Encodable {
     var tenDuongId: String?
     var ten: String?

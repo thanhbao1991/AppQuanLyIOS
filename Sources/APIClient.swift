@@ -902,6 +902,24 @@ actor APIClient {
         return env.data ?? []
     }
 
+    /// Bản đồ offline: GeoJSON tên đường quán gắn lên đoạn đường OSM (nạp thẳng làm source MapLibre). nil = lỗi/mất mạng.
+    func getBanDoTenDuongGeoJson() async -> Data? {
+        let req = makeRequest("/api/Map/ban-do/ten-duong")
+        let (data, resp) = await send(req)
+        guard let data, resp?.statusCode == 200 else { return nil }
+        return data
+    }
+
+    func ganTenDuongOsm(_ body: GanTenDuongOsmRequest) async -> ActionResult {
+        let req = makeRequest("/api/Map/ban-do/gan-ten", method: "PUT", body: jsonBody(body))
+        return await executeAction(req)
+    }
+
+    func boGanTenDuongOsm(wayId: Int64) async -> ActionResult {
+        let req = makeRequest("/api/Map/ban-do/gan-ten?wayId=\(wayId)&noiDai=true", method: "DELETE")
+        return await executeAction(req)
+    }
+
     /// Lớp tên đường cho Bản đồ khách hàng. nil = tải lỗi.
     func getMapTenDuong() async -> [MapTenDuongDto]? {
         let req = makeRequest("/api/Map/ten-duong")

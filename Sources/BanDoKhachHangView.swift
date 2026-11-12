@@ -6,17 +6,19 @@ import SwiftUI
 /// APIClient.getMapCustomers() (KhachHangAddresses.Lat/Long) thay vì crawl ngoài platform — xem
 /// memory/session liên quan (gộp theo HoaDons chỉ đạt ~50% do tỷ lệ "bắt đơn" + KhachHangId của
 /// đơn App trỏ vào shipper; gộp theo KhachHangAddresses đạt ~100%).
-private let competitorsDataURL = URL(string: "https://api.denncoffee.com/map-f90702696b23/data.json")!
-private let storeCoordinate = CLLocationCoordinate2D(latitude: 12.7095521, longitude: 108.3016576)
+let competitorsDataURL = URL(string: "https://api.denncoffee.com/map-f90702696b23/data.json")!
+let storeCoordinate = CLLocationCoordinate2D(latitude: 12.7095521, longitude: 108.3016576)
 
-private struct MapDataResponse: Decodable {
+struct MapDataResponse: Decodable {
     /// Danh sách quán trà sữa/cà phê đối thủ ở Krông Pắc — snapshot tĩnh crawl thủ công từ API
     /// khách hàng shippershipping.com (xem scripts/competitor_stores_krongpac.json), KHÔNG tự
     /// động làm mới.
     let competitors: [CompetitorLocation]?
 }
 
-private struct CompetitorLocation: Decodable {
+extension MapDataResponse: Encodable {}
+
+struct CompetitorLocation: Codable {
     let name: String
     let lat: Double
     let lon: Double
@@ -380,7 +382,8 @@ final class BanDoTenDuongModel: ObservableObject {
 }
 
 /// Chọn tên cho nét vừa vẽ: tìm trong danh sách tên đường sẵn có, hoặc thêm tên mới.
-private struct ChonTenDuongSheet: View {
+/// Dùng chung cho bản đồ offline (BanDoOfflineView).
+struct ChonTenDuongSheet: View {
     let onChon: (_ id: String?, _ ten: String?) -> Void
     @ObservedObject private var cache = TenDuongCache.shared
     @State private var tim = ""

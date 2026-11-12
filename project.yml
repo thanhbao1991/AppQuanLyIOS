@@ -6,6 +6,10 @@ packages:
   WebRTC:
     url: https://github.com/stasel/WebRTC.git
     exactVersion: 155.0.0
+  # Bản đồ khách hàng offline (12/11/2026): nền OpenStreetMap tự dựng, tên đường quán tự gắn — BanDoOfflineView.swift.
+  MapLibre:
+    url: https://github.com/maplibre/maplibre-gl-native-distribution
+    from: "6.5.0"
 options:
   bundleIdPrefix: uk.denncoffee
   deploymentTarget:
@@ -24,6 +28,8 @@ targets:
         product: libvpx
       - package: WebRTC
         product: WebRTC
+      - package: MapLibre
+        product: MapLibre
     info:
       path: Sources/Info.plist
       properties:
