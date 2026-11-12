@@ -730,7 +730,9 @@ struct TroLyCotView: View {
                     let dangChon = bamDuoc && chon == d.ten
                     HStack(spacing: 6) {
                         Circle().fill(d.mucDo == nil ? Color.green : TroLyMau.theoMucDo(d.mucDo)).frame(width: 7, height: 7)
-                        Text(d.ten).font(.caption).lineLimit(1).minimumScaleFactor(0.8)
+                        // Không dùng minimumScaleFactor: SwiftUI co chữ mọi dòng trừ dòng cuối (user 12/11/2026: "dòng
+                        // cuối có vẻ to hơn") dù tên đủ chỗ. Tên dòng ngắn, thiếu chỗ thì cắt "…".
+                        Text(d.ten).font(.caption).lineLimit(1).layoutPriority(1)
                             .foregroundColor(dangChon ? .brandPrimary : .primary)
                             .fontWeight(dangChon ? .semibold : .regular)
                         Spacer(minLength: 4)
