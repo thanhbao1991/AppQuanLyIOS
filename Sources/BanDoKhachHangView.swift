@@ -42,9 +42,10 @@ struct BanDoKhachHangView: View {
     /// Ẩn mọi vị trí (khách/đối thủ) nằm trong bán kính quanh quán — mặc định BẬT (ẩn) vì mục đích
     /// chính của màn này là tìm khu vực TIỀM NĂNG MỞ RỘNG, khu lõi sát quán đã quá rõ không cần
     /// nhìn lại mỗi lần (yêu cầu 2026-10-03). Bán kính tự chỉnh qua slider (yêu cầu 2026-10-04),
-    /// mặc định 2.2km — không còn vẽ vòng tròn minh hoạ trên map nữa (yêu cầu cùng ngày).
+    /// mặc định 0.5km từ 12/11/2026 (trước 2.2km — ẩn gần hết khách app/khách bổ sung ở gần quán) — không còn vẽ
+    /// vòng tròn minh hoạ trên map nữa.
     @State private var hideWithin2km = true
-    @State private var hideRadiusKm: Double = 2.2
+    @State private var hideRadiusKm: Double = 0.5
     /// Lớp tên đường (12/11/2026): bản đồ Apple ở Krông Pắc thiếu tên nhiều đường — server tự suy
     /// vị trí tên từ địa chỉ khách, nhân viên vẽ tay để bổ sung/sửa.
     @StateObject private var tenDuong = BanDoTenDuongModel()

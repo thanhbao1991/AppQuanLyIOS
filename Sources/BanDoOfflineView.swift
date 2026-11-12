@@ -158,7 +158,8 @@ final class BanDoOfflineModel: ObservableObject {
     @Published var hienDoiThu = true
     @Published var hienTenDuong = true
     @Published var anBanKinh = true
-    @Published var banKinhKm: Double = 2.2
+    /// 0.5km (12/11/2026, trước 2.2km): khách giao hàng qua app + khách bổ sung từ store đa số ở gần quán, để 2.2km bị ẩn gần hết.
+    @Published var banKinhKm: Double = 0.5
 
     @Published var nen: Data?
     @Published var tenDuong: Data?
