@@ -56,7 +56,7 @@ struct BanDoKhachHangView: View {
     /// mặc định 0.5km từ 12/11/2026 (trước 2.2km — ẩn gần hết khách app/khách bổ sung ở gần quán) — không còn vẽ
     /// vòng tròn minh hoạ trên map nữa.
     @State private var hideWithin2km = true
-    @State private var hideRadiusKm: Double = 0.5
+    @State private var hideRadiusKm: Double = 0
     /// Lớp tên đường (12/11/2026): bản đồ Apple ở Krông Pắc thiếu tên nhiều đường — server tự suy
     /// vị trí tên từ địa chỉ khách, nhân viên vẽ tay để bổ sung/sửa.
     @StateObject private var tenDuong = BanDoTenDuongModel()
@@ -204,8 +204,8 @@ struct BanDoKhachHangView: View {
 
             if hideWithin2km {
                 HStack(spacing: 8) {
-                    Text("0.5").font(.caption2).foregroundColor(.textMuted)
-                    Slider(value: $hideRadiusKm, in: 0.5...10, step: 0.1)
+                    Text("0").font(.caption2).foregroundColor(.textMuted)
+                    Slider(value: $hideRadiusKm, in: 0...10, step: 0.1)
                         .tint(.brandPrimary)
                     Text("10").font(.caption2).foregroundColor(.textMuted)
                 }
