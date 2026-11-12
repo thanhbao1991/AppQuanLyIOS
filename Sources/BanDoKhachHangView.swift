@@ -22,6 +22,17 @@ struct CompetitorLocation: Codable {
     let name: String
     let lat: Double
     let lon: Double
+    /// Địa chỉ Google ("22 Trương Công Định, Phước An, …"); bản data.json cũ không có.
+    var address: String? = nil
+
+    /// Số nhà đầu địa chỉ ("22", "2a", "12/3"); bỏ qua plus code kiểu "P9H8+H8W".
+    var soNha: String? {
+        guard let dau = address?.split(separator: ",").first.map({ $0.trimmingCharacters(in: .whitespaces) }),
+              !dau.contains("+"),
+              let r = dau.range(of: #"^\d+[A-Za-z]?(/\d+[A-Za-z]?)?(?=\s)"#, options: .regularExpression)
+        else { return nil }
+        return String(dau[r])
+    }
 }
 
 /// Bản đồ mật độ khách hàng quanh quán — dùng Apple MapKit THẬT qua UIKit `MKMapView` (không phải

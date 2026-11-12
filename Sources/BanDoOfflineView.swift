@@ -402,7 +402,7 @@ private struct BanDoMapLibreView: UIViewRepresentable {
                 guard ngoaiBanKinh(d.lat, d.lon) else { return nil }
                 let f = MLNPointFeature()
                 f.coordinate = CLLocationCoordinate2D(latitude: d.lat, longitude: d.lon)
-                f.attributes = ["n": d.name]
+                f.attributes = ["n": d.soNha.map { "\(d.name)\nSố \($0)" } ?? d.name]
                 return f
             } : []
             (style.source(withIdentifier: "doithu") as? MLNShapeSource)?.shape = MLNShapeCollectionFeature(shapes: doiThu)
