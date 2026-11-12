@@ -902,6 +902,20 @@ actor APIClient {
         return env.data ?? []
     }
 
+    /// Lớp tên đường cho Bản đồ khách hàng. nil = tải lỗi.
+    func getMapTenDuong() async -> [MapTenDuongDto]? {
+        let req = makeRequest("/api/Map/ten-duong")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[MapTenDuongDto]>.self, from: data), env.isSuccess else { return nil }
+        return env.data ?? []
+    }
+
+    /// Lưu nét vẽ tay (theo id đường, hoặc theo tên — server tự tạo tên mới nếu chưa có). diem rỗng = xoá nét.
+    func luuDuongVe(_ body: LuuDuongVeRequest) async -> ActionResult {
+        let req = makeRequest("/api/Map/ten-duong/duong-ve", method: "PUT", body: jsonBody(body))
+        return await executeAction(req)
+    }
+
     /// Bán kính ship trung bình theo tháng — đọc từ DonViTriLog (DB), dùng cho BaoHoaView.
     func getShipRadiusTrend(soThang: Int = 12) async -> [ShipRadiusThangItemDto] {
         let req = makeRequest("/api/Map/ship-radius-trend?soThang=\(soThang)")

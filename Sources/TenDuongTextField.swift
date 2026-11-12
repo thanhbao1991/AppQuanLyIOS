@@ -16,6 +16,15 @@ final class TenDuongCache: ObservableObject {
             loadTask = nil
         }
     }
+
+    /// Tải lại sau khi chỗ khác vừa thêm tên đường (vd vẽ đường mới trên Bản đồ khách hàng).
+    func lamMoi() {
+        loadTask?.cancel()
+        loadTask = Task {
+            if let moi = await APIClient.shared.getTenDuongListOrNil() { items = moi }
+            loadTask = nil
+        }
+    }
 }
 
 /// TextField địa chỉ có gợi ý tên đường — khớp TenDuongBox bên TraSuaApp.Desktop: nhận diện số nhà

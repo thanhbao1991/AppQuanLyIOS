@@ -575,6 +575,24 @@ struct MapCustomerDto: Codable {
     let seasonal: Bool
 }
 
+/// Lớp tên đường trên Bản đồ khách hàng — GET /api/Map/ten-duong. `diem` là các cặp [lat, lng]:
+/// 1 điểm = chỉ đặt nhãn, nhiều điểm = đường. `tuDong` = server tự suy từ địa chỉ khách (chỉ đặt
+/// nhãn dọc đường, không vẽ nét vì điểm là nhà khách, không phải tim đường); false = nhân viên vẽ tay.
+struct MapTenDuongDto: Decodable, Identifiable, Equatable {
+    let id: String
+    let ten: String
+    let diem: [[Double]]
+    let tuDong: Bool
+    let soKhach: Int
+}
+
+struct LuuDuongVeRequest: Encodable {
+    var tenDuongId: String?
+    var ten: String?
+    /// Rỗng = xoá nét vẽ tay (trở về tự suy).
+    var diem: [[Double]]
+}
+
 // ---- Voucher app khách (AppDatHangIOS) ----
 
 struct VoucherDto: Codable, Identifiable {
