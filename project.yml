@@ -30,6 +30,9 @@ targets:
         product: WebRTC
       - package: MapLibre
         product: MapLibre
+      # Ghép giọng đọc push có số tiền (13/11/2026) — xem ThongBaoExt/NotificationService.swift.
+      - target: ThongBaoExt
+        embed: true
     info:
       path: Sources/Info.plist
       properties:
@@ -99,9 +102,34 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_VERSION: "5.0"
         CODE_SIGN_ENTITLEMENTS: AppMobileIOS.entitlements
+        # CI truyền APP_PROFILE/EXT_PROFILE khi ký thật (mỗi target 1 hồ sơ) — bản unsigned để trống.
+        PROVISIONING_PROFILE_SPECIFIER: $(APP_PROFILE)
     scheme:
       testTargets:
         - AppMobileIOSTests
+  # Notification Service Extension: nối các mảnh âm (tên khách, thao tác, chữ số) backend gửi trong push thành
+  # 1 file đọc "Tên, Thao tác, Số tiền". Dùng chung App Group group.com.denncoffee.appquanly với app chính.
+  ThongBaoExt:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ThongBaoExt
+    info:
+      path: ThongBaoExt/Info.plist
+      properties:
+        CFBundleDisplayName: ThongBaoExt
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.usernotifications.service
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).NotificationService
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.denncoffee.appquanly.thongbao
+        TARGETED_DEVICE_FAMILY: "1"
+        SWIFT_VERSION: "5.0"
+        CODE_SIGN_ENTITLEMENTS: ThongBaoExt/ThongBaoExt.entitlements
+        PROVISIONING_PROFILE_SPECIFIER: $(EXT_PROFILE)
   AppMobileIOSTests:
     type: bundle.unit-test
     platform: iOS

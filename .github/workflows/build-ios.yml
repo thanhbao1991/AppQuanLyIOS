@@ -154,6 +154,8 @@ jobs:
           SHORT_SHA=$(git rev-parse --short=8 HEAD)
           /usr/libexec/PlistBuddy -c "Add :DennGitSha string ${SHORT_SHA}" Sources/Info.plist
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ github.run_number }}" Sources/Info.plist
+          # Extension phải cùng CFBundleVersion với app, không thì App Store Connect từ chối bản tải lên.
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ github.run_number }}" ThongBaoExt/Info.plist
 
       # Theo huong dan chinh thuc cua GitHub cho macOS runner:
       # https://docs.github.com/actions/deployment/deploying-xcode-applications/installing-an-apple-certificate-on-macos-runners-for-xcode-development
@@ -162,15 +164,19 @@ jobs:
           CERTIFICATE_BASE64: ${{ secrets.IOS_DIST_CERTIFICATE_BASE64 }}
           CERTIFICATE_PASSWORD: ${{ secrets.IOS_DIST_CERTIFICATE_PASSWORD }}
           PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          # Hồ sơ của Notification Service Extension ThongBaoExt (com.denncoffee.appquanly.thongbao, 13/11/2026).
+          EXT_PROFILE_BASE64: ${{ secrets.IOS_EXT_PROVISIONING_PROFILE_BASE64 }}
           KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
         run: |
           set -e
           CERT_PATH="$RUNNER_TEMP/dist_cert.p12"
           PROFILE_PATH="$RUNNER_TEMP/profile.mobileprovision"
+          EXT_PROFILE_PATH="$RUNNER_TEMP/ext_profile.mobileprovision"
           KEYCHAIN_PATH="$RUNNER_TEMP/signing.keychain-db"
 
           echo -n "$CERTIFICATE_BASE64" | base64 --decode -o "$CERT_PATH"
           echo -n "$PROFILE_BASE64" | base64 --decode -o "$PROFILE_PATH"
+          echo -n "$EXT_PROFILE_BASE64" | base64 --decode -o "$EXT_PROFILE_PATH"
 
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
@@ -181,11 +187,13 @@ jobs:
 
           mkdir -p ~/Library/MobileDevice/"Provisioning Profiles"
           cp "$PROFILE_PATH" ~/Library/MobileDevice/"Provisioning Profiles"/profile.mobileprovision
+          cp "$EXT_PROFILE_PATH" ~/Library/MobileDevice/"Provisioning Profiles"/ext_profile.mobileprovision
 
       - name: Archive (signed, App Store distribution)
         env:
           TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           PROFILE_NAME: ${{ secrets.IOS_PROVISIONING_PROFILE_NAME }}
+        # Mỗi target 1 hồ sơ: project.yml đặt PROVISIONING_PROFILE_SPECIFIER = $(APP_PROFILE) / $(EXT_PROFILE).
         run: |
           xcodebuild archive \
             -project AppMobileIOS.xcodeproj \
@@ -194,7 +202,8 @@ jobs:
             -archivePath build/AppMobileIOS.xcarchive \
             CODE_SIGN_STYLE=Manual \
             DEVELOPMENT_TEAM="$TEAM_ID" \
-            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
+            APP_PROFILE="$PROFILE_NAME" \
+            EXT_PROFILE="AppQuanLy ThongBaoExt AppStore" \
             CODE_SIGN_IDENTITY="Apple Distribution"
 
       - name: Export .ipa (App Store method)
@@ -217,6 +226,8 @@ jobs:
             <dict>
               <key>com.denncoffee.appquanly</key>
               <string>$PROFILE_NAME</string>
+              <key>com.denncoffee.appquanly.thongbao</key>
+              <string>AppQuanLy ThongBaoExt AppStore</string>
             </dict>
           </dict>
           </plist>

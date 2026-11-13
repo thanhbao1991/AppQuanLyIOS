@@ -6,9 +6,7 @@ struct TtsSoundsView: View {
     @State private var index: [String: String] = [:]
     @State private var dangTai = false
 
-    private var dir: URL? {
-        FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first?.appendingPathComponent("Sounds")
-    }
+    private var dir: URL? { TtsSoundSync.soundsDir }
 
     var body: some View {
         List {
