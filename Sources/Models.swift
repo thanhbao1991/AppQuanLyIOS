@@ -606,6 +606,12 @@ struct LuuSoNhaBanDoRequest: Encodable {
     var long: Double
 }
 
+/// Đường/hẻm OSM còn thiếu, nhân viên vẽ trên bản đồ offline (id nil = thêm). diem = [[lat, lng], ...].
+struct LuuDuongVeBanDoRequest: Encodable {
+    var id: String?
+    var diem: [[Double]]
+}
+
 struct LuuDuongVeRequest: Encodable {
     var tenDuongId: String?
     var ten: String?

@@ -107,6 +107,9 @@ struct BanDoOfflineView: View {
             if c.nguon == "tu" {
                 Button("Tên này sai — bỏ tên", role: .destructive) { Task { await m.ganTen(c, tenDuongId: nil, ten: nil, khongTen: true) } }
             }
+            if c.duongVeId != nil {
+                Button("Xoá đường đã vẽ này", role: .destructive) { Task { await m.xoaDuongVe(c) } }
+            }
             Button("Đóng", role: .cancel) { m.boChon() }
         } message: { c in
             Text(moTa(c))
@@ -132,7 +135,39 @@ struct BanDoOfflineView: View {
     /// Nút dưới bản đồ: gán số nhà / xác nhận khúc tại chỗ đang đứng (GPS live), chọn nhiều khúc.
     @ViewBuilder
     private func thanhThaoTac() -> some View {
-        if m.cheDoNhieuKhuc {
+        if m.cheDoVe {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(m.soDiemVe == 0
+                     ? "Chạm từng điểm dọc theo hẻm/đường còn thiếu (chỗ cong chạm thêm), hoặc bấm 📍 khi đang đứng tại đó."
+                     : "Đã chấm \(m.soDiemVe) điểm\(m.soDiemVe < 2 ? " — cần ít nhất 2" : "")")
+                    .font(.footnote.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 8) {
+                    Button { m.boDiemVeCuoi() } label: { Image(systemName: "arrow.uturn.backward") }
+                        .buttonStyle(.bordered)
+                        .disabled(m.soDiemVe == 0)
+                        .accessibilityLabel("Bỏ điểm cuối")
+                    Button { m.themDiemVeTaiCho() } label: { Image(systemName: "location.fill") }
+                        .buttonStyle(.bordered)
+                        .accessibilityLabel("Thêm điểm tại chỗ đang đứng")
+                    Spacer(minLength: 4)
+                    Button("Huỷ") { m.huyVe() }
+                        .buttonStyle(.bordered)
+                    Button {
+                        Task { await m.luuDuongVe() }
+                    } label: {
+                        if m.dangLuuVe { ProgressView() } else { Text("Lưu đường") }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.brandPrimary)
+                    .disabled(m.soDiemVe < 2 || m.dangLuuVe)
+                }
+            }
+            .tint(.brandPrimary)
+            .padding(.horizontal, 14).padding(.vertical, 10)
+            .background(RoundedRectangle(cornerRadius: 14).fill(Color(uiColor: .systemBackground)).shadow(radius: 4))
+            .padding(.horizontal, 12)
+        } else if m.cheDoNhieuKhuc {
             HStack(spacing: 10) {
                 Text(m.soKhucChon == 0 ? "Chạm các khúc cùng 1 đường" : "Đã chọn \(m.soKhucChon) khúc")
                     .font(.footnote.weight(.semibold))
@@ -151,21 +186,26 @@ struct BanDoOfflineView: View {
             HStack(spacing: 8) {
                 nutThaoTac("Số nhà tại đây", icon: "mappin.and.ellipse") { batDauSoNhaTaiCho() }
                 nutThaoTac("Khúc đang đứng", icon: "road.lanes") { m.timKhucTaiCho() }
-                nutThaoTac("Chọn nhiều khúc", icon: "checklist") { m.vaoNhieuKhuc() }
+                nutThaoTac("Nhiều khúc", icon: "checklist") { m.vaoNhieuKhuc() }
+                nutThaoTac("Vẽ đường", icon: "scribble.variable") { m.vaoVe() }
             }
             .padding(.horizontal, 12)
         }
     }
 
+    /// 4 nút 1 hàng: icon trên, chữ dưới (bản 3 nút chữ ngang bị cắt "Khúc đang đứ…").
     private func nutThaoTac(_ ten: String, icon: String, _ hanhDong: @escaping () -> Void) -> some View {
         Button(action: hanhDong) {
-            Label(ten, systemImage: icon)
-                .font(.caption.weight(.semibold))
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-                .padding(.horizontal, 10).padding(.vertical, 9)
-                .frame(maxWidth: .infinity)
-                .background(Capsule().fill(Color(uiColor: .systemBackground)).shadow(radius: 3))
+            VStack(spacing: 3) {
+                Image(systemName: icon).font(.system(size: 16, weight: .semibold))
+                Text(ten)
+                    .font(.caption2.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
+            .padding(.horizontal, 6).padding(.vertical, 8)
+            .frame(maxWidth: .infinity)
+            .background(RoundedRectangle(cornerRadius: 12).fill(Color(uiColor: .systemBackground)).shadow(radius: 3))
         }
         .buttonStyle(.plain)
         .foregroundColor(.brandPrimary)
@@ -291,6 +331,8 @@ struct DuongDangChon: Equatable {
     let ten: String?
     /// "tay" | "tu" | "osm" | nil (chưa có tên)
     let nguon: String?
+    /// Khác nil = đường nhân viên tự vẽ (OSM thiếu) → xoá được.
+    var duongVeId: String? = nil
 }
 
 // MARK: - Model
@@ -332,6 +374,12 @@ final class BanDoOfflineModel: ObservableObject {
     var yeuCauTimKhuc: CLLocationCoordinate2D?
     @Published var phienYeuCau = 0
 
+    /// Vẽ đường/hẻm OSM còn thiếu: chạm từng điểm dọc hẻm (hoặc bấm 📍 thêm điểm tại chỗ đang đứng).
+    @Published var cheDoVe = false
+    @Published private(set) var soDiemVe = 0
+    private(set) var diemVe: [CLLocationCoordinate2D] = []
+    @Published var dangLuuVe = false
+
     @Published var dangTai = false
     @Published var dangDungBanLuu = false
     @Published var thongBao: String?
@@ -339,9 +387,11 @@ final class BanDoOfflineModel: ObservableObject {
     /// way id → (tên, nguồn) của lớp tên quán; "an" = way đã gán tay (ẩn tên OSM gốc).
     private(set) var tenTheoWay: [Int64: (ten: String, nguon: String)] = [:]
     private(set) var wayAnTenOsm: [Int64] = []
+    /// way id (âm) của đường tự vẽ → id bản ghi (để xoá).
+    private(set) var duongVeTheoWay: [Int64: String] = [:]
 
     var chuKy: String {
-        "\(hienDiaPhuong)|\(hienMuaVu)|\(hienDoiThu)|\(hienTenDuong)|\(anBanKinh)|\(banKinhKm)|\(phienBanDuLieu)|\(chon?.wayId ?? 0)|\(cheDoNhieuKhuc)|\(soKhucChon)|\(phienYeuCau)"
+        "\(hienDiaPhuong)|\(hienMuaVu)|\(hienDoiThu)|\(hienTenDuong)|\(anBanKinh)|\(banKinhKm)|\(phienBanDuLieu)|\(chon?.wayId ?? 0)|\(cheDoNhieuKhuc)|\(soKhucChon)|\(phienYeuCau)|\(cheDoVe)|\(soDiemVe)"
     }
 
     private static let nenURL = URL(string: "https://api.denncoffee.com/ban-do/nen.geojson")!
@@ -414,17 +464,23 @@ final class BanDoOfflineModel: ObservableObject {
         tenDuong = data
         var map: [Int64: (ten: String, nguon: String)] = [:]
         var an: [Int64] = []
+        var ve: [Int64: String] = [:]
         if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
             for f in (obj["features"] as? [[String: Any]]) ?? [] {
                 guard let p = f["properties"] as? [String: Any],
-                      let w = (p["w"] as? NSNumber)?.int64Value,
-                      let n = p["n"] as? String else { continue }
+                      let w = (p["w"] as? NSNumber)?.int64Value else { continue }
+                if p["g"] as? String == "ve" {
+                    if let id = p["id"] as? String { ve[w] = id }
+                    continue
+                }
+                guard let n = p["n"] as? String else { continue }
                 map[w] = (n, (p["g"] as? String) ?? "tu")
             }
             an = ((obj["an"] as? [NSNumber]) ?? []).map { $0.int64Value }
         }
         tenTheoWay = map
         wayAnTenOsm = an
+        duongVeTheoWay = ve
     }
 
     func chonDuong(wayId: Int64, tenOsm: String?) {
@@ -437,6 +493,67 @@ final class BanDoOfflineModel: ObservableObject {
         } else {
             chon = DuongDangChon(wayId: wayId, ten: nil, nguon: nil)
         }
+        chon?.duongVeId = duongVeTheoWay[wayId]
+    }
+
+    // MARK: Vẽ đường còn thiếu
+
+    func vaoVe() {
+        chon = nil
+        thoatNhieuKhuc()
+        diemVe = []
+        soDiemVe = 0
+        cheDoVe = true
+    }
+
+    func huyVe() {
+        diemVe = []
+        soDiemVe = 0
+        cheDoVe = false
+    }
+
+    func themDiemVe(_ c: CLLocationCoordinate2D) {
+        diemVe.append(c)
+        soDiemVe = diemVe.count
+    }
+
+    func boDiemVeCuoi() {
+        guard !diemVe.isEmpty else { return }
+        diemVe.removeLast()
+        soDiemVe = diemVe.count
+    }
+
+    /// Thêm điểm tại chỗ đang đứng (đi dọc hẻm, mỗi đoạn cong bấm 1 lần).
+    func themDiemVeTaiCho() {
+        guard let vt = viTri.hienTai else {
+            thongBao = viTri.biTuChoi ? "Chưa cho phép vị trí — bật trong Cài đặt." : "Đang lấy vị trí, thử lại sau vài giây."
+            viTri.batDau()
+            return
+        }
+        themDiemVe(vt.coordinate)
+    }
+
+    @MainActor
+    func luuDuongVe() async {
+        guard diemVe.count >= 2, !dangLuuVe else { return }
+        dangLuuVe = true
+        let r = await APIClient.shared.luuDuongVeBanDo(LuuDuongVeBanDoRequest(
+            id: nil, diem: diemVe.map { [$0.latitude, $0.longitude] }))
+        dangLuuVe = false
+        thongBao = r.message ?? (r.success ? "Đã thêm đường." : "Lưu thất bại.")
+        if r.success {
+            huyVe()
+            await taiLaiTen()
+        }
+    }
+
+    @MainActor
+    func xoaDuongVe(_ c: DuongDangChon) async {
+        guard let id = c.duongVeId else { return }
+        let r = await APIClient.shared.xoaDuongVeBanDo(id: id)
+        thongBao = r.message ?? (r.success ? "Đã xoá." : "Xoá thất bại.")
+        chon = nil
+        if r.success { await taiLaiTen() }
     }
 
     func boChon() { chon = nil }
@@ -655,6 +772,19 @@ private struct BanDoMapLibreView: UIViewRepresentable {
                 (style.source(withIdentifier: "chon") as? MLNShapeSource)?.shape = MLNShapeCollectionFeature(shapes: [])
             }
 
+            // Nét đang vẽ (chưa lưu): đường nối các điểm + chấm từng điểm.
+            var nhap: [MLNShape & MLNFeature] = []
+            if m.cheDoVe {
+                var ds = m.diemVe
+                if ds.count >= 2 { nhap.append(MLNPolylineFeature(coordinates: &ds, count: UInt(ds.count))) }
+                for c in m.diemVe {
+                    let p = MLNPointFeature()
+                    p.coordinate = c
+                    nhap.append(p)
+                }
+            }
+            (style.source(withIdentifier: "venhap") as? MLNShapeSource)?.shape = MLNShapeCollectionFeature(shapes: nhap)
+
             if let toaDo = m.yeuCauTimKhuc {
                 m.yeuCauTimKhuc = nil
                 timKhucGanNhat(map, toaDo)
@@ -668,7 +798,7 @@ private struct BanDoMapLibreView: UIViewRepresentable {
                 guard let self, let map else { return }
                 let p = map.convert(toaDo, toPointTo: map)
                 let vung = CGRect(x: p.x - 90, y: p.y - 90, width: 180, height: 180)
-                let ds = map.visibleFeatures(in: vung, styleLayerIdentifiers: ["duong"])
+                let ds = map.visibleFeatures(in: vung, styleLayerIdentifiers: Self.lopDuong)
                 var tot: (f: MLNFeature, d: Double)?
                 for f in ds {
                     guard f.attribute(forKey: "w") != nil, let line = f as? MLNPolyline else { continue }
@@ -689,6 +819,9 @@ private struct BanDoMapLibreView: UIViewRepresentable {
                 }
             }
         }
+
+        /// Lớp chạm chọn được khúc: đường OSM + đường nhân viên tự vẽ.
+        static let lopDuong: Set<String> = ["duong", "duong-ve"]
 
         /// Khoảng cách (m) từ 1 điểm tới đường gấp khúc (xấp xỉ phẳng — đủ cho vài chục mét).
         static func khoangCachToiDuong(_ c: CLLocationCoordinate2D, _ line: MLNPolyline) -> Double {
@@ -711,7 +844,7 @@ private struct BanDoMapLibreView: UIViewRepresentable {
         }
 
         @objc func nhanGiu(_ g: UILongPressGestureRecognizer) {
-            guard g.state == .began, let map = g.view as? MLNMapView, !m.cheDoNhieuKhuc else { return }
+            guard g.state == .began, let map = g.view as? MLNMapView, !m.cheDoNhieuKhuc, !m.cheDoVe else { return }
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             m.nhapSoNha(tai: map.convert(g.location(in: map), toCoordinateFrom: map))
         }
@@ -726,6 +859,12 @@ private struct BanDoMapLibreView: UIViewRepresentable {
         @objc func cham(_ g: UITapGestureRecognizer) {
             guard g.state == .ended, let map = g.view as? MLNMapView else { return }
             let p = g.location(in: map)
+            // Đang vẽ đường: mỗi chạm = 1 điểm.
+            if m.cheDoVe {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                m.themDiemVe(map.convert(p, toCoordinateFrom: map))
+                return
+            }
             let vung = CGRect(x: p.x - 14, y: p.y - 14, width: 28, height: 28)
             // Chạm số nhà gán tay → sửa/xoá.
             if !m.cheDoNhieuKhuc,
@@ -735,7 +874,7 @@ private struct BanDoMapLibreView: UIViewRepresentable {
                 m.soNhaChon = SoNhaDaChon(id: id, so: (sn.attribute(forKey: "n") as? String) ?? "", toaDo: sn.coordinate)
                 return
             }
-            let fs = map.visibleFeatures(in: vung, styleLayerIdentifiers: ["duong"])
+            let fs = map.visibleFeatures(in: vung, styleLayerIdentifiers: Self.lopDuong)
             guard let f = fs.first(where: { $0.attribute(forKey: "w") != nil }),
                   let w = (f.attribute(forKey: "w") as? NSNumber)?.int64Value else {
                 if !m.cheDoNhieuKhuc { m.boChon() }
@@ -767,6 +906,7 @@ private let styleJSON = #"""
             "attribution": "© OpenStreetMap contributors"},
     "ten": {"type": "geojson", "data": {"type": "FeatureCollection", "features": []}},
     "chon": {"type": "geojson", "data": {"type": "FeatureCollection", "features": []}},
+    "venhap": {"type": "geojson", "data": {"type": "FeatureCollection", "features": []}},
     "khach": {"type": "geojson", "data": {"type": "FeatureCollection", "features": []}},
     "doithu": {"type": "geojson", "data": {"type": "FeatureCollection", "features": []}},
     "quan": {"type": "geojson", "data": {"type": "FeatureCollection", "features": []}}
@@ -797,6 +937,17 @@ private let styleJSON = #"""
                "line-width": ["interpolate", ["exponential", 1.6], ["zoom"],
                  12, ["match", ["get", "c"], ["motorway", "trunk", "primary"], 2.5, ["secondary", "tertiary"], 1.8, ["track", "path", "footway"], 0.6, 0.8],
                  18, ["match", ["get", "c"], ["motorway", "trunk", "primary"], 22, ["secondary", "tertiary"], 18, ["track", "path", "footway"], 3, 13]]}},
+    {"id": "duong-ve-vien", "type": "line", "source": "ten", "filter": ["==", ["get", "g"], "ve"],
+     "layout": {"line-cap": "round", "line-join": "round"},
+     "paint": {"line-color": "#D6CEC0", "line-width": ["interpolate", ["exponential", 1.6], ["zoom"], 12, 1.2, 18, 16]}},
+    {"id": "duong-ve", "type": "line", "source": "ten", "filter": ["==", ["get", "g"], "ve"],
+     "layout": {"line-cap": "round", "line-join": "round"},
+     "paint": {"line-color": "#FFFFFF", "line-width": ["interpolate", ["exponential", 1.6], ["zoom"], 12, 0.8, 18, 13]}},
+    {"id": "ve-nhap", "type": "line", "source": "venhap", "filter": ["==", ["geometry-type"], "LineString"],
+     "layout": {"line-cap": "round", "line-join": "round"},
+     "paint": {"line-color": "#1B6B5F", "line-width": 4, "line-dasharray": [2, 1]}},
+    {"id": "ve-nhap-diem", "type": "circle", "source": "venhap", "filter": ["==", ["geometry-type"], "Point"],
+     "paint": {"circle-color": "#1B6B5F", "circle-radius": 5, "circle-stroke-color": "#FFFFFF", "circle-stroke-width": 2}},
     {"id": "duong-chon", "type": "line", "source": "chon",
      "layout": {"line-cap": "round", "line-join": "round"},
      "paint": {"line-color": "#E53935", "line-opacity": 0.55,
