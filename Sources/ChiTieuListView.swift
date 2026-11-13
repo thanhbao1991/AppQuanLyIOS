@@ -333,6 +333,7 @@ private struct EditExpenseSheet: View {
     @State private var billThang: Bool
     @State private var saving = false
     @State private var errorMessage: String?
+    @State private var warningAlertText: String?
 
     /// Tự tính ngược từ Thành tiền/Số lượng — xem QuantityPriceRow.
     private var donGia: Double { soLuong > 0 ? thanhTien / soLuong : 0 }
@@ -392,6 +393,15 @@ private struct EditExpenseSheet: View {
                 .overlay(Divider(), alignment: .top)
             }
         }
+        // Backend đã lưu nhưng đơn giá mới lệch lớn so với lần mua gần nhất — chỉ cảnh báo, không chặn.
+        .alert("Giá bất thường", isPresented: Binding(
+            get: { warningAlertText != nil },
+            set: { if !$0 { warningAlertText = nil } }
+        )) {
+            Button("Đã hiểu") { onSaved(); dismiss() }
+        } message: {
+            Text(warningAlertText ?? "")
+        }
     }
 
     private func save() async {
@@ -407,8 +417,12 @@ private struct EditExpenseSheet: View {
         let result = await APIClient.shared.updateChiTieu(id: item.id, body)
         saving = false
         if result.success {
-            onSaved()
-            dismiss()
+            if let warning = result.warnings.first {
+                warningAlertText = warning
+            } else {
+                onSaved()
+                dismiss()
+            }
         } else {
             errorMessage = result.message ?? "Không lưu được."
         }
