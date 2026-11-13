@@ -762,10 +762,7 @@ private struct BanDoMapLibreView: UIViewRepresentable {
                 phienBanDaNap = m.phienBanDuLieu
                 datShape(style, "nen", m.nen)
                 datShape(style, "ten", m.tenDuong)
-                (style.layer(withIdentifier: "duong-ten-osm") as? MLNVectorStyleLayer)?.predicate =
-                    m.wayAnTenOsm.isEmpty
-                        ? NSPredicate(format: "k == 'road' AND n != nil")
-                        : NSPredicate(format: "k == 'road' AND n != nil AND NOT (w IN %@)", m.wayAnTenOsm.map { NSNumber(value: $0) })
+                // Tên OSM giờ do backend trả (g = "nhan-osm", đã bỏ khúc gán tay) — không lọc "an" ở đây nữa.
                 (style.source(withIdentifier: "quan") as? MLNShapeSource)?.shape = {
                     let f = MLNPointFeature()
                     f.coordinate = storeCoordinate
@@ -1015,23 +1012,23 @@ private let styleJSON = #"""
     {"id": "khach", "type": "circle", "source": "khach",
      "paint": {"circle-color": ["match", ["get", "s"], 1, "#F08A00", "#1E4E8C"], "circle-opacity": 0.6,
                "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 2.5, 16, 5]}},
-    {"id": "duong-ten-osm", "type": "symbol", "source": "nen", "minzoom": 13,
-     "filter": ["all", ["==", ["get", "k"], "road"], ["has", "n"]],
+    {"id": "duong-ten-osm", "type": "symbol", "source": "ten", "minzoom": 12,
+     "filter": ["==", ["get", "g"], "nhan-osm"],
      "layout": {"symbol-placement": "line", "text-field": ["get", "n"], "text-font": ["Noto Sans Regular"],
-                "text-size": ["interpolate", ["linear"], ["zoom"], 13, 10, 18, 14], "text-max-angle": 30,
-                "symbol-spacing": 350},
+                "text-size": ["interpolate", ["linear"], ["zoom"], 12, 10, 18, 14], "text-max-angle": 40,
+                "symbol-spacing": 250},
      "paint": {"text-color": "#5F5F5F", "text-halo-color": "#FFFFFF", "text-halo-width": 1.6}},
-    {"id": "ten-tu", "type": "symbol", "source": "ten", "minzoom": 13,
-     "filter": ["==", ["get", "g"], "tu"],
+    {"id": "ten-tu", "type": "symbol", "source": "ten", "minzoom": 12,
+     "filter": ["==", ["get", "g"], "nhan-tu"],
      "layout": {"symbol-placement": "line", "text-field": ["get", "n"], "text-font": ["Noto Sans Regular"],
-                "text-size": ["interpolate", ["linear"], ["zoom"], 13, 10, 18, 14], "text-max-angle": 30,
-                "symbol-spacing": 350},
+                "text-size": ["interpolate", ["linear"], ["zoom"], 12, 10, 18, 14], "text-max-angle": 40,
+                "symbol-spacing": 250},
      "paint": {"text-color": "#4A4A4A", "text-halo-color": "#FFFFFF", "text-halo-width": 1.6}},
     {"id": "ten-tay", "type": "symbol", "source": "ten", "minzoom": 12,
-     "filter": ["==", ["get", "g"], "tay"],
+     "filter": ["==", ["get", "g"], "nhan-tay"],
      "layout": {"symbol-placement": "line", "text-field": ["get", "n"], "text-font": ["Noto Sans Bold"],
-                "text-size": ["interpolate", ["linear"], ["zoom"], 12, 10, 18, 15], "text-max-angle": 30,
-                "symbol-spacing": 350},
+                "text-size": ["interpolate", ["linear"], ["zoom"], 12, 10, 18, 15], "text-max-angle": 40,
+                "symbol-spacing": 250},
      "paint": {"text-color": "#1B6B5F", "text-halo-color": "#FFFFFF", "text-halo-width": 1.8}},
     {"id": "ten-khu", "type": "symbol", "source": "ten", "minzoom": 12,
      "filter": ["==", ["get", "g"], "khu"],
