@@ -800,7 +800,7 @@ private struct BanDoMapLibreView: UIViewRepresentable {
             } : []
             (style.source(withIdentifier: "doithu") as? MLNShapeSource)?.shape = MLNShapeCollectionFeature(shapes: doiThu)
 
-            for id in ["ten-diem", "ten-khu", "so-nha", "goi-y", "goi-y-ten"] {
+            for id in ["ten-diem", "ten-diem-tay", "ten-khu", "so-nha", "goi-y", "goi-y-ten"] {
                 style.layer(withIdentifier: id)?.isVisible = m.hienTenDuong
             }
             if m.cheDoNhieuKhuc {
@@ -1025,13 +1025,18 @@ private let styleJSON = #"""
                 "text-size": ["interpolate", ["linear"], ["zoom"], 15.5, 9, 18, 12]},
      "paint": {"text-color": ["case", ["has", "t"], "#1B6B5F", "#8A6A3A"], "text-halo-color": "#FFFFFF", "text-halo-width": 1.4}},
     {"id": "ten-diem", "type": "symbol", "source": "ten", "minzoom": 12,
-     "filter": ["in", ["get", "g"], ["literal", ["nhand-tay", "nhand-tu", "nhand-osm"]]],
-     "layout": {"text-field": ["get", "n"],
-                "text-font": ["Noto Sans Bold"],
+     "filter": ["in", ["get", "g"], ["literal", ["nhand-tu", "nhand-osm"]]],
+     "layout": {"text-field": ["get", "n"], "text-font": ["Noto Sans Regular"],
                 "text-size": ["interpolate", ["linear"], ["zoom"], 12, 6.5, 14, 8, 16, 9.5, 18, 12],
                 "text-rotate": ["get", "r"], "text-rotation-alignment": "map", "text-allow-overlap": true},
-     "paint": {"text-color": ["match", ["get", "g"], "nhand-tay", "#1B6B5F", "nhand-osm", "#5F5F5F", "#4A4A4A"],
+     "paint": {"text-color": ["match", ["get", "g"], "nhand-osm", "#555555", "#6E6E6E"],
                "text-halo-color": "#FFFFFF", "text-halo-width": 1.5}},
+    {"id": "ten-diem-tay", "type": "symbol", "source": "ten", "minzoom": 12,
+     "filter": ["==", ["get", "g"], "nhand-tay"],
+     "layout": {"text-field": ["get", "n"], "text-font": ["Noto Sans Bold"],
+                "text-size": ["interpolate", ["linear"], ["zoom"], 12, 6.5, 14, 8, 16, 9.5, 18, 12],
+                "text-rotate": ["get", "r"], "text-rotation-alignment": "map", "text-allow-overlap": true},
+     "paint": {"text-color": "#1B6B5F", "text-halo-color": "#FFFFFF", "text-halo-width": 1.5}},
     {"id": "doithu", "type": "circle", "source": "doithu",
      "paint": {"circle-color": "#B03030", "circle-radius": 6, "circle-stroke-color": "#FFFFFF", "circle-stroke-width": 1.5}},
     {"id": "doithu-ten", "type": "symbol", "source": "doithu", "minzoom": 14,
