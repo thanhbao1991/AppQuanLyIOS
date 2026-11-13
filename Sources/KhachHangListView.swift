@@ -234,6 +234,8 @@ private struct ContactRowEditor: View {
     let placeholder: String
     let keyboard: UIKeyboardType
     let allowEmpty: Bool
+    /// Ô địa chỉ: gợi ý tên đường chuẩn (TenDuongTextField) để bớt gõ sai chính tả (rà 13/11/2026: 161 địa chỉ sai).
+    var goiYTenDuong: Bool = false
 
     var body: some View {
         ForEach($rows) { $row in
@@ -246,8 +248,12 @@ private struct ContactRowEditor: View {
                 }
                 .buttonStyle(.plain)
 
-                TextField(placeholder, text: $row.value)
-                    .keyboardType(keyboard)
+                if goiYTenDuong {
+                    TenDuongTextField(text: $row.value, placeholder: placeholder, keyboard: keyboard, kieuForm: true)
+                } else {
+                    TextField(placeholder, text: $row.value)
+                        .keyboardType(keyboard)
+                }
             }
             // Xoá dòng bằng vuốt trái (quy ước mọi màn trong Menu) — nút thùng rác cũ dễ chạm nhầm.
             .swipeActions(edge: .trailing) {
@@ -305,7 +311,7 @@ private struct KhachHangEditSheet: View {
                 }
 
                 Section("Địa chỉ") {
-                    ContactRowEditor(rows: $addressRows, placeholder: "Địa chỉ", keyboard: .default, allowEmpty: true)
+                    ContactRowEditor(rows: $addressRows, placeholder: "Địa chỉ", keyboard: .default, allowEmpty: true, goiYTenDuong: true)
                     Button {
                         addressRows.append(EditContactRow(id: UUID().uuidString, value: "", isDefault: addressRows.isEmpty))
                     } label: {
@@ -604,7 +610,7 @@ private struct MergeReviewSheet: View {
 
                 Section("Địa chỉ") {
                     ForEach($addressRows) { $row in
-                        TextField("Địa chỉ", text: $row.value)
+                        TenDuongTextField(text: $row.value, kieuForm: true)
                             .swipeActions(edge: .trailing) {
                                 Button(role: .destructive) { addressRows.removeAll { $0.id == row.id } } label: {
                                     Label("Xoá", systemImage: "trash")

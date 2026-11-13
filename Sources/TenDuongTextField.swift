@@ -35,6 +35,8 @@ struct TenDuongTextField: View {
     @Binding var text: String
     var placeholder: String = "Địa chỉ"
     var keyboard: UIKeyboardType = .default
+    /// true = ô nhập trơn kiểu Form/List (màn Sửa khách, Gộp khách); false = ô xám .oNhap (màn Tạo/Sửa đơn).
+    var kieuForm: Bool = false
 
     @FocusState private var focused: Bool
     @ObservedObject private var cache = TenDuongCache.shared
@@ -70,10 +72,16 @@ struct TenDuongTextField: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            TextField(placeholder, text: $text)
-                .textFieldStyle(.oNhap)
-                .keyboardType(keyboard)
-                .focused($focused)
+            if kieuForm {
+                TextField(placeholder, text: $text)
+                    .keyboardType(keyboard)
+                    .focused($focused)
+            } else {
+                TextField(placeholder, text: $text)
+                    .textFieldStyle(.oNhap)
+                    .keyboardType(keyboard)
+                    .focused($focused)
+            }
 
             if !suggestions.isEmpty {
                 VStack(alignment: .leading, spacing: 0) {
