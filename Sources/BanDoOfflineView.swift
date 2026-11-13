@@ -800,7 +800,7 @@ private struct BanDoMapLibreView: UIViewRepresentable {
             } : []
             (style.source(withIdentifier: "doithu") as? MLNShapeSource)?.shape = MLNShapeCollectionFeature(shapes: doiThu)
 
-            for id in ["duong-ten-osm", "ten-tu", "ten-tay", "ten-diem", "ten-khu", "so-nha", "goi-y", "goi-y-ten"] {
+            for id in ["ten-diem", "ten-khu", "so-nha", "goi-y", "goi-y-ten"] {
                 style.layer(withIdentifier: id)?.isVisible = m.hienTenDuong
             }
             if m.cheDoNhieuKhuc {
@@ -1024,29 +1024,11 @@ private let styleJSON = #"""
      "layout": {"text-field": ["get", "n"], "text-font": ["Noto Sans Regular"],
                 "text-size": ["interpolate", ["linear"], ["zoom"], 15.5, 9, 18, 12]},
      "paint": {"text-color": ["case", ["has", "t"], "#1B6B5F", "#8A6A3A"], "text-halo-color": "#FFFFFF", "text-halo-width": 1.4}},
-    {"id": "duong-ten-osm", "type": "symbol", "source": "ten", "minzoom": 13,
-     "filter": ["==", ["get", "g"], "nhan-osm"],
-     "layout": {"symbol-placement": "line", "text-field": ["get", "n"], "text-font": ["Noto Sans Regular"],
-                "text-size": ["interpolate", ["linear"], ["zoom"], 13, 8, 16, 10, 18, 12], "text-max-angle": 45,
-                "symbol-spacing": 250, "text-allow-overlap": true},
-     "paint": {"text-color": "#5F5F5F", "text-halo-color": "#FFFFFF", "text-halo-width": 1.6}},
-    {"id": "ten-tu", "type": "symbol", "source": "ten", "minzoom": 13,
-     "filter": ["==", ["get", "g"], "nhan-tu"],
-     "layout": {"symbol-placement": "line", "text-field": ["get", "n"], "text-font": ["Noto Sans Regular"],
-                "text-size": ["interpolate", ["linear"], ["zoom"], 13, 8, 16, 10, 18, 12], "text-max-angle": 45,
-                "symbol-spacing": 250, "text-allow-overlap": true},
-     "paint": {"text-color": "#4A4A4A", "text-halo-color": "#FFFFFF", "text-halo-width": 1.6}},
-    {"id": "ten-tay", "type": "symbol", "source": "ten", "minzoom": 13,
-     "filter": ["==", ["get", "g"], "nhan-tay"],
-     "layout": {"symbol-placement": "line", "text-field": ["get", "n"], "text-font": ["Noto Sans Bold"],
-                "text-size": ["interpolate", ["linear"], ["zoom"], 13, 8.5, 16, 10.5, 18, 13], "text-max-angle": 45,
-                "symbol-spacing": 250, "text-allow-overlap": true},
-     "paint": {"text-color": "#1B6B5F", "text-halo-color": "#FFFFFF", "text-halo-width": 1.8}},
-    {"id": "ten-diem", "type": "symbol", "source": "ten", "minzoom": 14,
+    {"id": "ten-diem", "type": "symbol", "source": "ten", "minzoom": 12,
      "filter": ["in", ["get", "g"], ["literal", ["nhand-tay", "nhand-tu", "nhand-osm"]]],
      "layout": {"text-field": ["get", "n"],
                 "text-font": ["Noto Sans Bold"],
-                "text-size": ["interpolate", ["linear"], ["zoom"], 14, 8, 16, 9.5, 18, 12],
+                "text-size": ["interpolate", ["linear"], ["zoom"], 12, 6.5, 14, 8, 16, 9.5, 18, 12],
                 "text-rotate": ["get", "r"], "text-rotation-alignment": "map", "text-allow-overlap": true},
      "paint": {"text-color": ["match", ["get", "g"], "nhand-tay", "#1B6B5F", "nhand-osm", "#5F5F5F", "#4A4A4A"],
                "text-halo-color": "#FFFFFF", "text-halo-width": 1.5}},
