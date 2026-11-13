@@ -8,5 +8,8 @@
 	<array>
 		<string>group.com.denncoffee.appquanly</string>
 	</array>
+	<!-- Push khẩn (backend gửi interruption-level=time-sensitive, vd "Đơn App Đenn chưa nhận") xuyên chế độ Tập trung. -->
+	<key>com.apple.developer.usernotifications.time-sensitive</key>
+	<true/>
 </dict>
 </plist>
