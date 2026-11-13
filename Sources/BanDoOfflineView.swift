@@ -14,6 +14,32 @@ struct BanDoOfflineView: View {
     @State private var hienChonTenNhieu = false
 
     var body: some View {
+        hopThoaiDuong(hopThoaiSoNha(khungBanDo))
+        .sheet(isPresented: $hienChonTenNhieu) {
+            ChonTenDuongSheet { id, ten in
+                Task { await m.ganTenNhieuKhuc(tenDuongId: id, ten: ten) }
+            }
+        }
+        .navigationTitle("Bản đồ khách hàng")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Color.brandGradient, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                NavigationLink {
+                    BanDoKhachHangView()
+                } label: {
+                    Image(systemName: "apple.logo")
+                }
+                .accessibilityLabel("Mở bản đồ Apple")
+            }
+        }
+        .task { await m.taiTatCa() }
+    }
+
+    /// Tách khỏi body: chuỗi modifier quá dài làm Swift type-check quá giờ trên CI.
+    private var khungBanDo: some View {
         VStack(spacing: 0) {
             thanhLoc()
             ZStack(alignment: .top) {
@@ -42,6 +68,10 @@ struct BanDoOfflineView: View {
             }
             .overlay(alignment: .bottom) { thanhThaoTac().padding(.bottom, 14) }
         }
+    }
+
+    private func hopThoaiSoNha<V: View>(_ v: V) -> some View {
+        v
         .onAppear { m.viTri.batDau() }
         .onDisappear { m.viTri.dung() }
         .alert(m.soNhaNhap?.id == nil ? "Gán số nhà" : "Sửa số nhà", isPresented: Binding(
@@ -76,27 +106,10 @@ struct BanDoOfflineView: View {
         } message: { g in
             Text("Đoán từ \(g.soNha) số nhà cùng hẻm nằm xa đường có sẵn. Nét đứt cam là vị trí đoán — sai thì chọn \"Sửa nét\".")
         }
-        .sheet(isPresented: $hienChonTenNhieu) {
-            ChonTenDuongSheet { id, ten in
-                Task { await m.ganTenNhieuKhuc(tenDuongId: id, ten: ten) }
-            }
-        }
-        .navigationTitle("Bản đồ khách hàng")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Color.brandGradient, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
-        .toolbarColorScheme(.dark, for: .navigationBar)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                NavigationLink {
-                    BanDoKhachHangView()
-                } label: {
-                    Image(systemName: "apple.logo")
-                }
-                .accessibilityLabel("Mở bản đồ Apple")
-            }
-        }
-        .task { await m.taiTatCa() }
+    }
+
+    private func hopThoaiDuong<V: View>(_ v: V) -> some View {
+        v
         .confirmationDialog(m.chon.map { $0.ten ?? "Đoạn đường chưa có tên" } ?? "",
                             isPresented: Binding(get: { m.chon != nil && !hienChonTen },
                                                  set: { if !$0 && !hienChonTen { m.boChon() } }),
