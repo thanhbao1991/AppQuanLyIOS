@@ -610,6 +610,8 @@ struct LuuSoNhaBanDoRequest: Encodable {
 struct LuuDuongVeBanDoRequest: Encodable {
     var id: String?
     var diem: [[Double]]
+    /// Có thì đặt luôn tên (khoá) — lưu từ gợi ý hẻm.
+    var ten: String? = nil
 }
 
 struct LuuDuongVeRequest: Encodable {

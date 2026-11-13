@@ -67,6 +67,15 @@ struct BanDoOfflineView: View {
         } message: { _ in
             Text("Số nhà do nhân viên gán tay.")
         }
+        .confirmationDialog(m.goiYChon.map { "Gợi ý: \($0.ten)" } ?? "", isPresented: Binding(
+            get: { m.goiYChon != nil }, set: { if !$0 { m.goiYChon = nil } }),
+                            titleVisibility: .visible, presenting: m.goiYChon) { g in
+            Button("Lưu thành đường") { Task { await m.luuGoiY(g) } }
+            Button("Sửa nét rồi lưu") { m.vaoVe(tuGoiY: g) }
+            Button("Đóng", role: .cancel) { m.goiYChon = nil }
+        } message: { g in
+            Text("Đoán từ \(g.soNha) số nhà cùng hẻm nằm xa đường có sẵn. Nét đứt cam là vị trí đoán — sai thì chọn \"Sửa nét\".")
+        }
         .sheet(isPresented: $hienChonTenNhieu) {
             ChonTenDuongSheet { id, ten in
                 Task { await m.ganTenNhieuKhuc(tenDuongId: id, ten: ten) }
@@ -137,6 +146,9 @@ struct BanDoOfflineView: View {
     private func thanhThaoTac() -> some View {
         if m.cheDoVe {
             VStack(alignment: .leading, spacing: 8) {
+                if let ten = m.tenVe {
+                    Text(ten).font(.subheadline.bold()).foregroundColor(.brandPrimary)
+                }
                 Text(m.soDiemVe == 0
                      ? "Chạm từng điểm dọc theo hẻm/đường còn thiếu (chỗ cong chạm thêm), hoặc bấm 📍 khi đang đứng tại đó."
                      : "Đã chấm \(m.soDiemVe) điểm\(m.soDiemVe < 2 ? " — cần ít nhất 2" : "")")
@@ -325,6 +337,13 @@ final class ViTriHienTai: NSObject, ObservableObject, CLLocationManagerDelegate 
     }
 }
 
+/// Gợi ý hẻm còn thiếu (backend suy từ số nhà "N/x" 2 bên — feature g = "gy") vừa chạm.
+struct GoiYHemChon {
+    let ten: String
+    let soNha: Int
+    let diem: [CLLocationCoordinate2D]
+}
+
 /// Đoạn đường vừa chạm.
 struct DuongDangChon: Equatable {
     let wayId: Int64
@@ -379,6 +398,9 @@ final class BanDoOfflineModel: ObservableObject {
     @Published private(set) var soDiemVe = 0
     private(set) var diemVe: [CLLocationCoordinate2D] = []
     @Published var dangLuuVe = false
+    /// Tên gửi kèm khi lưu (vẽ tiếp từ gợi ý hẻm).
+    @Published private(set) var tenVe: String?
+    @Published var goiYChon: GoiYHemChon?
 
     @Published var dangTai = false
     @Published var dangDungBanLuu = false
@@ -498,18 +520,35 @@ final class BanDoOfflineModel: ObservableObject {
 
     // MARK: Vẽ đường còn thiếu
 
-    func vaoVe() {
+    /// tuGoiY: vẽ tiếp từ gợi ý hẻm (điểm + tên có sẵn, sửa bằng ↶ / chạm thêm rồi lưu).
+    func vaoVe(tuGoiY g: GoiYHemChon? = nil) {
         chon = nil
+        goiYChon = nil
         thoatNhieuKhuc()
-        diemVe = []
-        soDiemVe = 0
+        diemVe = g?.diem ?? []
+        soDiemVe = diemVe.count
+        tenVe = g?.ten
         cheDoVe = true
     }
 
     func huyVe() {
         diemVe = []
         soDiemVe = 0
+        tenVe = nil
         cheDoVe = false
+    }
+
+    /// Lưu thẳng gợi ý hẻm thành đường vẽ + đặt tên luôn.
+    @MainActor
+    func luuGoiY(_ g: GoiYHemChon) async {
+        goiYChon = nil
+        let r = await APIClient.shared.luuDuongVeBanDo(LuuDuongVeBanDoRequest(
+            id: nil, diem: g.diem.map { [$0.latitude, $0.longitude] }, ten: g.ten))
+        thongBao = r.message ?? (r.success ? "Đã thêm đường." : "Lưu thất bại.")
+        if r.success {
+            TenDuongCache.shared.lamMoi()
+            await taiLaiTen()
+        }
     }
 
     func themDiemVe(_ c: CLLocationCoordinate2D) {
@@ -537,11 +576,13 @@ final class BanDoOfflineModel: ObservableObject {
     func luuDuongVe() async {
         guard diemVe.count >= 2, !dangLuuVe else { return }
         dangLuuVe = true
+        let coTen = tenVe != nil
         let r = await APIClient.shared.luuDuongVeBanDo(LuuDuongVeBanDoRequest(
-            id: nil, diem: diemVe.map { [$0.latitude, $0.longitude] }))
+            id: nil, diem: diemVe.map { [$0.latitude, $0.longitude] }, ten: tenVe))
         dangLuuVe = false
         thongBao = r.message ?? (r.success ? "Đã thêm đường." : "Lưu thất bại.")
         if r.success {
+            if coTen { TenDuongCache.shared.lamMoi() }
             huyVe()
             await taiLaiTen()
         }
@@ -762,7 +803,7 @@ private struct BanDoMapLibreView: UIViewRepresentable {
             } : []
             (style.source(withIdentifier: "doithu") as? MLNShapeSource)?.shape = MLNShapeCollectionFeature(shapes: doiThu)
 
-            for id in ["duong-ten-osm", "ten-tu", "ten-tay", "ten-khu", "so-nha"] {
+            for id in ["duong-ten-osm", "ten-tu", "ten-tay", "ten-khu", "so-nha", "goi-y", "goi-y-ten"] {
                 style.layer(withIdentifier: id)?.isVisible = m.hienTenDuong
             }
             if m.cheDoNhieuKhuc {
@@ -874,6 +915,17 @@ private struct BanDoMapLibreView: UIViewRepresentable {
                 m.soNhaChon = SoNhaDaChon(id: id, so: (sn.attribute(forKey: "n") as? String) ?? "", toaDo: sn.coordinate)
                 return
             }
+            // Chạm gợi ý hẻm (nét đứt cam) → lưu / sửa rồi lưu.
+            if !m.cheDoNhieuKhuc,
+               let gy = map.visibleFeatures(in: vung, styleLayerIdentifiers: ["goi-y"]).first,
+               let line = gy as? MLNPolyline, line.pointCount >= 2 {
+                var pts = [CLLocationCoordinate2D](repeating: CLLocationCoordinate2D(), count: Int(line.pointCount))
+                line.getCoordinates(&pts, range: NSRange(location: 0, length: pts.count))
+                m.goiYChon = GoiYHemChon(ten: (gy.attribute(forKey: "n") as? String) ?? "Hẻm",
+                                         soNha: (gy.attribute(forKey: "sl") as? NSNumber)?.intValue ?? 0,
+                                         diem: pts)
+                return
+            }
             let fs = map.visibleFeatures(in: vung, styleLayerIdentifiers: Self.lopDuong)
             guard let f = fs.first(where: { $0.attribute(forKey: "w") != nil }),
                   let w = (f.attribute(forKey: "w") as? NSNumber)?.int64Value else {
@@ -943,6 +995,14 @@ private let styleJSON = #"""
     {"id": "duong-ve", "type": "line", "source": "ten", "filter": ["==", ["get", "g"], "ve"],
      "layout": {"line-cap": "round", "line-join": "round"},
      "paint": {"line-color": "#FFFFFF", "line-width": ["interpolate", ["exponential", 1.6], ["zoom"], 12, 0.8, 18, 13]}},
+    {"id": "goi-y", "type": "line", "source": "ten", "minzoom": 14, "filter": ["==", ["get", "g"], "gy"],
+     "layout": {"line-cap": "round", "line-join": "round"},
+     "paint": {"line-color": "#F08A00", "line-opacity": 0.85, "line-dasharray": [1.5, 1.2],
+               "line-width": ["interpolate", ["linear"], ["zoom"], 14, 2, 18, 6]}},
+    {"id": "goi-y-ten", "type": "symbol", "source": "ten", "minzoom": 15, "filter": ["==", ["get", "g"], "gy"],
+     "layout": {"symbol-placement": "line", "text-field": ["concat", ["get", "n"], " ?"], "text-font": ["Noto Sans Italic"],
+                "text-size": 11, "text-max-angle": 30, "symbol-spacing": 300},
+     "paint": {"text-color": "#B86A00", "text-halo-color": "#FFFFFF", "text-halo-width": 1.6}},
     {"id": "ve-nhap", "type": "line", "source": "venhap", "filter": ["==", ["geometry-type"], "LineString"],
      "layout": {"line-cap": "round", "line-join": "round"},
      "paint": {"line-color": "#1B6B5F", "line-width": 4, "line-dasharray": [2, 1]}},
