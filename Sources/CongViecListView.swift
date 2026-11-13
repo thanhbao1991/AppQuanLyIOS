@@ -22,10 +22,12 @@ struct CongViecListView: View {
     @State private var confirmItem: CongViecNoiBoDto?
     @State private var confirmNewState = false
 
-    /// Chỉ đề xuất việc CHƯA làm theo `items` hiện tại — đề xuất tải chậm hơn danh sách, không lọc
-    /// thì việc vừa tick xong vẫn nằm trong "Đề xuất nên làm" cho tới khi lượt đề xuất mới về.
+    /// Backend chỉ đề xuất việc ĐÃ XONG tới hạn làm lại (CongViecDeXuatService) — giữ đề xuất khi việc
+    /// đó trong `items` hiện tại vẫn đang "đã xong"; việc vừa mở lại (đã nằm ở "Cần làm") thì ẩn ngay,
+    /// khỏi chờ lượt đề xuất mới về. 13/11/2026: trước đây lọc ngược (!daHoanThanh) từ 1240e40 nên
+    /// mục "Đề xuất nên làm" luôn rỗng.
     private var visibleDeXuat: [CongViecDeXuatDto] {
-        deXuat.filter { d in items.contains { $0.id == d.congViecId && !$0.daHoanThanh } }
+        deXuat.filter { d in items.contains { $0.id == d.congViecId && $0.daHoanThanh } }
     }
 
     /// Tên việc mới lấy từ ô tìm — nil khi ô trống hoặc đã có việc TRÙNG KHÍT tên (không phân biệt
