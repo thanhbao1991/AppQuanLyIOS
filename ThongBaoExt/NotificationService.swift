@@ -52,6 +52,18 @@ final class NotificationService: UNNotificationServiceExtension {
         }
         guard let dinhDang, !pcm.isEmpty else { return nil }
 
+        // Xếp hàng: nhiều push tới cùng lúc thì iOS phát các âm ĐÈ lên nhau → chèn lặng đầu file cho tới khi
+        // giọng trước đọc xong (banner vẫn hiện ngay). iOS chỉ nhận âm < 30 giây nên chờ tối đa vừa đủ.
+        let byteRate = Double(dinhDang.byteRate)
+        let thoiLuong = Double(pcm.count) / byteRate
+        let cho = XepHang.lay(thoiLuong: thoiLuong, toiDa: max(0, 29 - thoiLuong))
+        if cho > 0 {
+            let khoi = max(1, Int(dinhDang.kenh) * Int(dinhDang.bit / 8))   // giữ đúng ranh giới mẫu âm
+            var lang = Data(count: Int(byteRate * cho) / khoi * khoi)
+            lang.append(pcm)
+            pcm = lang
+        }
+
         // Dọn file ghép cũ (> 2 phút) — iOS đã phát xong từ lâu.
         let bayGio = Date()
         for f in (try? fm.contentsOfDirectory(atPath: dir.path)) ?? [] where f.hasPrefix("ghep_") {
@@ -69,6 +81,24 @@ final class NotificationService: UNNotificationServiceExtension {
         } catch {
             return nil
         }
+    }
+}
+
+/// Mốc "giọng đọc trước phát tới lúc nào", lưu ở App Group để các lần chạy extension nối tiếp nhau.
+enum XepHang {
+    private static let khoa = "thongBao.phatDen"
+    private static let khoang = 0.4          // nghỉ giữa 2 câu
+    private static let khoaLuong = NSLock()
+
+    /// Trả số giây cần chờ trước khi đọc câu dài `thoiLuong` giây, và ghi mốc mới.
+    static func lay(thoiLuong: Double, toiDa: Double) -> Double {
+        khoaLuong.lock(); defer { khoaLuong.unlock() }
+        let ud = UserDefaults(suiteName: "group.com.denncoffee.appquanly")
+        let bayGio = Date().timeIntervalSince1970
+        let phatDen = ud?.double(forKey: khoa) ?? 0
+        let cho = min(max(0, phatDen + khoang - bayGio), toiDa)
+        ud?.set(bayGio + cho + thoiLuong, forKey: khoa)
+        return cho
     }
 }
 
