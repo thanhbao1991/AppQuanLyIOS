@@ -16,7 +16,8 @@ struct HoaDonDetailView: View {
     @State private var pendingAction: PendingAction?
     @State private var copiedFeedback = false
     @State private var linkCopiedFeedback = false
-    @State private var qrImage: UIImage?
+    /// Máy khách đang dùng app khách (thay chỗ mã QR cũ ở thẻ khách, 14/11/2026) — rỗng = chưa cài/chưa đăng nhập.
+    @State private var thietBiApp: [KhachHangThietBiAppDto] = []
     @State private var showEditForm = false
     /// SanPhamId -> HinhAnh — API /HoaDon/{id} không kèm ảnh (chỉ ChiTietHoaDon, không join SanPham),
     /// nên tự tra qua catalog (khớp cách Desktop gán HinhAnh client-side theo SanPhamId, xem
@@ -177,11 +178,8 @@ struct HoaDonDetailView: View {
                             if let dc = d.diaChiText, !dc.isEmpty { iconRow("mappin.and.ellipse", dc) }
                         }
                         Spacer()
-                        if let qrImage {
-                            Image(uiImage: qrImage)
-                                .resizable()
-                                .interpolation(.none)
-                                .frame(width: 90, height: 90)
+                        if let may = thietBiApp.first {
+                            thietBiAppView(may, soMayKhac: thietBiApp.count - 1)
                         }
                     }
                     if let gc = d.ghiChu, !gc.isEmpty {
@@ -620,6 +618,54 @@ struct HoaDonDetailView: View {
     }
 
     /// Dòng phụ trong card khách hàng (địa chỉ/ghi chú) — icon nhỏ bên trái thay vì nhãn chữ, gọn hơn.
+    /// Góc phải thẻ khách: HĐH, máy, bản app, lần cuối mở app, có bật thông báo không.
+    private func thietBiAppView(_ m: KhachHangThietBiAppDto, soMayKhac: Int) -> some View {
+        let laIos = m.nenTang == "iOS"
+        let heDieuHanh = m.heDieuHanh ?? m.nenTang ?? "App"
+        let may = m.thietBi.flatMap { $0.isEmpty || $0 == "iPhone" && heDieuHanh.hasPrefix("iOS") ? nil : $0 }
+        return VStack(alignment: .trailing, spacing: 3) {
+            HStack(spacing: 4) {
+                Image(systemName: laIos ? "apple.logo" : "candybarphone")
+                Text(heDieuHanh)
+            }
+            .font(.subheadline.bold())
+            .foregroundColor(.brandPrimary)
+            if let may { Text(may).font(.caption).foregroundColor(.textMuted).lineLimit(1) }
+            if let pb = m.phienBanApp, !pb.isEmpty {
+                Text("Bản \(pb)").font(.caption).foregroundColor(.textMuted).lineLimit(1)
+            }
+            if let lan = HoaDonFormatting.parseIso(m.lanCuoiHoatDong) {
+                Label(Self.giaoHoatDong(lan), systemImage: "clock")
+                    .font(.caption).foregroundColor(.textMuted).lineLimit(1)
+            }
+            Label(m.batThongBao ? "Bật thông báo" : "Tắt thông báo",
+                  systemImage: m.batThongBao ? "bell.fill" : "bell.slash")
+                .font(.caption)
+                .foregroundColor(m.batThongBao ? .textMuted : .dangerColor)
+                .lineLimit(1)
+            if soMayKhac > 0 {
+                Text("+\(soMayKhac) máy khác").font(.caption2).foregroundColor(.textMuted)
+            }
+        }
+        .multilineTextAlignment(.trailing)
+        .fixedSize(horizontal: true, vertical: false)
+    }
+
+    /// "vừa xong" / "14:05" (hôm nay) / "hôm qua 21:30" / "3 ngày trước" / "02/10".
+    private static func giaoHoatDong(_ d: Date) -> String {
+        let now = Date()
+        if now.timeIntervalSince(d) < 120 { return "vừa xong" }
+        let cal = Calendar.current
+        let gio = d.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits))
+        if cal.isDateInToday(d) { return gio }
+        if cal.isDateInYesterday(d) { return "hôm qua \(gio)" }
+        let ngay = cal.dateComponents([.day], from: cal.startOfDay(for: d), to: cal.startOfDay(for: now)).day ?? 0
+        if ngay < 7 { return "\(ngay) ngày trước" }
+        let f = DateFormatter()
+        f.dateFormat = "dd/MM"
+        return f.string(from: d)
+    }
+
     private func iconRow(_ icon: String, _ text: String) -> some View {
         HStack(alignment: .top, spacing: 6) {
             Image(systemName: icon).font(.caption).foregroundColor(.textMuted).frame(width: 16)
@@ -686,17 +732,11 @@ struct HoaDonDetailView: View {
         detail = await d
         hinhAnhMap = Dictionary(uniqueKeysWithValues: await sp.compactMap { p in p.hinhAnh.map { (p.id, $0) } })
         loading = false
-        await loadQrImage()
-    }
-
-    /// QR hiển thị ngay trong màn chi tiết (không chỉ trong ảnh "Gửi Bill") — cùng addInfo/amount
-    /// với copyBillImage nên khách quét đúng y hệt nội dung CK sẽ dùng khi gửi bill.
-    private func loadQrImage() async {
-        guard let d = detail else { qrImage = nil; return }
-        let addInfo = d.billAddInfo ?? ""
-        let amount = BillTextBuilder.amount(d)
-        let data = await APIClient.shared.getBillQrImage(amount: amount, addInfo: addInfo)
-        qrImage = data.flatMap { UIImage(data: $0) }
+        if let kh = detail?.khachHangId, !kh.isEmpty {
+            thietBiApp = await APIClient.shared.getThietBiAppKhach(kh)
+        } else {
+            thietBiApp = []
+        }
     }
 
     /// Render chi tiết hoá đơn thành ảnh, copy vào clipboard để dán thẳng vào chat Zalo/Facebook —

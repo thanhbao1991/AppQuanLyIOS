@@ -1144,6 +1144,13 @@ actor APIClient {
         return env.data
     }
 
+    func getThietBiAppKhach(_ khachHangId: String) async -> [KhachHangThietBiAppDto] {
+        let req = makeRequest("/api/KhachHang/\(khachHangId)/thiet-bi-app")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[KhachHangThietBiAppDto]>.self, from: data), env.isSuccess else { return [] }
+        return env.data ?? []
+    }
+
     func getHoaDonDetail(_ id: String) async -> HoaDonDetailDto? {
         let req = makeRequest("/api/HoaDon/\(id)")
         let (data, _) = await send(req)

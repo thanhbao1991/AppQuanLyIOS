@@ -104,6 +104,17 @@ struct ChiTietHoaDonResponseDto: Decodable, Identifiable {
     let toppingText: String?
 }
 
+/// Thiết bị khách đang đăng nhập app khách — GET /api/KhachHang/{id}/thiet-bi-app (mới nhất trước).
+struct KhachHangThietBiAppDto: Decodable {
+    let nenTang: String?
+    let thietBi: String?
+    let heDieuHanh: String?
+    let phienBanApp: String?
+    let lanCuoiHoatDong: String?
+    let ngayTao: String?
+    let batThongBao: Bool
+}
+
 struct HoaDonPaymentBriefDto: Decodable, Identifiable {
     let id: String
     let phuongThucThanhToanId: String
