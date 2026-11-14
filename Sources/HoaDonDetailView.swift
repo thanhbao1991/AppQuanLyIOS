@@ -624,29 +624,28 @@ struct HoaDonDetailView: View {
     private func thietBiAppView(_ m: KhachHangThietBiAppDto, soMayKhac: Int) -> some View {
         let laIos = m.nenTang == "iOS"
         let heDieuHanh = m.heDieuHanh ?? m.nenTang ?? "App"
+        // Gọn 3 dòng cho bằng cột trái (tên / SĐT / địa chỉ) — 5 dòng cũ đẩy dòng ghi chú xuống, hở khoảng trống.
+        // Dòng 1: HĐH + chuông (đỏ = tắt thông báo) · Dòng 2: bản app (+N máy) · Dòng 3: Xu hiện có · +tích luỹ.
         return VStack(alignment: .trailing, spacing: 3) {
-            HStack(spacing: 4) {
+            HStack(spacing: 5) {
                 Image(systemName: laIos ? "apple.logo" : "candybarphone")
                 Text(heDieuHanh)
+                Image(systemName: m.batThongBao ? "bell.fill" : "bell.slash.fill")
+                    .font(.caption)
+                    .foregroundColor(m.batThongBao ? .textMuted : .dangerColor)
             }
             .font(.subheadline.bold())
             .foregroundColor(.brandPrimary)
-            if let pb = m.phienBanApp, !pb.isEmpty {
-                Text("Bản \(pb)").font(.caption).foregroundColor(.textMuted).lineLimit(1)
+            let banApp = [m.phienBanApp.flatMap { $0.isEmpty ? nil : "Bản \($0)" },
+                          soMayKhac > 0 ? "+\(soMayKhac) máy" : nil].compactMap { $0 }.joined(separator: " · ")
+            if !banApp.isEmpty {
+                Text(banApp).font(.caption).foregroundColor(.textMuted).lineLimit(1)
             }
             if let xu = xuApp {
-                Text("Tích luỹ \(Self.soXu(xu.xuTichLuy)) Xu")
-                    .font(.caption).foregroundColor(.textMuted).lineLimit(1)
-                Text("Hiện có \(Self.soXu(xu.xuHienTai)) Xu")
-                    .font(.caption.bold()).foregroundColor(.brandPrimary).lineLimit(1)
-            }
-            Label(m.batThongBao ? "Bật thông báo" : "Tắt thông báo",
-                  systemImage: m.batThongBao ? "bell.fill" : "bell.slash")
-                .font(.caption)
-                .foregroundColor(m.batThongBao ? .textMuted : .dangerColor)
-                .lineLimit(1)
-            if soMayKhac > 0 {
-                Text("+\(soMayKhac) máy khác").font(.caption2).foregroundColor(.textMuted)
+                (Text("\(Self.soXu(xu.xuHienTai)) Xu").bold().foregroundColor(.brandPrimary)
+                 + Text(xu.xuTichLuy > 0 ? " · +\(Self.soXu(xu.xuTichLuy))" : "").foregroundColor(.textMuted))
+                    .font(.caption)
+                    .lineLimit(1)
             }
         }
         .multilineTextAlignment(.trailing)
