@@ -18,6 +18,7 @@ struct HoaDonDetailView: View {
     @State private var linkCopiedFeedback = false
     /// Máy khách đang dùng app khách (thay chỗ mã QR cũ ở thẻ khách, 14/11/2026) — rỗng = chưa cài/chưa đăng nhập.
     @State private var thietBiApp: [KhachHangThietBiAppDto] = []
+    @State private var xuApp: KhachHangXuAppDto?
     @State private var showEditForm = false
     /// SanPhamId -> HinhAnh — API /HoaDon/{id} không kèm ảnh (chỉ ChiTietHoaDon, không join SanPham),
     /// nên tự tra qua catalog (khớp cách Desktop gán HinhAnh client-side theo SanPhamId, xem
@@ -618,11 +619,11 @@ struct HoaDonDetailView: View {
     }
 
     /// Dòng phụ trong card khách hàng (địa chỉ/ghi chú) — icon nhỏ bên trái thay vì nhãn chữ, gọn hơn.
-    /// Góc phải thẻ khách: HĐH, máy, bản app, lần cuối mở app, có bật thông báo không.
+    /// Góc phải thẻ khách: HĐH, bản app, có bật thông báo không, Xu tích luỹ + Xu hiện tại.
+    /// 14/11/2026 user bỏ dòng tên máy + giờ hoạt động cuối.
     private func thietBiAppView(_ m: KhachHangThietBiAppDto, soMayKhac: Int) -> some View {
         let laIos = m.nenTang == "iOS"
         let heDieuHanh = m.heDieuHanh ?? m.nenTang ?? "App"
-        let may = m.thietBi.flatMap { $0.isEmpty || $0 == "iPhone" && heDieuHanh.hasPrefix("iOS") ? nil : $0 }
         return VStack(alignment: .trailing, spacing: 3) {
             HStack(spacing: 4) {
                 Image(systemName: laIos ? "apple.logo" : "candybarphone")
@@ -630,13 +631,14 @@ struct HoaDonDetailView: View {
             }
             .font(.subheadline.bold())
             .foregroundColor(.brandPrimary)
-            if let may { Text(may).font(.caption).foregroundColor(.textMuted).lineLimit(1) }
             if let pb = m.phienBanApp, !pb.isEmpty {
                 Text("Bản \(pb)").font(.caption).foregroundColor(.textMuted).lineLimit(1)
             }
-            if let lan = HoaDonFormatting.parseIso(m.lanCuoiHoatDong) {
-                Label(Self.giaoHoatDong(lan), systemImage: "clock")
+            if let xu = xuApp {
+                Text("Tích luỹ \(Self.soXu(xu.xuTichLuy)) Xu")
                     .font(.caption).foregroundColor(.textMuted).lineLimit(1)
+                Text("Hiện có \(Self.soXu(xu.xuHienTai)) Xu")
+                    .font(.caption.bold()).foregroundColor(.brandPrimary).lineLimit(1)
             }
             Label(m.batThongBao ? "Bật thông báo" : "Tắt thông báo",
                   systemImage: m.batThongBao ? "bell.fill" : "bell.slash")
@@ -651,19 +653,9 @@ struct HoaDonDetailView: View {
         .fixedSize(horizontal: true, vertical: false)
     }
 
-    /// "vừa xong" / "14:05" (hôm nay) / "hôm qua 21:30" / "3 ngày trước" / "02/10".
-    private static func giaoHoatDong(_ d: Date) -> String {
-        let now = Date()
-        if now.timeIntervalSince(d) < 120 { return "vừa xong" }
-        let cal = Calendar.current
-        let gio = d.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits))
-        if cal.isDateInToday(d) { return gio }
-        if cal.isDateInYesterday(d) { return "hôm qua \(gio)" }
-        let ngay = cal.dateComponents([.day], from: cal.startOfDay(for: d), to: cal.startOfDay(for: now)).day ?? 0
-        if ngay < 7 { return "\(ngay) ngày trước" }
-        let f = DateFormatter()
-        f.dateFormat = "dd/MM"
-        return f.string(from: d)
+    /// "12.500" — cùng định dạng số tiền nhưng không kèm "đ".
+    private static func soXu(_ v: Double) -> String {
+        String(HoaDonFormatting.money(v).dropLast())
     }
 
     private func iconRow(_ icon: String, _ text: String) -> some View {
@@ -733,9 +725,13 @@ struct HoaDonDetailView: View {
         hinhAnhMap = Dictionary(uniqueKeysWithValues: await sp.compactMap { p in p.hinhAnh.map { (p.id, $0) } })
         loading = false
         if let kh = detail?.khachHangId, !kh.isEmpty {
-            thietBiApp = await APIClient.shared.getThietBiAppKhach(kh)
+            async let tb = APIClient.shared.getThietBiAppKhach(kh)
+            async let xu = APIClient.shared.getXuAppKhach(kh)
+            thietBiApp = await tb
+            xuApp = await xu
         } else {
             thietBiApp = []
+            xuApp = nil
         }
     }
 

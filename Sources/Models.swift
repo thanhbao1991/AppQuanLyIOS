@@ -115,6 +115,12 @@ struct KhachHangThietBiAppDto: Decodable {
     let batThongBao: Bool
 }
 
+/// GET /api/KhachHang/{id}/xu-app — khớp số app khách đang thấy.
+struct KhachHangXuAppDto: Decodable {
+    let xuTichLuy: Double
+    let xuHienTai: Double
+}
+
 struct HoaDonPaymentBriefDto: Decodable, Identifiable {
     let id: String
     let phuongThucThanhToanId: String
