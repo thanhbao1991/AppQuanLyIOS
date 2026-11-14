@@ -36,16 +36,18 @@ enum PhotoHash {
         return px.map { Float($0) }
     }
 
-    private static var cosCache = [Int: [Float]]()
-    private static func cosMatrix(_ n: Int) -> [Float] {
-        if let m = cosCache[n] { return m }
+    // Precompute 1 LẦN qua `static let` (Swift đảm bảo khởi tạo thread-safe, đúng 1 lần) — pHash luôn
+    // dùng n=32. TRƯỚC đây là `static var` dictionary, bị nhiều luồng quét đọc/ghi đồng thời gây data
+    // race -> EXC_BAD_ACCESS (crash 14/11/2026). Dùng hằng bất biến nên nhiều luồng đọc chung an toàn.
+    private static let cos32: [Float] = {
+        let n = 32
         var m = [Float](repeating: 0, count: n * n)
         for k in 0..<n {
             for x in 0..<n { m[k * n + x] = cos(Float.pi * Float(k) * (2 * Float(x) + 1) / (2 * Float(n))) }
         }
-        cosCache[n] = m
         return m
-    }
+    }()
+    private static func cosMatrix(_ n: Int) -> [Float] { cos32 }
 
     private static func dct2d(_ p: [Float], n: Int) -> [Float] {
         let c = cosMatrix(n)
@@ -90,6 +92,17 @@ private struct AssetInfo: Codable {
     var hasPerson: Bool
 }
 
+/// Đảm bảo continuation chỉ resume ĐÚNG 1 lần (PHImageManager đôi khi gọi callback >1 lần, resume 2
+/// lần làm crash). Thread-safe qua NSLock.
+private final class ResumeOnce {
+    private var done = false
+    private let lock = NSLock()
+    func resume(_ body: () -> Void) {
+        lock.lock(); let already = done; done = true; lock.unlock()
+        if !already { body() }
+    }
+}
+
 // MARK: - Matcher engine (dùng chung cho cả 2 tính năng)
 @MainActor
 final class PhotoMatcher: ObservableObject {
@@ -132,8 +145,9 @@ final class PhotoMatcher: ObservableObject {
         isScanning = true; cancelFlag = false
         let pending = allAssets.filter { info[$0.localIdentifier] == nil }
         var i = 0
+        let step = 4
         while i < pending.count && !cancelFlag {
-            let batch = Array(pending[i..<min(i + 6, pending.count)])
+            let batch = Array(pending[i..<min(i + step, pending.count)])
             let results = await withTaskGroup(of: (String, AssetInfo).self) { group -> [(String, AssetInfo)] in
                 for a in batch { group.addTask { await PhotoMatcher.scanAsset(a) } }
                 var r = [(String, AssetInfo)]()
@@ -142,8 +156,8 @@ final class PhotoMatcher: ObservableObject {
             }
             for (id, v) in results { info[id] = v }
             scanned += results.count
-            if (i / 6) % 20 == 0 { saveCache() }
-            i += 6
+            if (i / step) % 20 == 0 { saveCache() }
+            i += step
         }
         saveCache()
         isScanning = false
@@ -217,10 +231,11 @@ final class PhotoMatcher: ObservableObject {
             ro.resizeMode = .fast
             ro.isNetworkAccessAllowed = true
             ro.isSynchronous = false
+            let box = ResumeOnce()
             PHImageManager.default().requestImage(
                 for: a, targetSize: CGSize(width: size, height: size),
                 contentMode: .aspectFill, options: ro
-            ) { image, _ in cont.resume(returning: image) }
+            ) { image, _ in box.resume { cont.resume(returning: image) } }
         }
     }
 
@@ -232,13 +247,13 @@ final class PhotoMatcher: ObservableObject {
             ro.resizeMode = .exact
             ro.isNetworkAccessAllowed = true
             ro.isSynchronous = false
-            var resumed = false
+            let box = ResumeOnce()
             PHImageManager.default().requestImage(
                 for: a, targetSize: PHImageManagerMaximumSize,
                 contentMode: .aspectFit, options: ro
             ) { image, info in
                 let degraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
-                if !degraded && !resumed { resumed = true; cont.resume(returning: image) }
+                if !degraded { box.resume { cont.resume(returning: image) } }
             }
         }
     }
