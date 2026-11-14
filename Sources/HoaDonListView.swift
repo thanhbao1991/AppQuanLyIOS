@@ -275,7 +275,7 @@ struct HoaDonListView: View {
                         )
                     }
                 },
-                onPickAppOrder: { items, ghiChu, warnings, khachHangId, maHoaDon in
+                onPickAppOrder: { items, ghiChu, warnings, khachHangId, maHoaDon, khachStore in
                     Task {
                         try? await Task.sleep(nanoseconds: 400_000_000)
                         creatingPending = PendingCreate(
@@ -284,7 +284,8 @@ struct HoaDonListView: View {
                             presetItems: items,
                             presetGhiChu: ghiChu,
                             presetWarnings: warnings,
-                            presetMaHoaDon: maHoaDon
+                            presetMaHoaDon: maHoaDon,
+                            presetKhachStore: khachStore
                         )
                     }
                 },
@@ -315,6 +316,7 @@ struct HoaDonListView: View {
                 presetGhiChu: pending.presetGhiChu,
                 presetWarnings: pending.presetWarnings,
                 presetMaHoaDon: pending.presetMaHoaDon,
+                presetKhachStore: pending.presetKhachStore,
                 presetTenKhach: pending.presetTenKhach,
                 presetSdt: pending.presetSdt,
                 presetDiaChi: pending.presetDiaChi
@@ -558,6 +560,7 @@ private struct PendingCreate: Identifiable {
     var presetGhiChu: String? = nil
     var presetWarnings: [String] = []
     var presetMaHoaDon: String? = nil
+    var presetKhachStore: AppOrderKhachStore? = nil
     /// "Bắt đơn từ ảnh" — điền sẵn vào Ô NHẬP TAY (khác presetKhachHangId là 1 KhachHang CÓ SẴN),
     /// vì AI chỉ đọc được text thô từ ảnh chat, không tự khớp/tạo KhachHang — HoaDonKhachHangService
     /// tự lo khớp SĐT/tạo mới lúc lưu đơn y hệt khi nhân viên gõ tay.
@@ -712,8 +715,8 @@ private struct HoaDonRowView: View {
 private struct AddHoaDonSheet: View {
     let onPick: (String) -> Void
     let onPickGoiSom: (String, String, String) -> Void
-    /// (items, ghiChu, warnings, khachHangId, maHoaDon) — đơn đã map sẵn món từ store, xem AppOrderPickerSheet.
-    let onPickAppOrder: ([DraftChiTiet], String, [String], String?, String?) -> Void
+    /// (items, ghiChu, warnings, khachHangId, maHoaDon, khachStore) — đơn đã map sẵn món từ store, xem AppOrderPickerSheet.
+    let onPickAppOrder: ([DraftChiTiet], String, [String], String?, String?, AppOrderKhachStore) -> Void
     /// (items, ghiChu, warnings, tenKhach, sdt, diaChi, khachHangId) — xem ImageOrderPickerSheet.
     /// khachHangId khớp qua alias đã học (KhachHangController.LearnAlias) khi khác nil.
     let onPickFromImage: ([DraftChiTiet], String, [String], String?, String?, String?, String?) -> Void
@@ -827,10 +830,10 @@ private struct AddHoaDonSheet: View {
             }
         }
         .sheet(isPresented: $showAppOrder) {
-            AppOrderPickerSheet { items, ghiChu, warnings, khachHangId, maHoaDon in
+            AppOrderPickerSheet { items, ghiChu, warnings, khachHangId, maHoaDon, khachStore in
                 showAppOrder = false
                 dismiss()
-                onPickAppOrder(items, ghiChu, warnings, khachHangId, maHoaDon)
+                onPickAppOrder(items, ghiChu, warnings, khachHangId, maHoaDon, khachStore)
             }
         }
         .sheet(isPresented: $showImageOrder) {
@@ -1123,8 +1126,8 @@ private struct TextOrderPickerSheet: View {
 /// (món đã map sẵn SanPhamBienTheId thật) rồi mở form tạo đơn App đã điền sẵn. Khớp GetDonAsync
 /// (Desktop, HoaDonTabControl.Board.cs).
 private struct AppOrderPickerSheet: View {
-    /// (items, ghiChu, warnings, khachHangId, maHoaDon)
-    let onPick: ([DraftChiTiet], String, [String], String?, String?) -> Void
+    /// (items, ghiChu, warnings, khachHangId, maHoaDon, khachStore)
+    let onPick: ([DraftChiTiet], String, [String], String?, String?, AppOrderKhachStore) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var orders: [AppOrderSummaryDto] = []
@@ -1214,7 +1217,7 @@ private struct AppOrderPickerSheet: View {
         }
         // Fallback order.code nếu server cũ chưa trả maHoaDon trong detail.
         onPick(buildDraftItems(from: detail), detail.ghiChu ?? "", result.warnings, detail.khachHangId,
-               detail.maHoaDon ?? order.code)
+               detail.maHoaDon ?? order.code, detail.khachStore)
     }
 
     /// Guid rỗng = server không khớp được topping theo tên (MapBienThe/ToppingDtos phía server) —

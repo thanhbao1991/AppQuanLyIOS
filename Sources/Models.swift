@@ -1059,6 +1059,28 @@ struct AppOrderDetailDto: Decodable {
     /// AppOrderService.MarkImportedAsync dò "Đã bắt đơn" bằng HoaDons.MaHoaDon. Thiếu field này
     /// làm mọi đơn bắt qua iOS lưu MaHoaDon=NULL, không bao giờ hiện badge (lỗi tới 14/10).
     let maHoaDon: String?
+    /// Khách THẬT của đơn store (AppOrderService điền) — PHẢI gửi lại khi tạo HoaDon để backend tự
+    /// thêm khách + địa chỉ + toạ độ (MapService.UpsertCustomerLocationAsync). Thiếu thì backend báo
+    /// "Bắt đơn store thiếu SĐT khách" (lỗi tới 14/11, cùng kiểu vụ Desktop CopyFrom 12/11).
+    let khachPhone: String?
+    let khachTen: String?
+    let khachDiaChi: String?
+    let khachLat: Double?
+    let khachLong: Double?
+
+    var khachStore: AppOrderKhachStore {
+        AppOrderKhachStore(khachPhone: khachPhone, khachTen: khachTen, khachDiaChi: khachDiaChi,
+                           khachLat: khachLat, khachLong: khachLong)
+    }
+}
+
+/// Khách thật của đơn store, chuyển nguyên từ AppOrderDetailDto sang HoaDonFullCreateRequest.
+struct AppOrderKhachStore {
+    let khachPhone: String?
+    let khachTen: String?
+    let khachDiaChi: String?
+    let khachLat: Double?
+    let khachLong: Double?
 }
 
 /// Khớp KhachHangInfoDto (Backend) — thông tin điểm/nợ/ví/voucher/món yêu thích khi chọn khách
@@ -1232,6 +1254,12 @@ struct HoaDonFullCreateRequest: Encodable {
     let giamGia: Double
     let chiTietHoaDons: [ChiTietHoaDonCreateDto]
     let chiTietHoaDonToppings: [ChiTietHoaDonToppingCreateDto]
+    /// Chỉ có khi bắt đơn App — khách thật từ store, xem AppOrderDetailDto.khachPhone.
+    var khachPhone: String? = nil
+    var khachTen: String? = nil
+    var khachDiaChi: String? = nil
+    var khachLat: Double? = nil
+    var khachLong: Double? = nil
 }
 
 // ---- Tạo hoá đơn mới ----

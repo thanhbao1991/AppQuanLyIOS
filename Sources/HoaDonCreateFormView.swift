@@ -21,6 +21,8 @@ struct HoaDonCreateFormView: View {
     var presetWarnings: [String] = []
     /// Mã đơn store khi bắt đơn App — gửi kèm lúc tạo để backend đánh dấu "Đã bắt đơn".
     var presetMaHoaDon: String? = nil
+    /// Khách thật của đơn store — gửi kèm để backend tự thêm khách + toạ độ (AppOrderDetailDto.khachPhone).
+    var presetKhachStore: AppOrderKhachStore? = nil
     /// Preset từ "Bắt đơn từ ảnh" (xem HoaDonListView.ImageOrderPickerSheet) — điền sẵn Ô NHẬP TAY
     /// (khác presetKhachHangId là 1 KhachHang có sẵn), vì AI chỉ đọc text thô từ ảnh chat, không tự
     /// khớp/tạo KhachHang — HoaDonKhachHangService tự lo khớp SĐT/tạo mới lúc lưu đơn. Riêng
@@ -974,7 +976,7 @@ struct HoaDonCreateFormView: View {
                 ChiTietHoaDonToppingCreateDto(chiTietHoaDonId: item.id, toppingId: t.toppingId, ten: t.ten, soLuong: t.soLuong, gia: t.gia)
             }
         }
-        let body = HoaDonFullCreateRequest(
+        var body = HoaDonFullCreateRequest(
             phanLoai: phanLoai,
             maHoaDon: presetMaHoaDon?.isEmpty == false ? presetMaHoaDon : nil,
             tenBan: phanLoai == "Tại Chỗ" ? tenBan.trimmingCharacters(in: .whitespaces) : nil,
@@ -987,6 +989,13 @@ struct HoaDonCreateFormView: View {
             chiTietHoaDons: chiTietDtos,
             chiTietHoaDonToppings: toppingDtos
         )
+        if phanLoai == "App", let k = presetKhachStore {
+            body.khachPhone = k.khachPhone
+            body.khachTen = k.khachTen
+            body.khachDiaChi = k.khachDiaChi
+            body.khachLat = k.khachLat
+            body.khachLong = k.khachLong
+        }
 
         let result = await APIClient.shared.createHoaDonFull(body)
         saving = false
