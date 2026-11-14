@@ -57,6 +57,16 @@ struct SanPhamHinhAnhListView: View {
         .toolbarBackground(Color.brandGradient, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    NavigationLink("Tự dò ảnh món") { TuDoAnhMonView() }
+                    NavigationLink("Lọc ảnh không người") { LocAnhKhongNguoiView() }
+                } label: {
+                    Image(systemName: "wand.and.stars")
+                }
+            }
+        }
         .task { await load() }
         .popupHost { host in
             host.alert("Lỗi", isPresented: Binding(
@@ -280,7 +290,10 @@ extension UIImage {
     /// (từ AppShippingBackend). Cả 2 nơi hiển thị (ô 48x48, 64x64) đều crop-fit sẵn nên không cần
     /// độ phân giải cao hơn — giữ file nhẹ như ảnh seed thay vì để nguyên full-res từ camera.
     func resizedForMenuUpload() -> UIImage {
-        let targetSize = CGSize(width: 200, height: 267)
+        // 14/11/2026: nâng 200x267 -> 1080x1440. Ảnh seed cũ quá bé; app khách giờ hiện ảnh to +
+        // cần ảnh gốc nét để đổ nền. Server không nén lại nên giữ nguyên bản này (~200-350KB/ảnh).
+        // Dùng cho cả chọn tay lẫn "Tự dò ảnh món" (TuDoAnhMonView).
+        let targetSize = CGSize(width: 1080, height: 1440)
         let targetRatio = targetSize.width / targetSize.height
         let sourceRatio = size.width / size.height
 
