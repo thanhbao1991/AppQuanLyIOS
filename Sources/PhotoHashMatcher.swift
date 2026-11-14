@@ -73,16 +73,37 @@ enum PhotoHash {
 
 // MARK: - Person detection (Vision, on-device)
 enum PersonDetect {
-    /// true nếu có mặt người HOẶC thân người. Thiên về GIỮ (lỗi -> coi như có người).
+    // Nhãn phân loại liên quan tới người (VNClassifyImageRequest) — bắt được em bé/người chụp một
+    // phần mà dò-mặt/dò-thân trượt (vd mặt bé cận cảnh, gáy, người nằm).
+    private static let personKeywords = [
+        "people", "person", "human", "baby", "infant", "toddler", "child", "kid",
+        "face", "portrait", "selfie", "crowd", "girl", "boy", "man", "woman", "family"
+    ]
+
+    /// true nếu có DẤU HIỆU người (mặt / thân / tư thế / phân loại ảnh). THIÊN VỀ GIỮ mạnh — lỗi hay
+    /// nghi ngờ đều coi như CÓ người, để tuyệt đối không xoá nhầm ảnh người (nhất là ảnh em bé).
     static func hasPerson(_ image: UIImage) -> Bool {
         guard let cg = image.cgImage else { return true }
         let handler = VNImageRequestHandler(cgImage: cg, options: [:])
+
         let faceReq = VNDetectFaceRectanglesRequest()
         let humanReq = VNDetectHumanRectanglesRequest()
-        do { try handler.perform([faceReq, humanReq]) } catch { return true }
-        let faces = faceReq.results?.count ?? 0
-        let humans = humanReq.results?.count ?? 0
-        return faces > 0 || humans > 0
+        humanReq.upperBodyOnly = false            // bắt cả người nằm/toàn thân, không chỉ nửa trên
+        let poseReq = VNDetectHumanBodyPoseRequest()   // bắt người qua tư thế dù thiếu mặt
+        let classifyReq = VNClassifyImageRequest()      // nhãn ảnh: baby/child/people...
+
+        do { try handler.perform([faceReq, humanReq, poseReq, classifyReq]) } catch { return true }
+
+        if (faceReq.results?.count ?? 0) > 0 { return true }
+        if (humanReq.results?.count ?? 0) > 0 { return true }
+        if (poseReq.results?.count ?? 0) > 0 { return true }
+        if let obs = classifyReq.results {
+            for o in obs where o.confidence >= 0.15 {
+                let id = o.identifier.lowercased()
+                if personKeywords.contains(where: { id.contains($0) }) { return true }
+            }
+        }
+        return false
     }
 }
 
@@ -119,7 +140,9 @@ final class PhotoMatcher: ObservableObject {
 
     private var cacheURL: URL {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return dir.appendingPathComponent("menuPhotoScan.json")
+        // -v2 (14/11/2026): đổi tên để BỎ cache cũ sau khi tăng cường dò người (dò-mặt/thân/tư thế +
+        // phân loại baby/child). Cache cũ chấm "không người" sai cho ảnh em bé — phải quét lại.
+        return dir.appendingPathComponent("menuPhotoScan-v2.json")
     }
 
     var noPersonCount: Int { info.values.filter { !$0.hasPerson }.count }
