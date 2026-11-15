@@ -1245,6 +1245,14 @@ actor APIClient {
         return (env.data ?? []).filter { includeNgungBan || !$0.ngungBan }
     }
 
+    /// Id các món cần tìm ảnh gốc (màn "Tìm ảnh gốc") — server tự bỏ món đã có ảnh gốc. nil = lỗi mạng.
+    func getSanPhamCanAnhGoc() async -> [String]? {
+        let req = makeRequest("/api/SanPham/can-anh-goc")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[String]>.self, from: data), env.isSuccess else { return nil }
+        return (env.data ?? []).map { $0.lowercased() }
+    }
+
     func getSanPhamList(includeNgungBan: Bool = false) async -> [SanPhamDto] {
         await getSanPhamListOrNil(includeNgungBan: includeNgungBan) ?? []
     }

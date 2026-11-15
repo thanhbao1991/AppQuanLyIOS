@@ -199,6 +199,18 @@ final class PhotoMatcher: ObservableObject {
         return bestId.isEmpty ? nil : (bestId, bestDist)
     }
 
+    /// k ảnh gần nhất theo pHash (khoảng cách ≤ maxDist), gần nhất trước — "Tìm ảnh gốc" lấy rộng rồi
+    /// xếp lại bằng Vision (FeaturePrint) vì ảnh menu cũ thường đã bị cắt/nén nên pHash lệch vài bit.
+    func nearest(for query: UInt64, k: Int, maxDist: Int) -> [(id: String, dist: Int)] {
+        var arr: [(id: String, dist: Int)] = []
+        for (id, v) in info where v.hash != 0 {
+            let d = PhotoHash.hamming(query, v.hash)
+            if d <= maxDist { arr.append((id: id, dist: d)) }
+        }
+        arr.sort { $0.dist < $1.dist }
+        return Array(arr.prefix(k))
+    }
+
     /// Danh sách id ảnh KHÔNG người (mới nhất trước — allAssets đã sort giảm theo ngày).
     func noPersonIds() -> [String] {
         allAssets.compactMap { a in
@@ -247,7 +259,7 @@ final class PhotoMatcher: ObservableObject {
         return (a.localIdentifier, AssetInfo(hash: hash, hasPerson: person))
     }
 
-    private nonisolated static func requestThumb(_ a: PHAsset, size: CGFloat) async -> UIImage? {
+    nonisolated static func requestThumb(_ a: PHAsset, size: CGFloat) async -> UIImage? {
         await withCheckedContinuation { cont in
             let ro = PHImageRequestOptions()
             ro.deliveryMode = .fastFormat

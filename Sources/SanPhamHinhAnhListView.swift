@@ -60,6 +60,7 @@ struct SanPhamHinhAnhListView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
+                    NavigationLink("Tìm ảnh gốc (ly Cảm ơn To)") { TimAnhGocView() }
                     NavigationLink("Tự dò ảnh món") { TuDoAnhMonView() }
                     NavigationLink("Lọc ảnh không người") { LocAnhKhongNguoiView() }
                 } label: {
