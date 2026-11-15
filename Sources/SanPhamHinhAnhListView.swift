@@ -175,13 +175,9 @@ private struct SanPhamHinhAnhRow: View {
             }
         }
         .padding(.vertical, 4)
-        // Mở thẳng vào album Yêu thích — xem FavoritesImagePicker để biết lý do không dùng
-        // PhotosPicker mặc định (Apple không cho chọn album ban đầu, luôn mở Recents).
-        .sheet(isPresented: $showPicker) {
-            FavoritesImagePicker { data in
-                showPicker = false
-                onPicked(data, "image/jpeg")
-            }
+        // Picker chuẩn iOS (mở "Gần đây").
+        .menuPhotoPicker(isPresented: $showPicker) { data in
+            onPicked(data, "image/jpeg")
         }
         .fullScreenCover(isPresented: $showCamera) {
             CameraPicker { image in

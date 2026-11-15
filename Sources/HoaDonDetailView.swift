@@ -24,9 +24,10 @@ struct HoaDonDetailView: View {
     /// nên tự tra qua catalog (khớp cách Desktop gán HinhAnh client-side theo SanPhamId, xem
     /// ChiTietHoaDonDto.cs).
     @State private var hinhAnhMap: [String: String] = [:]
-    /// Món đang được đổi/thêm ảnh từ màn này: ảnh chưa có -> chụp camera, đã có -> chọn album Yêu thích.
+    /// Món đang được đổi/thêm ảnh từ màn này: ảnh chưa có -> chụp camera, đã có -> chọn từ thư viện.
     @State private var photoCameraId: String?
     @State private var photoLibraryId: String?
+    @State private var showPhotoLibrary = false
     @State private var uploadingPhotoId: String?
 
     var body: some View {
@@ -67,14 +68,10 @@ struct HoaDonDetailView: View {
             }
         }
         .task { await load() }
-        .sheet(item: Binding(
-            get: { photoLibraryId.map(PhotoTarget.init) },
-            set: { photoLibraryId = $0?.id }
-        )) { target in
-            FavoritesImagePicker { data in
-                photoLibraryId = nil
-                Task { await uploadPhoto(sanPhamId: target.id, data: data) }
-            }
+        .menuPhotoPicker(isPresented: $showPhotoLibrary) { data in
+            guard let sanPhamId = photoLibraryId else { return }
+            photoLibraryId = nil
+            Task { await uploadPhoto(sanPhamId: sanPhamId, data: data) }
         }
         .fullScreenCover(item: Binding(
             get: { photoCameraId.map(PhotoTarget.init) },
@@ -349,7 +346,7 @@ struct HoaDonDetailView: View {
                 .frame(width: 36, height: 36)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .contentShape(Rectangle())
-                .onTapGesture { if let sanPhamId { photoLibraryId = sanPhamId } }
+                .onTapGesture { if let sanPhamId { photoLibraryId = sanPhamId; showPhotoLibrary = true } }
             } else {
                 RoundedRectangle(cornerRadius: 8)
                     .fill(Color.textMuted.opacity(0.12))
