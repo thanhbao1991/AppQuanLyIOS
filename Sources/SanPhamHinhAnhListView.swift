@@ -40,6 +40,7 @@ struct SanPhamHinhAnhListView: View {
                             uploading: uploadingId == sp.id,
                             togglingNoiBat: togglingNoiBatId == sp.id,
                             onPicked: { data, mime in Task { await upload(id: sp.id, data: data, mime: mime) } },
+                            onLoi: { errorMessage = $0 },
                             onToggleNoiBat: { Task { await toggleNoiBat(sp) } }
                         )
                     }
@@ -131,6 +132,7 @@ private struct SanPhamHinhAnhRow: View {
     let uploading: Bool
     let togglingNoiBat: Bool
     let onPicked: (Data, String) -> Void
+    let onLoi: (String) -> Void
     let onToggleNoiBat: () -> Void
 
     @State private var showPicker = false
@@ -177,14 +179,15 @@ private struct SanPhamHinhAnhRow: View {
         }
         .padding(.vertical, 4)
         // Picker chuẩn iOS (mở "Gần đây").
-        .menuPhotoPicker(isPresented: $showPicker) { data in
+        .menuPhotoPicker(isPresented: $showPicker, onPicked: { data in
             onPicked(data, "image/jpeg")
-        }
+        }, onLoi: onLoi)
         .fullScreenCover(isPresented: $showCamera) {
             CameraPicker { image in
                 showCamera = false
-                guard let image, let data = image.resizedForMenuUpload().jpegData(compressionQuality: 0.75) else { return }
-                onPicked(data, "image/jpeg")
+                guard let image else { return }
+                let kq = image.menuUploadJPEG()
+                if let data = kq.data { onPicked(data, "image/jpeg") } else { onLoi(kq.loi ?? "Ảnh không dùng được.") }
             }
             .ignoresSafeArea()
         }
@@ -302,7 +305,25 @@ extension UIImage {
         }
         let origin = CGPoint(x: (targetSize.width - drawSize.width) / 2, y: (targetSize.height - drawSize.height) / 2)
 
-        let renderer = UIGraphicsImageRenderer(size: targetSize)
+        // scale = 1: ra ĐÚNG 1080×1440 PIXEL. Mặc định renderer lấy scale màn hình (3x) → trước đây ra 3240×4320
+        // (phóng to ảnh) và 42 món cũ (khung 200×267) ra 600×801 px — đó là lý do ảnh trên server có cỡ lạ đó.
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = 1
+        let renderer = UIGraphicsImageRenderer(size: targetSize, format: format)
         return renderer.image { _ in draw(in: CGRect(origin: origin, size: drawSize)) }
+    }
+
+    /// Ảnh món để up — CHỈ nhận ảnh đủ nét: phần cắt 3:4 phải ≥1080×1440 PIXEL (cùng ngưỡng server
+    /// SanPhamCrudService.AnhMenuCanhNganToiThieu), KHÔNG phóng to ảnh nhỏ cho "đủ cỡ". 16/11/2026 chủ quán:
+    /// không nhận ảnh chất lượng thấp nữa. Dùng cho MỌI chỗ up ảnh menu (chọn, chụp, Tự dò, Tìm ảnh gốc, hoá đơn).
+    func menuUploadJPEG() -> (data: Data?, loi: String?) {
+        let w = size.width * scale, h = size.height * scale
+        let rongCat = min(w, h * 3 / 4)   // bề ngang phần 3:4 được giữ lại
+        if rongCat < 1079.5 {
+            return (nil, "Ảnh quá nhỏ (\(Int(w))×\(Int(h))). Cần ảnh chụp gốc từ điện thoại, tối thiểu 1080×1440 — "
+                + "không dùng ảnh chụp màn hình hay ảnh gửi qua Zalo/Messenger.")
+        }
+        guard let data = resizedForMenuUpload().jpegData(compressionQuality: 0.9) else { return (nil, "Không nén được ảnh.") }
+        return (data, nil)
     }
 }

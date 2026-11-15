@@ -206,11 +206,12 @@ struct TimAnhGocView: View {
         guard let asset = matcher.asset(assetId) else { return }
         uploadingId = sp.id
         defer { uploadingId = nil }
-        guard let full = await PhotoMatcher.fullImage(asset),
-              let data = full.resizedForMenuUpload().jpegData(compressionQuality: 0.9) else {
+        guard let full = await PhotoMatcher.fullImage(asset) else {
             message = "Không lấy được ảnh gốc từ máy."
             return
         }
+        let kq = full.menuUploadJPEG()
+        guard let data = kq.data else { message = kq.loi ?? "Ảnh không dùng được."; return }
         let (url, msg) = await APIClient.shared.uploadSanPhamHinhAnh(id: sp.id, imageData: data, mimeType: "image/jpeg")
         if url != nil { doneIds.insert(sp.id) } else { message = msg ?? "Upload thất bại." }
     }

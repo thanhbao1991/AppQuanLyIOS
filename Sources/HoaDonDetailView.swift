@@ -68,19 +68,21 @@ struct HoaDonDetailView: View {
             }
         }
         .task { await load() }
-        .menuPhotoPicker(isPresented: $showPhotoLibrary) { data in
+        .menuPhotoPicker(isPresented: $showPhotoLibrary, onPicked: { data in
             guard let sanPhamId = photoLibraryId else { return }
             photoLibraryId = nil
             Task { await uploadPhoto(sanPhamId: sanPhamId, data: data) }
-        }
+        }, onLoi: { photoLibraryId = nil; errorText = $0 })
         .fullScreenCover(item: Binding(
             get: { photoCameraId.map(PhotoTarget.init) },
             set: { photoCameraId = $0?.id }
         )) { target in
             CameraPicker { image in
                 photoCameraId = nil
-                guard let image, let data = image.resizedForMenuUpload().jpegData(compressionQuality: 0.75) else { return }
-                Task { await uploadPhoto(sanPhamId: target.id, data: data) }
+                guard let image else { return }
+                let kq = image.menuUploadJPEG()
+                if let data = kq.data { Task { await uploadPhoto(sanPhamId: target.id, data: data) } }
+                else { errorText = kq.loi }
             }
             .ignoresSafeArea()
         }

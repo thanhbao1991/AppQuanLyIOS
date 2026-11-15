@@ -145,11 +145,12 @@ struct TuDoAnhMonView: View {
         guard let s = suggest[sp.id], let asset = matcher.asset(s.assetId) else { return }
         uploadingId = sp.id
         defer { uploadingId = nil }
-        guard let full = await PhotoMatcher.fullImage(asset),
-              let data = full.resizedForMenuUpload().jpegData(compressionQuality: 0.85) else {
+        guard let full = await PhotoMatcher.fullImage(asset) else {
             message = "Không lấy được ảnh gốc từ máy."
             return
         }
+        let kq = full.menuUploadJPEG()
+        guard let data = kq.data else { message = "\(sp.ten): \(kq.loi ?? "ảnh không dùng được.")"; return }
         let (url, msg) = await APIClient.shared.uploadSanPhamHinhAnh(id: sp.id, imageData: data, mimeType: "image/jpeg")
         if url != nil { doneIds.insert(sp.id) } else { message = msg ?? "Upload thất bại." }
     }
