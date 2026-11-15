@@ -146,11 +146,11 @@ struct CongViecListView: View {
                 Text("\(editDaysItem?.ten ?? ""): báo hư sau bao nhiêu ngày kể từ lúc làm xong")
             }
             .confirmationDialog(
-                confirmNewState ? "Đánh dấu đã làm?" : "Đánh dấu chưa làm?",
+                confirmNewState ? "Đánh dấu đã làm?" : "Đánh dấu cần làm?",
                 isPresented: Binding(get: { confirmItem != nil }, set: { if !$0 { confirmItem = nil } }),
                 titleVisibility: .visible
             ) {
-                Button(confirmNewState ? "Đã làm" : "Chưa làm") {
+                Button(confirmNewState ? "Đã làm" : "Cần làm") {
                     if let confirmItem {
                         Task { await toggle(confirmItem, done: confirmNewState) }
                     }
@@ -199,7 +199,7 @@ struct CongViecListView: View {
         .textCase(nil)
     }
 
-    /// Bấm vào = confirm "chưa làm" (mở lại để làm mẻ mới), y hệt bấm dòng việc thường.
+    /// Bấm vào = confirm "cần làm" (mở lại để làm mẻ mới), y hệt bấm dòng việc thường.
     private func canhBaoRow(_ item: CongViecNoiBoDto, ngayHu: Date) -> some View {
         let cal = Calendar.current
         let soNgay = cal.dateComponents([.day], from: cal.startOfDay(for: Date()), to: cal.startOfDay(for: ngayHu)).day ?? 0
