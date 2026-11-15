@@ -246,17 +246,6 @@ struct MuaHangDeXuatDto: Decodable, Identifiable {
 }
 
 /// Việc nên làm sớm, đề xuất từ lịch sử tick xong (GET /api/CongViecNoiBo/de-xuat).
-struct CongViecDeXuatDto: Decodable, Identifiable {
-    let congViecId: String
-    let ten: String
-    let lanCuoiLam: String?
-    let ngayDeXuat: String
-    let soNgayConLai: Int
-    let lyDo: String
-    let nguonAI: Bool
-    var id: String { congViecId }
-}
-
 struct ChiTieuHangNgayCreateRequest: Encodable {
     let ten: String
     let soLuong: Double
@@ -501,12 +490,18 @@ struct CongViecNoiBoDto: Decodable, Identifiable {
     let ten: String
     let daHoanThanh: Bool
     let ngayGio: String?
+    /// Ngày hư = lúc tick xong + xNgayCanhBao (server tính). nil khi chưa xong hoặc không đặt số ngày.
+    var ngayCanhBao: String? = nil
+    /// Số ngày từ lúc hoàn thành tới khi hư (nil/0 = không cảnh báo).
+    var xNgayCanhBao: Int? = nil
 }
 
 struct CongViecNoiBoRequest: Encodable {
     let ten: String
     let daHoanThanh: Bool
     let ngayGio: String?
+    /// nil = không gửi → server giữ giá trị cũ; 0 = tắt cảnh báo.
+    var xNgayCanhBao: Int? = nil
 }
 
 // ---- Lịch sử thông báo nội bộ (icon chuông, tab Hoá đơn) — thay Discord từ 2026-10-03 ----

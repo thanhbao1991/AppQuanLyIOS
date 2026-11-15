@@ -1,33 +1,35 @@
 import SwiftUI
 
 /// Công việc nội bộ — GET/POST/PUT /api/CongViecNoiBo. Tick hoàn thành + thêm việc mới từ ô tìm
-/// kiếm; không xoá/cảnh báo (NgayCanhBao, XNgayCanhBao) — đơn giản hoá cho bản mobile. Không có
-/// footer, khớp màn Ảnh menu.
+/// kiếm. Mục đầu "Cảnh báo hư hỏng" (15/11/2026, thay "Đề xuất nên làm"): việc đã xong có đặt số ngày
+/// cảnh báo (XNgayCanhBao) — server tính NgayCanhBao = lúc tick xong + X ngày. Đặt số ngày bằng giữ
+/// lâu dòng việc. Không có footer, khớp màn Ảnh menu.
 struct CongViecListView: View {
     let notificationBell: AnyView
     @State private var items: [CongViecNoiBoDto] = []
     @State private var hasLoaded = false
     /// Lượt tải gần nhất lỗi — hiện banner "Thử lại", giữ danh sách + badge đang có.
     @State private var loadFailed = false
-    /// Lượt tải đề xuất mới nhất — đề xuất tải riêng (chậm), lượt cũ về sau không được ghi đè.
-    @State private var deXuatGeneration = 0
     @Environment(\.scenePhase) private var scenePhase
     @State private var searchText = ""
     @State private var adding = false
     @State private var errorMessage: String?
-    /// Tải riêng sau danh sách việc — AI trả chậm, không chặn màn hình.
-    @State private var deXuat: [CongViecDeXuatDto] = []
     /// Việc đang chờ xác nhận đổi trạng thái — bấm vào dòng KHÔNG đổi ngay, phải xác nhận trước
     /// (theo yêu cầu, tránh chạm nhầm khi lướt danh sách làm mất trạng thái tick đã có).
     @State private var confirmItem: CongViecNoiBoDto?
     @State private var confirmNewState = false
 
-    /// Backend chỉ đề xuất việc ĐÃ XONG tới hạn làm lại (CongViecDeXuatService) — giữ đề xuất khi việc
-    /// đó trong `items` hiện tại vẫn đang "đã xong"; việc vừa mở lại (đã nằm ở "Cần làm") thì ẩn ngay,
-    /// khỏi chờ lượt đề xuất mới về. 13/11/2026: trước đây lọc ngược (!daHoanThanh) từ 1240e40 nên
-    /// mục "Đề xuất nên làm" luôn rỗng.
-    private var visibleDeXuat: [CongViecDeXuatDto] {
-        deXuat.filter { d in items.contains { $0.id == d.congViecId && $0.daHoanThanh } }
+    /// Việc đang đặt số ngày cảnh báo (alert nhập số).
+    @State private var editDaysItem: CongViecNoiBoDto?
+    @State private var editDaysText = ""
+
+    /// Việc đã xong có ngày hư, hư sớm nhất lên đầu.
+    private var canhBaoHuHong: [CanhBaoHuHong] {
+        items.compactMap { item in
+            guard item.daHoanThanh, let d = HoaDonFormatting.parseIso(item.ngayCanhBao) else { return nil }
+            return CanhBaoHuHong(item: item, ngayHu: d)
+        }
+        .sorted { $0.ngayHu < $1.ngayHu }
     }
 
     /// Tên việc mới lấy từ ô tìm — nil khi ô trống hoặc đã có việc TRÙNG KHÍT tên (không phân biệt
@@ -60,11 +62,11 @@ struct CongViecListView: View {
                             .padding(.top, 8)
                     }
                     List {
-                        if searchText.isEmpty && !visibleDeXuat.isEmpty {
+                        if searchText.isEmpty && !canhBaoHuHong.isEmpty {
                             Section {
-                                ForEach(visibleDeXuat) { deXuatRow($0) }
+                                ForEach(canhBaoHuHong) { canhBaoRow($0.item, ngayHu: $0.ngayHu) }
                             } header: {
-                                sectionHeader("Đề xuất nên làm", nil)
+                                sectionHeader("Cảnh báo hư hỏng", nil)
                             }
                         }
                         if items.isEmpty && searchText.isEmpty {
@@ -128,6 +130,21 @@ struct CongViecListView: View {
             } message: {
                 Text(errorMessage ?? "")
             }
+            .alert("Số ngày cảnh báo", isPresented: Binding(
+                get: { editDaysItem != nil },
+                set: { if !$0 { editDaysItem = nil } }
+            )) {
+                TextField("Số ngày (0 = tắt)", text: $editDaysText)
+                    .keyboardType(.numberPad)
+                Button("Lưu") {
+                    if let item = editDaysItem, let soNgay = Int(editDaysText.trimmingCharacters(in: .whitespaces)), soNgay >= 0 {
+                        Task { await saveSoNgay(item, soNgay: soNgay) }
+                    }
+                }
+                Button("Huỷ", role: .cancel) {}
+            } message: {
+                Text("\(editDaysItem?.ten ?? ""): báo hư sau bao nhiêu ngày kể từ lúc làm xong")
+            }
             .confirmationDialog(
                 confirmNewState ? "Đánh dấu đã làm?" : "Đánh dấu chưa làm?",
                 isPresented: Binding(get: { confirmItem != nil }, set: { if !$0 { confirmItem = nil } }),
@@ -154,21 +171,22 @@ struct CongViecListView: View {
         }
         loadFailed = fresh == nil
         hasLoaded = true
-
-        // Đề xuất tải RIÊNG, không chặn load() — trước đây kéo refresh/tick xong phải chờ cả phần
-        // AI chậm này mới hết vòng quay.
-        deXuatGeneration += 1
-        let generation = deXuatGeneration
-        Task {
-            let moi = await APIClient.shared.getCongViecDeXuat()
-            if generation == deXuatGeneration { deXuat = moi }
-        }
     }
 
     private func congViecRow(_ item: CongViecNoiBoDto) -> some View {
         CongViecRowView(item: item) { toggled in
             confirmItem = item
             confirmNewState = toggled
+        }
+        .contextMenu { soNgayButton(item) }
+    }
+
+    private func soNgayButton(_ item: CongViecNoiBoDto) -> some View {
+        Button {
+            editDaysText = (item.xNgayCanhBao ?? 0) > 0 ? "\(item.xNgayCanhBao!)" : ""
+            editDaysItem = item
+        } label: {
+            Label("Số ngày cảnh báo hư", systemImage: "exclamationmark.triangle")
         }
     }
 
@@ -181,19 +199,39 @@ struct CongViecListView: View {
         .textCase(nil)
     }
 
-    /// Chỉ hiện tên — bấm vào mở đúng confirm đổi trạng thái của công việc tương ứng (tìm trong
-    /// `items` theo congViecId), y hệt bấm dòng công việc thường.
-    private func deXuatRow(_ d: CongViecDeXuatDto) -> some View {
-        Button {
-            guard let item = items.first(where: { $0.id == d.congViecId }) else { return }
+    /// Bấm vào = confirm "chưa làm" (mở lại để làm mẻ mới), y hệt bấm dòng việc thường.
+    private func canhBaoRow(_ item: CongViecNoiBoDto, ngayHu: Date) -> some View {
+        let cal = Calendar.current
+        let soNgay = cal.dateComponents([.day], from: cal.startOfDay(for: Date()), to: cal.startOfDay(for: ngayHu)).day ?? 0
+        let (chu, mau): (String, Color) = soNgay < 0 ? ("Hư \(-soNgay) ngày", .red)
+            : soNgay == 0 ? ("Hư hôm nay", .red)
+            : soNgay == 1 ? ("Còn 1 ngày", .orange)
+            : ("Còn \(soNgay) ngày", .textMuted)
+        return Button {
             confirmItem = item
-            confirmNewState = !item.daHoanThanh
+            confirmNewState = false
         } label: {
-            Text(d.ten)
-                .font(.subheadline.bold())
-                .foregroundColor(.primary)
+            HStack {
+                Text(item.ten)
+                    .font(.subheadline.bold())
+                    .foregroundColor(.primary)
+                Spacer()
+                Text(chu)
+                    .font(.subheadline.weight(soNgay <= 1 ? .semibold : .regular))
+                    .foregroundColor(mau)
+            }
         }
         .padding(.vertical, 2)
+        .contextMenu { soNgayButton(item) }
+    }
+
+    private func saveSoNgay(_ item: CongViecNoiBoDto, soNgay: Int) async {
+        let result = await APIClient.shared.updateCongViec(
+            id: item.id, ten: item.ten, daHoanThanh: item.daHoanThanh, ngayGio: item.ngayGio, xNgayCanhBao: soNgay)
+        if !result.success {
+            errorMessage = "Chưa lưu được số ngày \"\(item.ten)\": \(result.message ?? "lỗi không rõ")"
+        }
+        await load()
     }
 
     private func toggle(_ item: CongViecNoiBoDto, done: Bool) async {
@@ -220,6 +258,12 @@ struct CongViecListView: View {
     }
 }
 
+private struct CanhBaoHuHong: Identifiable {
+    let item: CongViecNoiBoDto
+    let ngayHu: Date
+    var id: String { item.id }
+}
+
 /// Dòng phẳng, không còn kiểu "card" (nền màu/bo góc/shadow) — khớp style SanPhamHinhAnhRow (màn
 /// Ảnh menu): chỉ HStack + padding dọc, dùng separator mặc định của List thay vì tự vẽ khung.
 private struct CongViecRowView: View {
@@ -238,6 +282,11 @@ private struct CongViecRowView: View {
                     .strikethrough(item.daHoanThanh)
                     .foregroundColor(item.daHoanThanh ? .textMuted : .primary)
                 Spacer()
+                if let x = item.xNgayCanhBao, x > 0 {
+                    Text("\(x) ngày")
+                        .font(.caption)
+                        .foregroundColor(.textMuted)
+                }
             }
             .padding(.vertical, 4)
         }
