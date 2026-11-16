@@ -1245,6 +1245,20 @@ actor APIClient {
         return (env.data ?? []).filter { includeNgungBan || !$0.ngungBan }
     }
 
+    /// Ảnh menu đã làm nền nhưng chưa biết món (cổng tab Kê). nil = lỗi mạng.
+    func getAnhChoDuyetOrNil() async -> [AnhChoDuyetDto]? {
+        let req = makeRequest("/api/SanPham/anh-cho-duyet")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[AnhChoDuyetDto]>.self, from: data), env.isSuccess else { return nil }
+        return env.data ?? []
+    }
+
+    func ganAnhChoDuyet(ma: String, sanPhamId: String) async -> ActionResult {
+        let req = makeRequest("/api/SanPham/anh-cho-duyet/\(ma)/gan", method: "POST",
+                              body: try? JSONSerialization.data(withJSONObject: ["sanPhamId": sanPhamId]))
+        return await executeAction(req)
+    }
+
     /// Id các món cần tìm ảnh gốc (màn "Tìm ảnh gốc") — server tự bỏ món đã có ảnh gốc. nil = lỗi mạng.
     func getSanPhamCanAnhGoc() async -> [String]? {
         let req = makeRequest("/api/SanPham/can-anh-goc")

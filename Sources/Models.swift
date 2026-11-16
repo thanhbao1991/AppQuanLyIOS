@@ -1141,6 +1141,13 @@ struct SanPhamBienTheDto: Decodable, Identifiable, Hashable {
     let macDinh: Bool
 }
 
+/// Ảnh menu chờ nhân viên chọn món — GET /api/SanPham/anh-cho-duyet.
+struct AnhChoDuyetDto: Decodable, Identifiable {
+    let ma: String
+    let url: String
+    var id: String { ma }
+}
+
 struct SanPhamDto: Decodable, Identifiable {
     let id: String
     let ten: String

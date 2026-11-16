@@ -62,6 +62,9 @@ struct MainTabView: View {
     /// Cổng vào tab Kê/Tiền/Việc (user 01/11/2026): còn món L/XL chưa duyệt công thức thì phải duyệt xong
     /// 1 món mới được vào. Model riêng, không dùng chung với TroLyView.
     @StateObject private var duyetCongThuc = DuyetCongThucSizeModel()
+    /// Ảnh menu chờ chọn món — đứng TRƯỚC duyệt công thức ở cùng cổng (user 17/11/2026).
+    @StateObject private var duyetAnh = DuyetAnhMenuModel()
+    @State private var anhVuaMo: String?
     @State private var tabChoDuyet: MainTab?
     @State private var monVuaMo: String?
     @State private var dangMoTab = false
@@ -131,6 +134,10 @@ struct MainTabView: View {
                onDismiss: xongDuyetCongThuc) { mon in
             duyetCongThucMonSheet(mon: mon, model: duyetCongThuc)
         }
+        .sheet(item: Binding(get: { duyetAnh.dangDuyet }, set: { duyetAnh.dangDuyet = $0 }),
+               onDismiss: xongDuyetAnh) { anh in
+            DuyetAnhMenuSheet(anh: anh, model: duyetAnh)
+        }
     }
 
     /// Chỉ Kê — Đơn, Tiền, Nợ, Chi, Việc, Menu vào thẳng (user 04/11/2026, trước đó 01/11/2026 áp cho
@@ -147,6 +154,14 @@ struct MainTabView: View {
         guard !dangMoTab else { return }
         dangMoTab = true
         Task {
+            // Còn ảnh menu chờ chọn món thì duyệt ảnh trước; hết ảnh (hoặc tải lỗi) mới tới duyệt công thức.
+            if await duyetAnh.load(), let anh = duyetAnh.items.first {
+                dangMoTab = false
+                tabChoDuyet = tab
+                anhVuaMo = anh.ma
+                duyetAnh.dangDuyet = anh
+                return
+            }
             // Luôn tải lại: định lượng cũ mà mở sửa rồi Lưu sẽ tạo trùng dòng (xem DuyetCongThucSizeModel.load).
             let taiDuoc = await duyetCongThuc.load()
             dangMoTab = false
@@ -169,6 +184,16 @@ struct MainTabView: View {
         let duyetSau = duyetCongThuc.duyetSau
         duyetCongThuc.duyetSau = false
         if duyetSau || !duyetCongThuc.monChuaDuyet.contains(where: { $0.id == monId }) { selection = tab }
+    }
+
+    /// Sheet ảnh đóng: ảnh vừa mở đã gắn món (không còn trong danh sách) hoặc bấm "Duyệt sau" thì cho vào tab.
+    private func xongDuyetAnh() {
+        guard let tab = tabChoDuyet, let ma = anhVuaMo else { return }
+        tabChoDuyet = nil
+        anhVuaMo = nil
+        let duyetSau = duyetAnh.duyetSau
+        duyetAnh.duyetSau = false
+        if duyetSau || !duyetAnh.items.contains(where: { $0.ma == ma }) { selection = tab }
     }
 
     /// Icon chuông đặt làm trailing TRONG header riêng của 6 tab (Thống kê/Hoá đơn/Thanh toán/Công
