@@ -212,7 +212,7 @@ enum ManChaoCache {
     }
 }
 
-/// Màn chào 1,5s lúc mở app trong cửa sổ dịp lễ — giống app khách: ảnh nền từ server + logo + câu chúc; chưa có ảnh thì
+/// Màn chào (1,5s lần đầu, giảm dần tới 0,75s) lúc mở app trong cửa sổ dịp lễ — giống app khách: ảnh nền từ server + logo + câu chúc; chưa có ảnh thì
 /// icon dịp bo góc trên nền nhoè. Chạm để tắt.
 struct DipLeManChaoView: View {
     let theme: DipLeTheme
@@ -235,8 +235,17 @@ struct DipLeManChaoView: View {
         .onTapGesture { dismiss() }
         .onAppear {
             withAnimation(.easeOut(duration: 0.25)) { visible = true }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { dismiss() }
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.layThoiGianVaDem(theme)) { dismiss() }
         }
+    }
+
+    /// Chủ quán 2026-11-16: lần đầu của mỗi dịp 1,5s, mỗi lần sau bớt 0,25s, thấp nhất 0,75s — đếm theo dịp nên dịp mới
+    /// lại từ 1,5s. Gọi 1 lần lúc màn chào bắt đầu hiện (tự cộng số lần). Khớp app khách.
+    private static func layThoiGianVaDem(_ theme: DipLeTheme) -> Double {
+        let khoa = "manChao.soLan.\(theme.ma)"
+        let soLanTruoc = UserDefaults.standard.integer(forKey: khoa)
+        UserDefaults.standard.set(soLanTruoc + 1, forKey: khoa)
+        return max(1.5 - 0.25 * Double(soLanTruoc), 0.75)
     }
 
     private func anhRieng(_ anh: UIImage) -> some View {
