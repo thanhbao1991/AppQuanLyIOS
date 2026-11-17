@@ -23,6 +23,7 @@ struct VoucherListView: View {
     @State private var deleting: VoucherDto?
     @State private var loadFailed = false
     @State private var actionError: String?
+    @State private var showSapXep = false
 
     var body: some View {
         Group {
@@ -78,8 +79,15 @@ struct VoucherListView: View {
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
+                Button { showSapXep = true } label: { Image(systemName: "arrow.up.arrow.down") }
+                    .disabled(items.isEmpty)
+            }
+            ToolbarItem(placement: .navigationBarTrailing) {
                 Button { showAdd = true } label: { Image(systemName: "plus") }
             }
+        }
+        .sheet(isPresented: $showSapXep) {
+            VoucherSapXepSheet(items: items) { await load() }
         }
         .task { await load() }
         .confirmDelete($deleting, name: { $0.ten }, perform: { await APIClient.shared.deleteVoucher(id: $0.id) }, onDone: load)
@@ -131,6 +139,79 @@ struct VoucherListView: View {
         await load()
     }
 
+}
+
+/// Kéo-thả sắp xếp voucher (chủ quán 2026-11-17) — thứ tự lưu ở đây (ThuTu 1..N) cũng là thứ tự hiện ở app khách (sheet
+/// "Chọn voucher", tab Voucher). Danh sách phẳng, không chia nhóm phân loại, để thấy đúng thứ tự khách thấy.
+private struct VoucherSapXepSheet: View {
+    let onSaved: () async -> Void
+    @State private var ds: [VoucherDto]
+    @State private var daDoi = false
+    @State private var dangLuu = false
+    @State private var loi: String?
+    @Environment(\.dismiss) private var dismiss
+
+    init(items: [VoucherDto], onSaved: @escaping () async -> Void) {
+        self.onSaved = onSaved
+        _ds = State(initialValue: items)
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(Array(ds.enumerated()), id: \.element.id) { i, v in
+                        HStack(spacing: 12) {
+                            Text("\(i + 1)")
+                                .font(.subheadline.monospacedDigit()).fontWeight(.semibold)
+                                .foregroundColor(.textMuted)
+                                .frame(minWidth: 24, alignment: .trailing)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(v.ten).font(.subheadline).fontWeight(.semibold)
+                                    .foregroundColor(v.dangHoatDong ? .primary : .textMuted)
+                                Text(v.dangHoatDong ? "Mã \(v.ma)" : "Mã \(v.ma) · Đã tắt")
+                                    .font(.caption).foregroundColor(.textMuted)
+                            }
+                        }
+                    }
+                    .onMove { tu, den in
+                        ds.move(fromOffsets: tu, toOffset: den)
+                        daDoi = true
+                    }
+                } footer: {
+                    Text("Giữ ≡ rồi kéo để đổi thứ tự. Đây cũng là thứ tự voucher hiện ở app khách; voucher lễ chưa tới ngày vẫn xếp theo ngày gần nhất.")
+                }
+            }
+            .environment(\.editMode, .constant(.active))
+            .navigationTitle("Sắp xếp voucher")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Huỷ") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    if dangLuu {
+                        ProgressView()
+                    } else {
+                        Button("Lưu") { Task { await luu() } }
+                            .fontWeight(.semibold)
+                            .disabled(!daDoi)
+                    }
+                }
+            }
+            .actionErrorAlert($loi)
+        }
+        .interactiveDismissDisabled(daDoi)
+    }
+
+    private func luu() async {
+        dangLuu = true
+        let kq = await APIClient.shared.sapXepVoucher(ids: ds.map(\.id))
+        dangLuu = false
+        guard kq.success else { loi = kq.message ?? "Chưa lưu được thứ tự."; return }
+        await onSaved()
+        dismiss()
+    }
 }
 
 private struct VoucherRowView: View {

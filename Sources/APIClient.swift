@@ -848,6 +848,12 @@ actor APIClient {
         return await executeAction(req)
     }
 
+    /// Kéo-thả sắp xếp — gửi danh sách Id theo thứ tự mới, server gán ThuTu 1..N (cũng là thứ tự ở app khách).
+    func sapXepVoucher(ids: [String]) async -> ActionResult {
+        let req = makeRequest("/api/Voucher/thu-tu", method: "PUT", body: jsonBody(ids))
+        return await executeAction(req)
+    }
+
     func deleteVoucher(id: String) async -> ActionResult {
         let req = makeRequest("/api/Voucher/\(id)", method: "DELETE")
         return await executeAction(req)
