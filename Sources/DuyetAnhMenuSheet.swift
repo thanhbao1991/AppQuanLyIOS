@@ -33,8 +33,6 @@ struct DuyetAnhMenuSheet: View {
     @State private var dangLuu = false
     @State private var loi: String?
 
-    private var conLai: Int { model.items.count }
-
     private var dsMon: [SanPhamDto] {
         let k = Self.chuanHoa(timKiem)
         let ds = k.isEmpty ? model.sanPhams : model.sanPhams.filter { ($0.timKiem ?? Self.chuanHoa($0.ten)).contains(k) }
@@ -51,13 +49,11 @@ struct DuyetAnhMenuSheet: View {
                         } else if phase.error != nil {
                             Text("Không tải được ảnh").foregroundColor(.textMuted).frame(maxWidth: .infinity, minHeight: 200)
                         } else {
-                            ProgressView().frame(maxWidth: .infinity, minHeight: 300)
+                            ProgressView().frame(maxWidth: .infinity, minHeight: 200)
                         }
                     }
-                    .frame(maxWidth: .infinity, maxHeight: 360)
+                    .frame(maxWidth: .infinity, maxHeight: 200)
                     .listRowInsets(EdgeInsets())
-                } footer: {
-                    Text("Ảnh này là món nào? Chọn món bên dưới rồi bấm Duyệt — ảnh sẽ thay ảnh menu của món đó. Còn \(conLai) ảnh chờ.")
                 }
 
                 Section {
