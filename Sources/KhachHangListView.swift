@@ -163,9 +163,12 @@ private struct KhachHangRowView: View {
                             .foregroundColor(isSelected ? .brandPrimary : .textMuted)
                     }
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(item.tenHienThiUuTien)
-                            .font(.subheadline).fontWeight(.semibold)
-                            .foregroundColor(.primary)
+                        HStack(spacing: 6) {
+                            Text(item.tenHienThiUuTien)
+                                .font(.subheadline).fontWeight(.semibold)
+                                .foregroundColor(.primary)
+                            NhanNguonKhach(nguon: item.nguonKhach)
+                        }
                         if !item.phones.isEmpty {
                             Text(item.phones.map(\.soDienThoai).joined(separator: ", "))
                                 .font(.caption).foregroundColor(.textMuted)
@@ -209,6 +212,32 @@ private struct KhachHangRowView: View {
                 }
                 .tint(.dangerColor)
             }
+        }
+    }
+}
+
+/// Nhãn nguồn khách (chủ quán 17/11/2026 — để làm marketing sau): Store = tự thêm khi bắt đơn store,
+/// Quầy = nhân viên thêm, App = khách tự đăng ký app, Shipper = tài xế store. Khách trước 17/11 là nguồn suy từ dữ liệu.
+private struct NhanNguonKhach: View {
+    let nguon: String?
+
+    var body: some View {
+        if let k = Self.kieu(nguon) {
+            Text(k.chu)
+                .font(.caption2).fontWeight(.semibold)
+                .foregroundColor(k.mau)
+                .padding(.horizontal, 6).padding(.vertical, 1)
+                .background(k.mau.opacity(0.12), in: Capsule())
+        }
+    }
+
+    private static func kieu(_ nguon: String?) -> (chu: String, mau: Color)? {
+        switch nguon {
+        case "Store": return ("Store", .orange)
+        case "Quay": return ("Quầy", .brandPrimary)
+        case "App": return ("App", .blue)
+        case "Shipper": return ("Shipper", .gray)
+        default: return nil
         }
     }
 }

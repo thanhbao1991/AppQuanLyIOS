@@ -933,6 +933,10 @@ struct KhachHangDto: Codable, Identifiable {
     let phones: [KhachHangPhoneDto]
     let addresses: [KhachHangAddressDto]
     let facebookThreadId: String?
+    /// Khách đến từ đâu: "Store" | "Quay" | "App" | "Shipper" (backend NguonKhachHang, 17/11/2026). Optional: bản
+    /// backend cũ không trả. `var` có mặc định để 3 chỗ dựng payload bằng memberwise init không phải sửa (Decodable
+    /// vẫn đọc `var` có giá trị mặc định).
+    var nguonKhach: String? = nil
 
     /// Khớp KhachHangTenHelper.TenHoaDon (Backend): ưu tiên tên hệ thống nếu KHÔNG phải là SĐT, rồi
     /// mới đến tên khách tự đặt trong app (TenHienThi) — khách đăng ký qua app mặc định Ten = SĐT.
