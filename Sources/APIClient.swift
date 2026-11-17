@@ -1265,6 +1265,12 @@ actor APIClient {
         return await executeAction(req)
     }
 
+    /// "Ko dùng" — server dời ảnh chờ vào backup (không xoá hẳn).
+    func boAnhChoDuyet(ma: String) async -> ActionResult {
+        let req = makeRequest("/api/SanPham/anh-cho-duyet/\(ma)/bo", method: "POST")
+        return await executeAction(req)
+    }
+
     /// Id các món cần tìm ảnh gốc (màn "Tìm ảnh gốc") — server tự bỏ món đã có ảnh gốc. nil = lỗi mạng.
     func getSanPhamCanAnhGoc() async -> [String]? {
         let req = makeRequest("/api/SanPham/can-anh-goc")

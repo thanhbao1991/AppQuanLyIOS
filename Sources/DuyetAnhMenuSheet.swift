@@ -34,6 +34,7 @@ struct DuyetAnhMenuSheet: View {
     @State private var timKiem = ""
     @State private var daChon: SanPhamDto?
     @State private var xacNhan = false
+    @State private var xacNhanBo = false
     @State private var dangLuu = false
     @State private var loi: String?
 
@@ -93,6 +94,15 @@ struct DuyetAnhMenuSheet: View {
                         .font(.subheadline).foregroundColor(.textMuted)
                         .fixedSize()
                     Button {
+                        xacNhanBo = true
+                    } label: {
+                        Text("Ko dùng").fontWeight(.bold).frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.dangerColor)
+                    .controlSize(.large)
+                    .disabled(dangLuu)
+                    Button {
                         xacNhan = true
                     } label: {
                         Text(dangLuu ? "Đang lưu..." : "Duyệt").fontWeight(.bold).frame(maxWidth: .infinity)
@@ -113,6 +123,12 @@ struct DuyetAnhMenuSheet: View {
                 Button("Không", role: .cancel) {}
             } message: {
                 Text("Ảnh menu hiện tại của món sẽ được thay (ảnh cũ vẫn lưu bản sao trên máy chủ).")
+            }
+            .confirmationDialog("Không dùng ảnh này?", isPresented: $xacNhanBo, titleVisibility: .visible) {
+                Button("Ko dùng", role: .destructive) { Task { await boAnh() } }
+                Button("Huỷ", role: .cancel) {}
+            } message: {
+                Text("Ảnh sẽ bỏ khỏi danh sách chờ (máy chủ vẫn giữ bản sao).")
             }
         }
     }
@@ -139,11 +155,21 @@ struct DuyetAnhMenuSheet: View {
 
     private func duyet() async {
         guard let sp = daChon else { return }
+        await xuLy { await APIClient.shared.ganAnhChoDuyet(ma: anh.ma, sanPhamId: sp.id) }
+    }
+
+    /// "Ko dùng" (chủ quán 17/11/2026: không phải ảnh nào cũng dùng) — server dời ảnh vào backup.
+    private func boAnh() async {
+        await xuLy { await APIClient.shared.boAnhChoDuyet(ma: anh.ma) }
+    }
+
+    /// Gọi API cho ảnh đang xem; xong thì sang ảnh kế, hết ảnh thì đóng (cổng cho vào tab).
+    private func xuLy(_ goi: () async -> ActionResult) async {
         dangLuu = true
         loi = nil
-        let kq = await APIClient.shared.ganAnhChoDuyet(ma: anh.ma, sanPhamId: sp.id)
+        let kq = await goi()
         if kq.success {
-            model.items.removeAll { $0.ma == anh.ma }   // tải lại lỗi cũng không hiện lại ảnh vừa gắn
+            model.items.removeAll { $0.ma == anh.ma }   // tải lại lỗi cũng không hiện lại ảnh vừa xử lý
             _ = await model.load()
             dangLuu = false
             if let ke = model.items.first {
