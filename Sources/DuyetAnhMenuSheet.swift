@@ -61,13 +61,6 @@ struct DuyetAnhMenuSheet: View {
                         Button { daChon = sp } label: { dong(sp) }
                             .buttonStyle(.plain)
                     }
-                } header: {
-                    TextField("Tìm món", text: $timKiem)
-                        .textFieldStyle(.roundedBorder)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .textCase(nil)
-                        .padding(.bottom, 4)
                 }
 
                 if let loi {
@@ -75,6 +68,12 @@ struct DuyetAnhMenuSheet: View {
                 }
             }
             .listStyle(.insetGrouped)
+            // Ô tìm KHÔNG đặt trong header của List: mỗi lần lọc List dựng lại header → TextField mất focus,
+            // bàn phím bật/tắt liên tục. .searchable nằm ở thanh điều hướng nên giữ focus ổn định.
+            .searchable(text: $timKiem, placement: .navigationBarDrawer(displayMode: .always), prompt: "Tìm món")
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle("Duyệt ảnh menu")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Color.brandGradient, for: .navigationBar)
