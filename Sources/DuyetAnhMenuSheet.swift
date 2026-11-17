@@ -42,32 +42,31 @@ struct DuyetAnhMenuSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                Section {
-                    AsyncImage(url: URL(string: anh.url)) { phase in
+                AsyncImage(url: URL(string: anh.url)) { phase in
                         if let img = phase.image {
                             img.resizable().scaledToFit()
                         } else if phase.error != nil {
-                            Text("Không tải được ảnh").foregroundColor(.textMuted).frame(maxWidth: .infinity, minHeight: 200)
+                            Text("Không tải được ảnh").foregroundColor(.textMuted).frame(maxWidth: .infinity, minHeight: 180)
                         } else {
-                            ProgressView().frame(maxWidth: .infinity, minHeight: 200)
+                            ProgressView().frame(maxWidth: .infinity, minHeight: 180)
                         }
                     }
-                    .frame(maxWidth: .infinity, maxHeight: 200)
+                    .frame(maxWidth: .infinity, maxHeight: 180)
                     .listRowInsets(EdgeInsets())
-                }
+                    .listRowSeparator(.hidden)
 
-                Section {
-                    ForEach(dsMon) { sp in
-                        Button { daChon = sp } label: { dong(sp) }
-                            .buttonStyle(.plain)
-                    }
+                ForEach(dsMon) { sp in
+                    Button { daChon = sp } label: { dong(sp) }
+                        .buttonStyle(.plain)
+                        .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
                 }
 
                 if let loi {
                     Text(loi).foregroundColor(.dangerColor)
                 }
             }
-            .listStyle(.insetGrouped)
+            .listStyle(.plain)
+            .environment(\.defaultMinListRowHeight, 34)
             // Ô tìm KHÔNG đặt trong header của List: mỗi lần lọc List dựng lại header → TextField mất focus,
             // bàn phím bật/tắt liên tục. .searchable nằm ở thanh điều hướng nên giữ focus ổn định.
             .searchable(text: $timKiem, placement: .navigationBarDrawer(displayMode: .always), prompt: "Tìm món")
@@ -107,8 +106,8 @@ struct DuyetAnhMenuSheet: View {
                     .disabled(daChon == nil || dangLuu)
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 10)
-                .padding(.bottom, 8)
+                .padding(.top, 6)
+                .padding(.bottom, 4)
                 .background(Color(.systemBackground))
                 .overlay(Divider(), alignment: .top)
             }
@@ -122,19 +121,18 @@ struct DuyetAnhMenuSheet: View {
     }
 
     private func dong(_ sp: SanPhamDto) -> some View {
-        HStack(spacing: 12) {
+        // 1 dòng/món (chủ quán 17/11: hiện được nhiều món nhất) — tên + nhóm cùng hàng, ảnh nhỏ.
+        HStack(spacing: 10) {
             AsyncImage(url: sp.hinhAnh.flatMap(URL.init(string:))) { phase in
                 if let img = phase.image { img.resizable().scaledToFill() } else { Color.appNen }
             }
-            .frame(width: 36, height: 48)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(sp.ten).font(.body)
-                if let nhom = sp.tenNhomSanPham, !nhom.isEmpty {
-                    Text(nhom).font(.caption).foregroundColor(.textMuted)
-                }
+            .frame(width: 24, height: 32)
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+            Text(sp.ten).font(.body).lineLimit(1)
+            Spacer(minLength: 4)
+            if let nhom = sp.tenNhomSanPham, !nhom.isEmpty {
+                Text(nhom).font(.caption).foregroundColor(.textMuted).lineLimit(1)
             }
-            Spacer()
             if daChon?.id == sp.id {
                 Image(systemName: "checkmark.circle.fill").foregroundColor(.brandPrimary).font(.title3)
             }
