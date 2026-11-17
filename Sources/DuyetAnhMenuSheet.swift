@@ -1,14 +1,13 @@
 import SwiftUI
 
 /// Ảnh menu chờ gắn món — cổng tab Kê đặt TRƯỚC duyệt công thức (chủ quán 17/11/2026): còn ảnh thì mỗi lần vào tab
-/// nhân viên chọn món cho 1 ảnh; hết ảnh mới quay lại duyệt công thức như cũ.
+/// nhân viên chọn món cho ảnh; phải duyệt HẾT ảnh mới được vào tab (không có "Duyệt sau"), duyệt xong 1 ảnh sheet tự
+/// chuyển ảnh kế. Hết ảnh mới quay lại duyệt công thức như cũ.
 @MainActor
 final class DuyetAnhMenuModel: ObservableObject {
     @Published var items: [AnhChoDuyetDto] = []
     @Published var sanPhams: [SanPhamDto] = []
     @Published var dangDuyet: AnhChoDuyetDto?
-    /// Vừa bấm "Duyệt sau" — cổng tab vẫn cho vào. MainTabView đọc xong tự đặt lại false.
-    var duyetSau = false
 
     /// false = tải lỗi (cổng cho vào thẳng, không khoá nhân viên vì mạng).
     func load() async -> Bool {
@@ -23,8 +22,13 @@ final class DuyetAnhMenuModel: ObservableObject {
 }
 
 struct DuyetAnhMenuSheet: View {
-    let anh: AnhChoDuyetDto
+    @State private var anh: AnhChoDuyetDto
     @ObservedObject var model: DuyetAnhMenuModel
+
+    init(anh: AnhChoDuyetDto, model: DuyetAnhMenuModel) {
+        _anh = State(initialValue: anh)
+        self.model = model
+    }
 
     @Environment(\.dismiss) private var dismiss
     @State private var timKiem = ""
@@ -85,16 +89,9 @@ struct DuyetAnhMenuSheet: View {
             }
             .safeAreaInset(edge: .bottom) {
                 HStack(spacing: 12) {
-                    Button {
-                        model.duyetSau = true
-                        dismiss()
-                    } label: {
-                        Text("Duyệt sau").fontWeight(.bold).frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(.brandPrimary)
-                    .controlSize(.large)
-                    .disabled(dangLuu)
+                    Text("Còn \(model.items.count) ảnh")
+                        .font(.subheadline).foregroundColor(.textMuted)
+                        .fixedSize()
                     Button {
                         xacNhan = true
                     } label: {
@@ -146,9 +143,16 @@ struct DuyetAnhMenuSheet: View {
         loi = nil
         let kq = await APIClient.shared.ganAnhChoDuyet(ma: anh.ma, sanPhamId: sp.id)
         if kq.success {
+            model.items.removeAll { $0.ma == anh.ma }   // tải lại lỗi cũng không hiện lại ảnh vừa gắn
             _ = await model.load()
             dangLuu = false
-            dismiss()
+            if let ke = model.items.first {
+                anh = ke
+                daChon = nil
+                timKiem = ""
+            } else {
+                dismiss()
+            }
         } else {
             dangLuu = false
             loi = kq.message ?? "Không lưu được, thử lại."

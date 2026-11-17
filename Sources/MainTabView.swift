@@ -186,14 +186,12 @@ struct MainTabView: View {
         if duyetSau || !duyetCongThuc.monChuaDuyet.contains(where: { $0.id == monId }) { selection = tab }
     }
 
-    /// Sheet ảnh đóng: ảnh vừa mở đã gắn món (không còn trong danh sách) hoặc bấm "Duyệt sau" thì cho vào tab.
+    /// Sheet ảnh đóng: chỉ cho vào tab khi đã duyệt HẾT ảnh chờ (chủ quán 17/11/2026). Bấm Huỷ giữa chừng = ở lại.
     private func xongDuyetAnh() {
-        guard let tab = tabChoDuyet, let ma = anhVuaMo else { return }
+        guard let tab = tabChoDuyet, anhVuaMo != nil else { return }
         tabChoDuyet = nil
         anhVuaMo = nil
-        let duyetSau = duyetAnh.duyetSau
-        duyetAnh.duyetSau = false
-        if duyetSau || !duyetAnh.items.contains(where: { $0.ma == ma }) { selection = tab }
+        if duyetAnh.items.isEmpty { selection = tab }
     }
 
     /// Icon chuông đặt làm trailing TRONG header riêng của 6 tab (Thống kê/Hoá đơn/Thanh toán/Công
