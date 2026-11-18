@@ -178,8 +178,8 @@ struct HoaDonDetailView: View {
                             if let dc = d.diaChiText, !dc.isEmpty { iconRow("mappin.and.ellipse", dc) }
                         }
                         Spacer()
-                        if let may = thietBiApp.first {
-                            thietBiAppView(may, soMayKhac: thietBiApp.count - 1)
+                        if d.khachHangId?.isEmpty == false, thietBiApp.first != nil || xuApp != nil {
+                            thietBiAppView(thietBiApp.first, soMayKhac: thietBiApp.count - 1)
                         }
                     }
                     if let gc = d.ghiChu, !gc.isEmpty {
@@ -620,25 +620,35 @@ struct HoaDonDetailView: View {
     /// Dòng phụ trong card khách hàng (địa chỉ/ghi chú) — icon nhỏ bên trái thay vì nhãn chữ, gọn hơn.
     /// Góc phải thẻ khách: HĐH, bản app, có bật thông báo không, Xu tích luỹ + Xu hiện tại.
     /// 14/11/2026 user bỏ dòng tên máy + giờ hoạt động cuối.
-    private func thietBiAppView(_ m: KhachHangThietBiAppDto, soMayKhac: Int) -> some View {
-        let laIos = m.nenTang == "iOS"
-        let heDieuHanh = m.heDieuHanh ?? m.nenTang ?? "App"
+    /// 18/11/2026: khách chưa đăng nhập app (chỉ mua quầy/ship) trước đây bị trống cả góc — giờ vẫn hiện
+    /// "Chưa dùng app" + Xu (Xu tính cả chi tiêu ở quầy nên khách quầy cũng có).
+    private func thietBiAppView(_ m: KhachHangThietBiAppDto?, soMayKhac: Int) -> some View {
         // Gọn 3 dòng cho bằng cột trái (tên / SĐT / địa chỉ) — 5 dòng cũ đẩy dòng ghi chú xuống, hở khoảng trống.
         // Dòng 1: HĐH + chuông (đỏ = tắt thông báo) · Dòng 2: bản app (+N máy) · Dòng 3: Xu hiện có · +tích luỹ.
         return VStack(alignment: .trailing, spacing: 3) {
-            HStack(spacing: 5) {
-                Image(systemName: laIos ? "apple.logo" : "candybarphone")
-                Text(heDieuHanh)
-                Image(systemName: m.batThongBao ? "bell.fill" : "bell.slash.fill")
-                    .font(.caption)
-                    .foregroundColor(m.batThongBao ? .textMuted : .dangerColor)
-            }
-            .font(.subheadline.bold())
-            .foregroundColor(.brandPrimary)
-            let banApp = [m.phienBanApp.flatMap { $0.isEmpty ? nil : "Bản \($0)" },
-                          soMayKhac > 0 ? "+\(soMayKhac) máy" : nil].compactMap { $0 }.joined(separator: " · ")
-            if !banApp.isEmpty {
-                Text(banApp).font(.caption).foregroundColor(.textMuted).lineLimit(1)
+            if let m {
+                let laIos = m.nenTang == "iOS"
+                HStack(spacing: 5) {
+                    Image(systemName: laIos ? "apple.logo" : "candybarphone")
+                    Text(m.heDieuHanh ?? m.nenTang ?? "App")
+                    Image(systemName: m.batThongBao ? "bell.fill" : "bell.slash.fill")
+                        .font(.caption)
+                        .foregroundColor(m.batThongBao ? .textMuted : .dangerColor)
+                }
+                .font(.subheadline.bold())
+                .foregroundColor(.brandPrimary)
+                let banApp = [m.phienBanApp.flatMap { $0.isEmpty ? nil : "Bản \($0)" },
+                              soMayKhac > 0 ? "+\(soMayKhac) máy" : nil].compactMap { $0 }.joined(separator: " · ")
+                if !banApp.isEmpty {
+                    Text(banApp).font(.caption).foregroundColor(.textMuted).lineLimit(1)
+                }
+            } else {
+                HStack(spacing: 5) {
+                    Image(systemName: "iphone.slash")
+                    Text("Chưa dùng app")
+                }
+                .font(.subheadline.bold())
+                .foregroundColor(.textMuted)
             }
             if let xu = xuApp {
                 (Text("\(Self.soXu(xu.xuHienTai)) Xu").bold().foregroundColor(.brandPrimary)
