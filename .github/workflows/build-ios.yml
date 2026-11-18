@@ -18,7 +18,7 @@ jobs:
     # Job riêng, chạy trên simulator (không -sdk iphoneos như job build) — build cho thiết bị thật
     # không code-sign được thì cũng không chạy test được (XCTest cần app thật thực thi, không chỉ
     # build). Test target thêm 2026-09-06, xem Tests/ — trước đó app này không có test nào.
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
 
@@ -29,7 +29,15 @@ jobs:
       - name: Select latest stable Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: latest-stable
+          xcode-version: '27'
+
+      # 18/11/2026 Apple bao ITMS-90725: tu 4/2027 bat buoc iOS 27 SDK (Xcode 27). macos-15 chi co toi
+      # Xcode 26.5 -> chuyen sang runner macos-26. Chan cung neu SDK < 27 de khong lang le build ban cu.
+      - name: Check iOS SDK >= 27
+        run: |
+          SDK=$(xcrun --sdk iphoneos --show-sdk-version)
+          echo "Xcode: $(xcodebuild -version | head -1) / iOS SDK: $SDK"
+          [ "${SDK%%.*}" -ge 27 ] || { echo "iOS SDK $SDK < 27"; exit 1; }
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -61,7 +69,7 @@ jobs:
   build:
     # macos-14 chỉ có Xcode 15.4 sẵn — xcodegen bản mới ghi project file format 77 (Xcode 16+),
     # Xcode 15.4 không mở được ("future Xcode project file format"). macos-15 có Xcode 16 mặc định.
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
 
@@ -69,7 +77,15 @@ jobs:
       - name: Select latest stable Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: latest-stable
+          xcode-version: '27'
+
+      # 18/11/2026 Apple bao ITMS-90725: tu 4/2027 bat buoc iOS 27 SDK (Xcode 27). macos-15 chi co toi
+      # Xcode 26.5 -> chuyen sang runner macos-26. Chan cung neu SDK < 27 de khong lang le build ban cu.
+      - name: Check iOS SDK >= 27
+        run: |
+          SDK=$(xcrun --sdk iphoneos --show-sdk-version)
+          echo "Xcode: $(xcodebuild -version | head -1) / iOS SDK: $SDK"
+          [ "${SDK%%.*}" -ge 27 ] || { echo "iOS SDK $SDK < 27"; exit 1; }
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -128,7 +144,7 @@ jobs:
   # copy từ AppDatHangIOS — xem memory project_appdathangios_testflight_ci.
   testflight:
     if: ${{ inputs.release }}
-    runs-on: macos-latest
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
 
@@ -138,7 +154,15 @@ jobs:
       - name: Select latest stable Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: latest-stable
+          xcode-version: '27'
+
+      # 18/11/2026 Apple bao ITMS-90725: tu 4/2027 bat buoc iOS 27 SDK (Xcode 27). macos-15 chi co toi
+      # Xcode 26.5 -> chuyen sang runner macos-26. Chan cung neu SDK < 27 de khong lang le build ban cu.
+      - name: Check iOS SDK >= 27
+        run: |
+          SDK=$(xcrun --sdk iphoneos --show-sdk-version)
+          echo "Xcode: $(xcodebuild -version | head -1) / iOS SDK: $SDK"
+          [ "${SDK%%.*}" -ge 27 ] || { echo "iOS SDK $SDK < 27"; exit 1; }
 
       - name: Install XcodeGen
         run: brew install xcodegen
