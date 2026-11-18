@@ -14,7 +14,7 @@ struct BanDoOfflineView: View {
     @State private var hienChonTenNhieu = false
 
     var body: some View {
-        hopThoaiDuong(hopThoaiSoNha(khungBanDo))
+        hopThoaiDiaDanh(hopThoaiDuong(hopThoaiSoNha(khungBanDo)))
         .sheet(isPresented: $hienChonTenNhieu) {
             ChonTenDuongSheet { id, ten in
                 Task { await m.ganTenNhieuKhuc(tenDuongId: id, ten: ten) }
@@ -105,6 +105,39 @@ struct BanDoOfflineView: View {
             Button("Đóng", role: .cancel) { m.goiYChon = nil }
         } message: { g in
             Text("Đoán từ \(g.soNha) số nhà cùng hẻm nằm xa đường có sẵn. Nét đứt cam là vị trí đoán — sai thì chọn \"Sửa nét\".")
+        }
+    }
+
+    /// Nhấn giữ (chọn số nhà / địa danh), thêm-sửa địa danh, thẻ khách khi chạm chấm.
+    private func hopThoaiDiaDanh<V: View>(_ v: V) -> some View {
+        v
+        .confirmationDialog("Thêm tại điểm này", isPresented: Binding(
+            get: { m.nhanGiuTai != nil }, set: { if !$0 { m.nhanGiuTai = nil } }),
+                            titleVisibility: .visible, presenting: m.nhanGiuTai) { d in
+            Button("Gán số nhà") { m.nhanGiuTai = nil; m.nhapSoNha(tai: d.toaDo) }
+            Button("Thêm địa danh (công an, cây xăng, Bách Hoá Xanh…)") {
+                m.nhanGiuTai = nil
+                m.diaDanhNhap = DiaDanhNhap(id: nil, toaDo: d.toaDo, ten: "", loai: nil)
+            }
+            Button("Huỷ", role: .cancel) { m.nhanGiuTai = nil }
+        }
+        .confirmationDialog(m.diaDanhChon?.ten ?? "", isPresented: Binding(
+            get: { m.diaDanhChon != nil }, set: { if !$0 { m.diaDanhChon = nil } }),
+                            titleVisibility: .visible, presenting: m.diaDanhChon) { d in
+            Button("Sửa") {
+                m.diaDanhChon = nil
+                m.diaDanhNhap = DiaDanhNhap(id: d.id, toaDo: d.toaDo, ten: d.ten, loai: d.loai)
+            }
+            Button("Xoá địa danh này", role: .destructive) { Task { await m.xoaDiaDanh(d.id) } }
+            Button("Đóng", role: .cancel) { m.diaDanhChon = nil }
+        }
+        .sheet(item: $m.diaDanhNhap) { n in
+            ThemDiaDanhSheet(nhap: n, viTri: m.viTri) { ten, loai, toaDo in
+                Task { await m.luuDiaDanh(id: n.id, ten: ten, loai: loai, toaDo: toaDo) }
+            }
+        }
+        .sheet(item: $m.nhomKhachChon) { nhom in
+            KhachTrenBanDoSheet(ds: nhom.ds)
         }
     }
 
@@ -255,6 +288,7 @@ struct BanDoOfflineView: View {
                     chip("Kho / đại lý (mùa vụ)", mau: Color(uiColor: mauMuaVu), bat: $m.hienMuaVu)
                     chip("Đối thủ", mau: Color(uiColor: mauDoiThu), bat: $m.hienDoiThu)
                     chip("Tên đường", mau: Color(uiColor: mauTenTay), bat: $m.hienTenDuong)
+                    chip("Địa danh", mau: Color(uiColor: mauDiaDanh), bat: $m.hienDiaDanh)
                 }
                 .padding(.horizontal, 12)
             }
@@ -298,6 +332,35 @@ private let mauDanDiaPhuong = UIColor(red: 0x1E / 255, green: 0x4E / 255, blue: 
 private let mauMuaVu = UIColor(red: 0xF0 / 255, green: 0x8A / 255, blue: 0x00 / 255, alpha: 1)
 private let mauDoiThu = UIColor(red: 0xB0 / 255, green: 0x30 / 255, blue: 0x30 / 255, alpha: 1)
 private let mauTenTay = UIColor(red: 0x1B / 255, green: 0x6B / 255, blue: 0x5F / 255, alpha: 1)
+private let mauDiaDanh = UIColor(red: 0x4B / 255, green: 0x55 / 255, blue: 0x63 / 255, alpha: 1)
+
+/// Vị trí vừa nhấn giữ — chọn gán số nhà hay thêm địa danh.
+struct NhanGiuTai: Identifiable {
+    let id = UUID()
+    let toaDo: CLLocationCoordinate2D
+}
+
+/// Đang thêm (id nil) / sửa địa danh.
+struct DiaDanhNhap: Identifiable {
+    let id: String?
+    let toaDo: CLLocationCoordinate2D
+    let ten: String
+    let loai: String?
+}
+
+/// Địa danh gán tay vừa chạm.
+struct DiaDanhDaChon {
+    let id: String
+    let ten: String
+    let loai: String
+    let toaDo: CLLocationCoordinate2D
+}
+
+/// Các khách cùng 1 toạ độ (gom ~1m) vừa chạm.
+struct NhomKhachChon: Identifiable {
+    let id: String
+    let ds: [MapCustomerDto]
+}
 
 /// Đang nhập số nhà (id nil = thêm mới).
 struct SoNhaNhap {
@@ -376,6 +439,7 @@ final class BanDoOfflineModel: ObservableObject {
     @Published var hienMuaVu = true
     @Published var hienDoiThu = true
     @Published var hienTenDuong = true
+    @Published var hienDiaDanh = true
     @Published var anBanKinh = true
     /// 0km (13/11/2026 user yêu cầu; trước 0.5km, trước nữa 2.2km): mặc định hiện cả khách sát quán.
     @Published var banKinhKm: Double = 0
@@ -415,6 +479,13 @@ final class BanDoOfflineModel: ObservableObject {
     @Published private(set) var tenVe: String?
     @Published var goiYChon: GoiYHemChon?
 
+    /// Khách gom theo toạ độ (khoá "lat,lng" 5 số lẻ ≈ 1m) — Coordinator dựng lại mỗi lần lọc đổi.
+    var nhomKhach: [String: [MapCustomerDto]] = [:]
+    @Published var nhomKhachChon: NhomKhachChon?
+    @Published var nhanGiuTai: NhanGiuTai?
+    @Published var diaDanhNhap: DiaDanhNhap?
+    @Published var diaDanhChon: DiaDanhDaChon?
+
     @Published var dangTai = false
     @Published var dangDungBanLuu = false
     @Published var thongBao: String?
@@ -426,7 +497,7 @@ final class BanDoOfflineModel: ObservableObject {
     private(set) var duongVeTheoWay: [Int64: String] = [:]
 
     var chuKy: String {
-        "\(hienDiaPhuong)|\(hienMuaVu)|\(hienDoiThu)|\(hienTenDuong)|\(anBanKinh)|\(banKinhKm)|\(phienBanDuLieu)|\(chon?.wayId ?? 0)|\(cheDoNhieuKhuc)|\(soKhucChon)|\(phienYeuCau)|\(cheDoVe)|\(soDiemVe)"
+        "\(hienDiaPhuong)|\(hienMuaVu)|\(hienDoiThu)|\(hienTenDuong)|\(hienDiaDanh)|\(anBanKinh)|\(banKinhKm)|\(phienBanDuLieu)|\(chon?.wayId ?? 0)|\(cheDoNhieuKhuc)|\(soKhucChon)|\(phienYeuCau)|\(cheDoVe)|\(soDiemVe)"
     }
 
     private static let nenURL = URL(string: "https://api.denncoffee.com/ban-do/nen.geojson")!
@@ -676,6 +747,25 @@ final class BanDoOfflineModel: ObservableObject {
         }
     }
 
+    // MARK: Địa danh
+
+    @MainActor
+    func luuDiaDanh(id: String?, ten: String, loai: String, toaDo: CLLocationCoordinate2D) async {
+        diaDanhNhap = nil
+        let r = await APIClient.shared.luuDiaDanhBanDo(LuuDiaDanhBanDoRequest(
+            id: id, ten: ten, loai: loai, lat: toaDo.latitude, long: toaDo.longitude))
+        thongBao = r.message ?? (r.success ? "Đã lưu." : "Lưu thất bại.")
+        if r.success { await taiLaiTen() }
+    }
+
+    @MainActor
+    func xoaDiaDanh(_ id: String) async {
+        diaDanhChon = nil
+        let r = await APIClient.shared.xoaDiaDanhBanDo(id: id)
+        thongBao = r.message ?? (r.success ? "Đã xoá." : "Xoá thất bại.")
+        if r.success { await taiLaiTen() }
+    }
+
     // MARK: Số nhà gán tay
 
     func nhapSoNha(tai toaDo: CLLocationCoordinate2D) {
@@ -762,6 +852,10 @@ private struct BanDoMapLibreView: UIViewRepresentable {
         init(m: BanDoOfflineModel) { self.m = m }
 
         func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
+            // Biểu tượng địa danh: vòng màu + SF Symbol trắng, tên ảnh "dd-<loai>" (style dùng ["concat", "dd-", l]).
+            for l in LoaiDiaDanh.tatCaMa {
+                style.setImage(LoaiDiaDanh.bieuTuong(l), forName: "dd-\(l)")
+            }
             styleSanSang = true
             phienBanDaNap = -1
             locDaApDung = ""
@@ -795,11 +889,25 @@ private struct BanDoMapLibreView: UIViewRepresentable {
                 !m.anBanKinh || CLLocation(latitude: lat, longitude: lng).distance(from: quan) >= r
             }
 
-            let khach: [MLNShape & MLNFeature] = m.khach.compactMap { k -> (MLNShape & MLNFeature)? in
-                guard (k.seasonal ? m.hienMuaVu : m.hienDiaPhuong), ngoaiBanKinh(k.lat, k.long) else { return nil }
+            // Khách cùng toạ độ (≈1m, vd 2 người cùng nhà) gom 1 chấm: to hơn + số người; nhãn "Tên +N".
+            var nhom: [String: [MapCustomerDto]] = [:]
+            var thuTu: [String] = []
+            for k in m.khach where (k.seasonal ? m.hienMuaVu : m.hienDiaPhuong) && ngoaiBanKinh(k.lat, k.long) {
+                let khoa = String(format: "%.5f,%.5f", k.lat, k.long)
+                if nhom[khoa] == nil { thuTu.append(khoa) }
+                nhom[khoa, default: []].append(k)
+            }
+            for (khoa, ds) in nhom {
+                nhom[khoa] = ds.sorted { ($0.muaGanNhat ?? "") > ($1.muaGanNhat ?? "") }
+            }
+            m.nhomKhach = nhom
+            let khach: [MLNShape & MLNFeature] = thuTu.compactMap { khoa -> (MLNShape & MLNFeature)? in
+                guard let ds = nhom[khoa], let dau = ds.first else { return nil }
                 let f = MLNPointFeature()
-                f.coordinate = CLLocationCoordinate2D(latitude: k.lat, longitude: k.long)
-                f.attributes = ["s": k.seasonal ? 1 : 0]
+                f.coordinate = CLLocationCoordinate2D(latitude: dau.lat, longitude: dau.long)
+                var nhan = KhachTrenBanDo.tenNgan(dau)
+                if ds.count > 1 { nhan += " +\(ds.count - 1)" }
+                f.attributes = ["s": ds.allSatisfy(\.seasonal) ? 1 : 0, "c": ds.count, "k": khoa, "n": nhan]
                 return f
             }
             (style.source(withIdentifier: "khach") as? MLNShapeSource)?.shape = MLNShapeCollectionFeature(shapes: khach)
@@ -815,6 +923,9 @@ private struct BanDoMapLibreView: UIViewRepresentable {
 
             for id in ["ten-diem", "ten-diem-tay", "ten-khu", "so-nha", "goi-y", "goi-y-ten"] {
                 style.layer(withIdentifier: id)?.isVisible = m.hienTenDuong
+            }
+            for id in ["dd-osm", "dd-tay"] {
+                style.layer(withIdentifier: id)?.isVisible = m.hienDiaDanh
             }
             if m.cheDoNhieuKhuc {
                 (style.source(withIdentifier: "chon") as? MLNShapeSource)?.shape =
@@ -897,7 +1008,7 @@ private struct BanDoMapLibreView: UIViewRepresentable {
         @objc func nhanGiu(_ g: UILongPressGestureRecognizer) {
             guard g.state == .began, let map = g.view as? MLNMapView, !m.cheDoNhieuKhuc, !m.cheDoVe else { return }
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-            m.nhapSoNha(tai: map.convert(g.location(in: map), toCoordinateFrom: map))
+            m.nhanGiuTai = NhanGiuTai(toaDo: map.convert(g.location(in: map), toCoordinateFrom: map))
         }
 
         private func datShape(_ style: MLNStyle, _ id: String, _ data: Data?) {
@@ -917,6 +1028,26 @@ private struct BanDoMapLibreView: UIViewRepresentable {
                 return
             }
             let vung = CGRect(x: p.x - 14, y: p.y - 14, width: 28, height: 28)
+            // Chạm địa danh gán tay → sửa/xoá (địa danh OSM thì không sửa được, bỏ qua).
+            if !m.cheDoNhieuKhuc,
+               let dd = map.visibleFeatures(in: vung, styleLayerIdentifiers: ["dd-tay"]).first,
+               let id = dd.attribute(forKey: "id") as? String {
+                m.diaDanhChon = DiaDanhDaChon(id: id, ten: (dd.attribute(forKey: "n") as? String) ?? "",
+                                              loai: (dd.attribute(forKey: "l") as? String) ?? "khac", toaDo: dd.coordinate)
+                return
+            }
+            // Chạm chấm khách → thẻ khách (nhiều người cùng chỗ → danh sách). Gần chạm nhất thắng.
+            if !m.cheDoNhieuKhuc {
+                let ds = map.visibleFeatures(in: vung, styleLayerIdentifiers: ["khach"])
+                let gan = ds.min { a, b in
+                    let pa = map.convert(a.coordinate, toPointTo: map), pb = map.convert(b.coordinate, toPointTo: map)
+                    return hypot(pa.x - p.x, pa.y - p.y) < hypot(pb.x - p.x, pb.y - p.y)
+                }
+                if let gan, let khoa = gan.attribute(forKey: "k") as? String, let nhom = m.nhomKhach[khoa] {
+                    m.nhomKhachChon = NhomKhachChon(id: khoa, ds: nhom)
+                    return
+                }
+            }
             // Chạm số nhà gán tay → sửa/xoá.
             if !m.cheDoNhieuKhuc,
                let sn = map.visibleFeatures(in: vung, styleLayerIdentifiers: ["so-nha"])
@@ -958,6 +1089,9 @@ private struct BanDoMapLibreView: UIViewRepresentable {
 
 /// Màu/độ rộng đường theo cấp OSM (c = highway). Tên OSM (ít) + tên quán (lớp "ten": g = tu|tay, điểm g = khu,
 /// g = sn là SỐ NHÀ). Tên địa điểm OSM (đa số "QT …" = quầy thuốc) KHÔNG hiện — user chỉ cần số nhà (12/11/2026).
+/// Riêng ĐỊA DANH LỚN (18/11): nền k = "dd" (OSM: cây xăng, trường, chợ…) + lớp tên g = "dd" (nhân viên gán tay:
+/// công an, UBND, chuỗi Bách Hoá Xanh/TGDĐ/Long Châu…) — biểu tượng "dd-<loại>" vẽ ở LoaiDiaDanh.bieuTuong.
+/// Khách: chấm gom theo toạ độ (c = số người), số người hiện từ zoom 15, tên từ zoom 17 (ưu tiên thấp nhất).
 private let styleJSON = #"""
 {
   "version": 8,
@@ -1024,7 +1158,18 @@ private let styleJSON = #"""
                "line-width": ["interpolate", ["exponential", 1.6], ["zoom"], 12, 4, 18, 22]}},
     {"id": "khach", "type": "circle", "source": "khach",
      "paint": {"circle-color": ["match", ["get", "s"], 1, "#F08A00", "#1E4E8C"], "circle-opacity": 0.6,
-               "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 2.5, 16, 5]}},
+               "circle-radius": ["interpolate", ["linear"], ["zoom"],
+                 11, ["case", [">", ["get", "c"], 1], 3.5, 2.5],
+                 16, ["case", [">", ["get", "c"], 1], 8, 5]]}},
+    {"id": "khach-so", "type": "symbol", "source": "khach", "minzoom": 15, "filter": [">", ["get", "c"], 1],
+     "layout": {"text-field": ["to-string", ["get", "c"]], "text-font": ["Noto Sans Bold"], "text-size": 10,
+                "text-allow-overlap": true, "text-ignore-placement": true},
+     "paint": {"text-color": "#FFFFFF"}},
+    {"id": "khach-ten", "type": "symbol", "source": "khach", "minzoom": 17,
+     "layout": {"text-field": ["get", "n"], "text-font": ["Noto Sans Regular"], "text-size": 10.5,
+                "text-offset": [0, 0.8], "text-anchor": "top", "text-max-width": 8},
+     "paint": {"text-color": ["match", ["get", "s"], 1, "#B86A00", "#1E4E8C"],
+               "text-halo-color": "#FFFFFF", "text-halo-width": 1.4}},
     {"id": "ten-khu", "type": "symbol", "source": "ten", "minzoom": 12,
      "filter": ["==", ["get", "g"], "khu"],
      "layout": {"text-field": ["get", "n"], "text-font": ["Noto Sans Italic"], "text-size": 12},
@@ -1051,6 +1196,16 @@ private let styleJSON = #"""
                 "text-size": ["interpolate", ["linear"], ["zoom"], 12, 6.5, 14, 8, 16, 9.5, 18, 12],
                 "text-rotate": ["get", "r"], "text-rotation-alignment": "map", "text-allow-overlap": true},
      "paint": {"text-color": "#1B6B5F", "text-halo-color": "#FFFFFF", "text-halo-width": 1.5}},
+    {"id": "dd-osm", "type": "symbol", "source": "nen", "minzoom": 12.5, "filter": ["==", ["get", "k"], "dd"],
+     "layout": {"icon-image": ["concat", "dd-", ["get", "l"]], "icon-size": ["interpolate", ["linear"], ["zoom"], 12.5, 0.7, 16, 1],
+                "text-field": ["step", ["zoom"], "", 14.5, ["get", "n"]], "text-font": ["Noto Sans Regular"], "text-size": 10.5,
+                "text-offset": [0, 1.25], "text-anchor": "top", "text-max-width": 9, "text-optional": true},
+     "paint": {"text-color": "#3F3F46", "text-halo-color": "#FFFFFF", "text-halo-width": 1.5}},
+    {"id": "dd-tay", "type": "symbol", "source": "ten", "minzoom": 12.5, "filter": ["==", ["get", "g"], "dd"],
+     "layout": {"icon-image": ["concat", "dd-", ["get", "l"]], "icon-size": ["interpolate", ["linear"], ["zoom"], 12.5, 0.7, 16, 1],
+                "text-field": ["step", ["zoom"], "", 14.5, ["get", "n"]], "text-font": ["Noto Sans Bold"], "text-size": 10.5,
+                "text-offset": [0, 1.25], "text-anchor": "top", "text-max-width": 9, "text-optional": true},
+     "paint": {"text-color": "#27272A", "text-halo-color": "#FFFFFF", "text-halo-width": 1.5}},
     {"id": "doithu", "type": "circle", "source": "doithu",
      "paint": {"circle-color": "#B03030", "circle-radius": 6, "circle-stroke-color": "#FFFFFF", "circle-stroke-width": 1.5}},
     {"id": "doithu-ten", "type": "symbol", "source": "doithu", "minzoom": 14,

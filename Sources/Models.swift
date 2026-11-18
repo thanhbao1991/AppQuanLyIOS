@@ -585,6 +585,24 @@ struct MapCustomerDto: Codable {
     let lat: Double
     let long: Double
     let seasonal: Bool
+    // 18/11/2026: thẻ khách khi chạm chấm + tên khi phóng to. Optional: bản khach.json lưu máy cũ không có.
+    var khachHangId: String?
+    var ten: String?
+    var soDienThoai: String?
+    var diaChi: String?
+    var nguonKhach: String?
+    var soDon: Int?
+    /// ISO "2026-11-18T14:08:58.93" (giờ VN) — chỉ dùng phần ngày.
+    var muaGanNhat: String?
+}
+
+/// Địa danh gán tay trên bản đồ offline (công an, UBND, cây xăng, chuỗi bán lẻ…) — id nil = thêm.
+struct LuuDiaDanhBanDoRequest: Encodable {
+    var id: String?
+    var ten: String
+    var loai: String
+    var lat: Double
+    var long: Double
 }
 
 /// Lớp tên đường trên Bản đồ khách hàng — GET /api/Map/ten-duong. `diem` là các cặp [lat, lng]:
