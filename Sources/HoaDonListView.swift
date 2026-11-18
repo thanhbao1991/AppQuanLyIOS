@@ -880,7 +880,7 @@ private struct ImageOrderPickerSheet: View {
                     ProgressView("Đang đọc ảnh bằng AI...")
                     Spacer()
                 } else if images.isEmpty {
-                    Text("Chọn 1 ảnh chụp màn hình tin nhắn khách đặt món (cuộn xuống tin mới nhất nếu chat dài).")
+                    Text("Chọn ảnh chụp tin nhắn đặt món.")
                         .font(.subheadline)
                         .foregroundColor(.textMuted)
                         .multilineTextAlignment(.center)
@@ -1043,7 +1043,7 @@ private struct TextOrderPickerSheet: View {
                     Spacer()
                     Text(hasClipboardText
                          ? "Không đọc được đơn nào từ tin nhắn đã copy."
-                         : "Clipboard trống — copy đoạn chat khách đặt món (Messenger/Zalo) rồi bấm \"Thử lại\".")
+                         : "Clipboard trống — copy tin nhắn đặt món rồi bấm lại.")
                         .font(.subheadline)
                         .foregroundColor(.textMuted)
                         .multilineTextAlignment(.center)

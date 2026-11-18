@@ -87,9 +87,8 @@ struct BaoHoaView: View {
                 } header: {
                     Text("Tín hiệu")
                 } footer: {
-                    Text("Chạm từng dòng để xem biểu đồ và giải thích. Doanh thu, bán kính, khách quay lại tính trên 12 tháng; giờ đông tính 30 ngày.")
+                    Text("Chạm dòng xem chi tiết. Tính 12 tháng; giờ đông 30 ngày.")
                 }
-                todoSection
             }
         }
         .navigationTitle("Phân tích bão hoà")
@@ -186,7 +185,7 @@ struct BaoHoaView: View {
         return TinHieu(mucDo: .trungTinh,
                        ketLuan: "Đông nhất: " + topGio.map { "\($0.gio)h" }.joined(separator: ", "),
                        giaTri: nil,
-                       nhanXet: "Chỉ để tham khảo: kiểm tra thực tế có bị chờ lâu/huỷ đơn nhiều vào các giờ này không.")
+                       nhanXet: nil)
     }
 
     @ViewBuilder private var gioChart: some View {
@@ -282,42 +281,6 @@ struct BaoHoaView: View {
             .frame(height: 160)
             .chartXAxis { AxisMarks { AxisValueLabel().font(.caption2) } }
             .chartYAxis { AxisMarks(position: .leading) { AxisValueLabel("\(($0.as(Double.self) ?? 0).formatted(.number.precision(.fractionLength(0))))%") } }
-        }
-    }
-
-    // MARK: - TODO
-
-    private var todoSection: some View {
-        Section {
-            DisclosureGroup("Việc còn thiếu (4)") {
-            VStack(alignment: .leading, spacing: 10) {
-                todoItem("Độ trễ/huỷ đơn THẬT theo giờ cao điểm",
-                         "Hiện chỉ có 'giờ nào đông đơn nhất' (số đơn), chưa đo được có bị CHẬM/HUỶ nhiều không — " +
-                         "vì HoaDons không có mốc thời gian 'hoàn tất đơn', chỉ NgayXacNhanOnline (riêng đơn app, " +
-                         "không đại diện cho cả quán). Muốn làm đúng cần thêm field mốc giờ hoàn tất/giao xong.")
-                todoItem("Mật độ dân cư theo khu vực",
-                         "Đã tra nhưng BỎ QUA — khu lõi Phước An+Ea Yông+Hoà Tiến+Hoà An đã sáp nhập 2025 " +
-                         "thành 1 xã duy nhất (~68.7k dân), không còn tách được theo từng khu như bản đồ khách hàng.")
-                todoItem("Chi phí mặt bằng theo vị trí cụ thể",
-                         "Không có nguồn dữ liệu tự động — khi đã nhắm được 1-2 vị trí ứng viên cụ thể thì phải " +
-                         "tự khảo sát/hỏi giá thuê thực tế.")
-                todoItem("Danh sách đối thủ có thể chưa đủ 100%",
-                         "97 quán hiện tại lọc theo từ khoá tên (coffee/cafe/trà sữa/tiệm trà/giải khát...) từ " +
-                         "388 quán FOOD ở Krông Pắc trên shippershipping.com — quán đặt tên không có từ khoá " +
-                         "liên quan đồ uống sẽ bị bỏ sót, chưa có cách lọc 100% chính xác.")
-            }
-            .padding(.vertical, 4)
-            }
-            .font(.subheadline)
-            .foregroundColor(.textMuted)
-        }
-    }
-
-    private func todoItem(_ title: String, _ detail: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Label(title, systemImage: "exclamationmark.triangle.fill")
-                .font(.caption.weight(.semibold)).foregroundColor(.orange)
-            Text(detail).font(.caption2).foregroundColor(.textMuted)
         }
     }
 

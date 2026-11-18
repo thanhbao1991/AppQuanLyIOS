@@ -480,7 +480,7 @@ private struct MoreMenuView: View {
                         Label("Đăng xuất", systemImage: "rectangle.portrait.and.arrow.right")
                     }
                 } footer: {
-                    Text("Đồng bộ danh bạ: đưa tên khách hàng vào Danh bạ iPhone theo số điện thoại, để hiện tên khi khách gọi đến.\nPhiên bản \(appVersionString)")
+                    Text("Đưa tên khách vào Danh bạ để hiện tên khi gọi đến.\nPhiên bản \(appVersionString)")
                 }
             }
             // Bỏ hẳn thanh tiêu đề "Menu" phía trên (không cần vùng top màu như các tab khác, và

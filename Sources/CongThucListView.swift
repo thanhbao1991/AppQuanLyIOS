@@ -484,7 +484,7 @@ private struct CongThucEditSheet: View {
         // dòng mà không ai biết.
         if loiDong > 0 {
             luuDoDang = true
-            errorMessage = "Có \(loiDong) thao tác trên dòng nguyên liệu CHƯA lưu được. Bấm Huỷ rồi mở lại công thức này để kiểm tra và sửa lại."
+            errorMessage = "\(loiDong) thao tác chưa lưu — Huỷ rồi mở lại để kiểm tra."
             return
         }
         dismiss()

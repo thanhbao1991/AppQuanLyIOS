@@ -195,7 +195,7 @@ struct LayHangView: View {
                 HStack { ProgressView(); Text("Đang tải đại lý…").foregroundColor(.textMuted) }
             } else if model.daiLy.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(model.loi ?? "Chưa có đại lý nào. Thêm đại lý rồi chọn mặt hàng đại lý đó bán.")
+                    Text(model.loi ?? "Chưa có đại lý — thêm rồi chọn mặt hàng.")
                         .font(.subheadline).foregroundColor(.textMuted)
                     themDaiLyButton
                 }
@@ -220,7 +220,7 @@ struct LayHangView: View {
                 Task { thongBao = await model.taoDaiLy(ten: ten) }
             }
         } message: {
-            Text("Số lượng tối thiểu mặc định 4 (thùng, cây, bao… tính như nhau), sửa được sau. Thêm xong chọn mặt hàng đại lý đó bán.")
+            Text("Tối thiểu mặc định 4, sửa sau được.")
         }
         .navigationDestination(isPresented: $hienMatHang) {
             if let d = model.daiLyDangChon {
@@ -286,7 +286,7 @@ struct LayHangView: View {
 
     @ViewBuilder private var ketQuaView: some View {
         if model.dangTai {
-            HStack { ProgressView(); Text("Đang tính… (món chưa có công thức sẽ hỏi AI, có thể mất vài giây)").font(.footnote).foregroundColor(.textMuted) }
+            HStack { ProgressView(); Text("Đang tính… (món chưa có công thức hỏi AI)").font(.footnote).foregroundColor(.textMuted) }
         } else if let kq = model.ketQua {
             VStack(alignment: .leading, spacing: 10) {
                 tongKet(kq)

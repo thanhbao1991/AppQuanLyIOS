@@ -203,7 +203,7 @@ struct TonKhoChiTietView: View {
                         Label("Kiểm kê (nhập số đếm thực tế)", systemImage: "checklist")
                     }
                 } footer: {
-                    Text("Bán theo công thức tự trừ, nhập Chi tiêu tự cộng. Món chưa theo dõi để −9999 — kiểm kê để bắt đầu theo dõi.")
+                    Text("Bán tự trừ, nhập Chi tiêu tự cộng. −9999 = chưa theo dõi, kiểm kê để bắt đầu.")
                 }
 
                 Section("Mã nhập hàng") {

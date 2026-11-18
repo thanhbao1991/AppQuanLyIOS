@@ -179,7 +179,7 @@ private struct VoucherSapXepSheet: View {
                         daDoi = true
                     }
                 } footer: {
-                    Text("Giữ ≡ rồi kéo để đổi thứ tự. Đây cũng là thứ tự voucher hiện ở app khách; voucher lễ chưa tới ngày vẫn xếp theo ngày gần nhất.")
+                    Text("Kéo ≡ để đổi thứ tự (cũng là thứ tự ở app khách).")
                 }
             }
             .environment(\.editMode, .constant(.active))
@@ -491,7 +491,7 @@ private struct VoucherEditSheet: View {
                     Section("Khung giờ áp dụng") {
                         Stepper("Bắt đầu: \(gioBatDau)h", value: $gioBatDau, in: 0...22)
                         Stepper("Kết thúc: \(gioKetThuc)h", value: $gioKetThuc, in: (gioBatDau + 1)...23)
-                        Text("Áp dụng cho MỌI đơn trong khung giờ này (không giới hạn đơn thứ mấy trong ngày) — nên đặt % giảm nhỏ + trần tối đa thấp để hạn chế rủi ro khách trì hoãn đơn để chờ giờ rẻ.")
+                        Text("Áp cho MỌI đơn trong khung giờ — nên giảm ít + trần thấp.")
                             .font(.caption2).foregroundColor(.textMuted)
                     }
                     Section {
@@ -513,14 +513,14 @@ private struct VoucherEditSheet: View {
                     } header: {
                         Text("Số lượng áp dụng")
                     } footer: {
-                        Text("Chỉ áp dụng cho khách CHƯA TỪNG có đơn nào (kể cả không dùng voucher) đạt đủ số lượng này — nếu khách đã tự mua đủ ít nhất 1 lần trước đây, voucher không tạo hành vi mới nên không hiện nữa. Vì vậy mỗi khách chỉ dùng được ĐÚNG 1 LẦN trong đời.")
+                        Text("Chỉ cho khách CHƯA TỪNG mua đủ số lượng này — dùng đúng 1 lần.")
                     }
                 }
                 if dieuKien != "UpsizeL" && dieuKien != "ToppingMienPhi" {
                     Section {
                         Toggle("Chỉ áp dụng khi đơn có Size L", isOn: $yeuCauSizeL)
                     } footer: {
-                        Text("Điều kiện phụ cộng thêm vào điều kiện trên — bắt khách phải thật sự chọn Size L mới được giảm, thay vì lấy tiền giảm mà vẫn giữ size chuẩn.")
+                        Text("Phải chọn Size L mới được giảm.")
                     }
                 }
                 Section("Hạng khách yêu cầu (cộng thêm vào điều kiện trên)") {
@@ -530,7 +530,7 @@ private struct VoucherEditSheet: View {
                         }
                     }
                 }
-                Section("Phân loại (chỉ để nhóm trong danh sách, không ảnh hưởng cách áp dụng)") {
+                Section("Phân loại (chỉ để nhóm)") {
                     Picker("Phân loại", selection: $mucDich) {
                         ForEach(mucDichOptions, id: \.0) { value, label in
                             Text(label).tag(value)
@@ -547,7 +547,7 @@ private struct VoucherEditSheet: View {
                     }
                 } footer: {
                     if coNgayHieuLuc {
-                        Text("Cộng DỒN với \"Đang hoạt động\" bên dưới — ngoài khoảng ngày này thì dù đang bật vẫn không áp dụng được. Lễ âm lịch (Trung Thu, Tết) đổi ngày dương mỗi năm nên KHÔNG bật lặp hằng năm, phải tự sửa lại ngày hằng năm.")
+                        Text("Ngoài khoảng ngày thì không áp dụng; lễ âm lịch không bật lặp.")
                     } else {
                         Text("Không bật = voucher dùng được mọi lúc (miễn \"Đang hoạt động\" bật), phù hợp voucher thường xuyên.")
                     }
@@ -564,7 +564,7 @@ private struct VoucherEditSheet: View {
                 } header: {
                     Text("Thứ tự hiển thị ở tab Ưu đãi")
                 } footer: {
-                    Text("Số nhỏ hiện trước (1 đứng đầu). Để trống = xếp sau các voucher đã đánh số, voucher mới tạo lên trước.")
+                    Text("Số nhỏ lên trước, trống xếp sau.")
                 }
                 Section {
                     Toggle("Đang hoạt động (hiện cho khách)", isOn: $dangHoatDong)

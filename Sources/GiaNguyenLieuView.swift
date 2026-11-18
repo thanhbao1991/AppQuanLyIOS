@@ -187,7 +187,7 @@ struct GiaNguyenLieuView: View {
         .confirmDelete(
             $ngungDungPending, title: "Ngừng dùng nguyên liệu", confirmLabel: "Ngừng dùng",
             name: { $0.ten },
-            note: "Nguyên liệu sẽ ẩn khỏi danh sách; muốn dùng lại thì gõ tìm đúng tên rồi bấm nút hoàn tác.",
+            note: "Ẩn khỏi danh sách; gõ đúng tên để tìm lại và hoàn tác.",
             perform: { await ngungSuDung($0) },
             onDone: {})
         .confirmDelete($xoaPending, name: { $0.ten }, perform: { await APIClient.shared.deleteNguyenLieu(id: $0.id) }, onDone: load)

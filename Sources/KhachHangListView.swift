@@ -618,7 +618,7 @@ private struct MergeReviewSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    Text("Gộp \(selection.count) khách làm 1 — khách đầu (\(selection.first?.ten ?? "")) được GIỮ LẠI, các khách còn lại sẽ bị XOÁ. Thao tác KHÔNG THỂ HOÀN TÁC.")
+                    Text("Gộp \(selection.count) khách vào \(selection.first?.ten ?? "") — các khách khác bị XOÁ, không hoàn tác.")
                         .font(.caption).foregroundColor(.dangerColor)
                 }
 

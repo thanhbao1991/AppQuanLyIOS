@@ -151,7 +151,7 @@ struct BanDoKhachHangView: View {
             Text(tenDuong.veLai.map { "Vẽ lại: \($0.ten)" } ?? "Vẽ đường mới")
                 .font(.subheadline.weight(.semibold))
             Text(tenDuong.diemVe.isEmpty
-                 ? "Chạm lần lượt các điểm dọc theo con đường (chạm 1 điểm nếu chỉ muốn đặt tên khu vực)."
+                 ? "Chạm dọc theo đường (1 điểm = tên khu vực)."
                  : "\(tenDuong.diemVe.count) điểm — chạm tiếp để nối dài.")
                 .font(.caption).foregroundColor(.textMuted)
                 .multilineTextAlignment(.center)

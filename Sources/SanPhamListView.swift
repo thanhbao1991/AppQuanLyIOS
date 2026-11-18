@@ -109,14 +109,14 @@ struct SanPhamListView: View {
             Text(toastMessage ?? "")
         }
         .confirmationDialog(
-            "Đẩy/đồng bộ toàn bộ topping đang bán vào Size/Topping của TẤT CẢ sản phẩm đã có trên store (chưa có thì tạo mới, có rồi mà lệch giá thì cập nhật)?\n\nChạy nền, chậm rãi (có thể mất vài chục phút) — kết quả sẽ báo qua thông báo Hệ thống (icon chuông).",
+            "Đẩy mọi topping vào TẤT CẢ món trên store (thiếu thì tạo, lệch giá thì sửa)?\n\nChạy nền vài chục phút, xong báo ở chuông.",
             isPresented: $showPushToppingAllConfirm, titleVisibility: .visible
         ) {
             Button("Đẩy hàng loạt", role: .destructive) { Task { await pushToppingAll() } }
             Button("Huỷ", role: .cancel) {}
         }
         .confirmationDialog(
-            "Đẩy biến thể \"Size XL\" (giá chênh cố định) lên TẤT CẢ sản phẩm đã có trên store VÀ đã có biến thể Size XL nội bộ?\n\nChạy nền, chậm rãi — kết quả sẽ báo qua thông báo Hệ thống (icon chuông).",
+            "Đẩy Size XL lên TẤT CẢ món trên store đã có Size XL nội bộ?\n\nChạy nền, xong báo ở chuông.",
             isPresented: $showPushSizeXLAllConfirm, titleVisibility: .visible
         ) {
             Button("Đẩy hàng loạt", role: .destructive) { Task { await pushSizeXLAll() } }

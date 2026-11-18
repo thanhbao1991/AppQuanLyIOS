@@ -310,13 +310,13 @@ struct CongNoFooterView: View {
         } message: {
             let ptText = payAllIsCash ? "tiền mặt" : "chuyển khoản"
             Text(items.count > 1
-                 ? "Thu \(ptText) \(items.count) hoá đơn, tổng \(totalText). Nhập đúng tổng để thu hết, hoặc nhập số khách trả thiếu để hệ thống tự tìm tổ hợp hoá đơn cộng khớp đúng số đó."
+                 ? "Thu \(ptText) \(items.count) hoá đơn, tổng \(totalText). Khách trả thiếu thì nhập số đó, tự tìm hoá đơn cộng khớp."
                  : "Thu \(ptText) \(totalText) cho hoá đơn này?")
         }
         .alert("Danh sách gồm nhiều khách", isPresented: $showMultiCustomerError) {
             Button("OK") {}
         } message: {
-            Text("Danh sách đang hiện gồm nhiều khách khác nhau (\(multiCustomerNames)) — chỉ thu hàng loạt/gửi bill được khi TẤT CẢ hoá đơn cùng 1 khách. Hãy tìm kiếm/lọc lại cho còn đúng 1 người rồi thử lại.")
+            Text("Đang lẫn nhiều khách (\(multiCustomerNames)) — lọc còn 1 khách rồi thử lại.")
         }
         .alert("Khớp tổ hợp nợ", isPresented: $showMatchConfirm) {
             Button("Xác nhận") { Task { await payMatchedSubset() } }
@@ -350,7 +350,7 @@ struct CongNoFooterView: View {
             }.joined(separator: "\n")
         let conLaiCount = items.count - matchedSubset.count
         let conLaiTotal = HoaDonFormatting.money(items.filter { i in !matchedSubset.contains { $0.id == i.id } }.reduce(0) { $0 + $1.conLai })
-        return "Tìm thấy \(matchedSubset.count) hoá đơn cộng đúng \(payAllInput.filter(\.isNumber))đ:\n\(danhSach)\n\nThu \(ptText) đủ các hoá đơn này? Còn lại \(conLaiCount) hoá đơn, tổng \(conLaiTotal) vẫn nợ."
+        return "Khớp \(matchedSubset.count) hoá đơn = \(payAllInput.filter(\.isNumber))đ:\n\(danhSach)\n\nThu \(ptText)? Còn nợ \(conLaiCount) đơn, \(conLaiTotal)."
     }
 
     /// Tìm 1 tổ hợp trong `items` mà tổng conLai cộng lại khớp CHÍNH XÁC `target`, ƯU TIÊN hoá đơn CŨ
@@ -437,7 +437,7 @@ struct CongNoFooterView: View {
                     matchedSubset = match
                     showMatchConfirm = true
                 } else {
-                    payAllResultMessage = "Số tiền nhập không khớp \(totalText), cũng không khớp tổ hợp nợ nào — đã huỷ, không có gì thay đổi."
+                    payAllResultMessage = "Không khớp tổng nợ \(totalText) hay tổ hợp nào — chưa thu gì."
                 }
                 return
             }
@@ -515,7 +515,7 @@ struct CongNoFooterView: View {
         let qrData = await APIClient.shared.getBillQrImage(amount: total, addInfo: addInfo)
         // Không có QR thì KHÔNG copy + báo rõ — trước đây vẫn copy ảnh thiếu QR và hiện "Đã copy".
         guard let qrImage = qrData.flatMap({ UIImage(data: $0) }) else {
-            payAllResultMessage = "Không lấy được mã QR nên CHƯA copy bill — kiểm tra mạng rồi bấm Gửi Bill lại."
+            payAllResultMessage = "Không lấy được QR — chưa copy bill, thử lại."
             return
         }
 

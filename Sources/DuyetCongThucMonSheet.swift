@@ -273,7 +273,7 @@ struct CongThucSizeSheet: View {
         if !duyet, loi == 0 { onLuuChuaDuyet?() }
         if loi > 0 {
             luuDoDang = true
-            errorMessage = "Có \(loi) thao tác CHƯA lưu được. Bấm Huỷ rồi mở lại món này để kiểm tra."
+            errorMessage = "\(loi) thao tác chưa lưu — Huỷ rồi mở lại để kiểm tra."
             return
         }
         dismiss()

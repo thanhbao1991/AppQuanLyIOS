@@ -82,7 +82,7 @@ private struct GamificationConfigForm: View {
             } header: {
                 Label("Giờ mở bán", systemImage: "clock")
             } footer: {
-                Text("App khách chặn đặt hàng ngoài khung giờ này (server chặn thật, không chỉ ẩn UI). Cũng dùng để tính gợi ý khung giờ vắng khách ở Công cụ > Giờ vắng khách.")
+                Text("App khách chỉ đặt được trong khung giờ này.")
             }
 
             Section {
@@ -108,7 +108,7 @@ private struct GamificationConfigForm: View {
             } header: {
                 Label("Phí ship", systemImage: "bicycle")
             } footer: {
-                Text("Bán kính miễn phí = (SỐ LY trong đơn × 0,5km, không tính topping, không giới hạn trên) CỘNG THẲNG km thưởng theo hạng THÁNG TRƯỚC của khách. Vượt bán kính miễn phí mới tính thêm theo km vượt, làm tròn lên 1.000đ.")
+                Text("Miễn phí = số ly × 0,5km + km thưởng hạng tháng trước. Vượt thì tính theo km, làm tròn lên 1.000đ.")
             }
 
             Section {
@@ -117,7 +117,7 @@ private struct GamificationConfigForm: View {
             } header: {
                 Label("Điểm danh nhận Xu", systemImage: "calendar")
             } footer: {
-                Text("Điểm danh liên tiếp mỗi ngày để nhận Xu (cộng thẳng, không random). Bỏ lỡ 1 ngày là tính lại từ đầu.")
+                Text("Điểm danh liên tiếp nhận Xu; bỏ 1 ngày tính lại từ đầu.")
             }
 
             Section {

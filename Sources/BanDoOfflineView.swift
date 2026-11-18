@@ -183,7 +183,7 @@ struct BanDoOfflineView: View {
         case "tay": return "✓ Đã xác nhận (khoá) — nhân viên đặt/duyệt, không bị tự đoán đổi."
         case "tu": return "Tên tự đoán từ địa chỉ khách — có thể sai. Đặt lại tên nếu cần."
         case "osm": return "Tên có sẵn trong dữ liệu bản đồ."
-        default: return "Khúc = từ ngã giao này tới ngã giao kế tiếp. Đặt tên từng khúc cho chắc, hoặc cả đoạn thẳng nối tiếp."
+        default: return "Khúc = giữa 2 ngã giao."
         }
     }
 
@@ -196,7 +196,7 @@ struct BanDoOfflineView: View {
                     Text(ten).font(.subheadline.bold()).foregroundColor(.brandPrimary)
                 }
                 Text(m.soDiemVe == 0
-                     ? "Chạm từng điểm dọc theo hẻm/đường còn thiếu (chỗ cong chạm thêm), hoặc bấm 📍 khi đang đứng tại đó."
+                     ? "Chạm dọc theo hẻm/đường, hoặc bấm 📍 tại chỗ."
                      : "Đã chấm \(m.soDiemVe) điểm\(m.soDiemVe < 2 ? " — cần ít nhất 2" : "")")
                     .font(.footnote.weight(.semibold))
                     .fixedSize(horizontal: false, vertical: true)

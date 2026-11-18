@@ -65,7 +65,7 @@ struct CauHinhAppNhanVienView: View {
             } header: {
                 Text("Loại đơn")
             } footer: {
-                Text("Tắt loại nào thì máy nhân viên không nhận push và không thấy trong chuông — kể cả khi đơn loại đó bị sửa hay xoá.")
+                Text("Tắt loại nào thì App nhân viên không nhận push/chuông loại đó.")
             }
 
             Section {
@@ -75,7 +75,7 @@ struct CauHinhAppNhanVienView: View {
             } header: {
                 Text("Báo khi")
             } footer: {
-                Text("Áp cho mọi máy đang dùng App nhân viên. App quản lý (app này) vẫn nhận đủ mọi thông báo.")
+                Text("Áp cho mọi máy App nhân viên; app này vẫn nhận đủ.")
             }
 
             if let errorMessage {
