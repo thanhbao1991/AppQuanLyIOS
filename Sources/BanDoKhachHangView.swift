@@ -1,12 +1,12 @@
 import MapKit
 import SwiftUI
 
-/// Đối thủ cạnh tranh vẫn đọc từ file tĩnh trên VPS (KHÔNG qua Backend API) — snapshot crawl thủ
-/// công, không có trong DB. Khách hàng (customers) từ 2026-10-04 đọc thẳng từ DB qua
+/// Đối thủ cạnh tranh: snapshot crawl thủ công (không có trong DB), từ 19/11/2026 đọc qua API nhân viên
+/// APIClient.getMapDoiThu() — trước đó đọc thẳng file công khai trên web (ai có link cũng tải được, file
+/// đó kèm cả điểm khách + doanh thu), đã gỡ. Khách hàng (customers) từ 2026-10-04 đọc thẳng từ DB qua
 /// APIClient.getMapCustomers() (KhachHangAddresses.Lat/Long) thay vì crawl ngoài platform — xem
 /// memory/session liên quan (gộp theo HoaDons chỉ đạt ~50% do tỷ lệ "bắt đơn" + KhachHangId của
 /// đơn App trỏ vào shipper; gộp theo KhachHangAddresses đạt ~100%).
-let competitorsDataURL = URL(string: "https://api.denncoffee.com/map-f90702696b23/data.json")!
 let storeCoordinate = CLLocationCoordinate2D(latitude: 12.7095521, longitude: 108.3016576)
 
 struct MapDataResponse: Decodable {
@@ -746,14 +746,10 @@ private struct NativeMapView: UIViewRepresentable {
         }
 
         func load(into map: MKMapView) async {
-            // Khach hang: tu DB (KhachHangAddresses.Lat/Long qua APIClient). Doi thu: van tu file
-            // tinh tren VPS (khong co trong DB) - 2 nguon doc song song.
+            // Khach hang: tu DB (KhachHangAddresses.Lat/Long qua APIClient). Doi thu: file rieng tren VPS
+            // qua API nhan vien (khong co trong DB) - 2 nguon doc song song.
             async let customersTask = APIClient.shared.getMapCustomers()
-            async let competitorsTask: [CompetitorLocation] = {
-                guard let (data, _) = try? await URLSession.shared.data(from: competitorsDataURL),
-                      let resp = try? JSONDecoder().decode(MapDataResponse.self, from: data) else { return [] }
-                return resp.competitors ?? []
-            }()
+            async let competitorsTask = APIClient.shared.getMapDoiThu()
             let (customers, competitors) = await (customersTask, competitorsTask)
 
             if customers.isEmpty {

@@ -561,9 +561,10 @@ final class BanDoOfflineModel: ObservableObject {
         return data
     }
 
+    /// Rỗng = lỗi/mất mạng → nil để giữ bản đã lưu máy.
     private func taiDoiThu() async -> MapDataResponse? {
-        guard let ketQua = try? await URLSession.shared.data(from: competitorsDataURL) else { return nil }
-        return try? JSONDecoder().decode(MapDataResponse.self, from: ketQua.0)
+        let ds = await APIClient.shared.getMapDoiThu()
+        return ds.isEmpty ? nil : MapDataResponse(competitors: ds)
     }
 
     private func datTenDuong(_ data: Data) {

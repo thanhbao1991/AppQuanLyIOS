@@ -900,6 +900,14 @@ actor APIClient {
         return env.data ?? []
     }
 
+    /// Quán đối thủ trên bản đồ khách hàng — API nhân viên (từ 19/11/2026; trước đọc file công khai, đã gỡ). [] = lỗi/mất mạng.
+    func getMapDoiThu() async -> [CompetitorLocation] {
+        let req = makeRequest("/api/Map/doi-thu")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<[CompetitorLocation]>.self, from: data), env.isSuccess else { return [] }
+        return env.data ?? []
+    }
+
     /// Bản đồ offline: GeoJSON tên đường quán gắn lên đoạn đường OSM (nạp thẳng làm source MapLibre). nil = lỗi/mất mạng.
     func getBanDoTenDuongGeoJson() async -> Data? {
         let req = makeRequest("/api/Map/ban-do/ten-duong")
