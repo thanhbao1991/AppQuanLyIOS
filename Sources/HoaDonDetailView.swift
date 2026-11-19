@@ -726,7 +726,7 @@ struct HoaDonDetailView: View {
         async let d = APIClient.shared.getHoaDonDetail(hoaDonId)
         async let sp = APIClient.shared.getSanPhamList()
         detail = await d
-        hinhAnhMap = Dictionary(uniqueKeysWithValues: await sp.compactMap { p in p.hinhAnh.map { (p.id, $0) } })
+        hinhAnhMap = Dictionary(uniqueKeysWithValues: await sp.compactMap { p in p.anhNho.map { (p.id, $0) } })
         loading = false
         if let kh = detail?.khachHangId, !kh.isEmpty {
             async let tb = APIClient.shared.getThietBiAppKhach(kh)

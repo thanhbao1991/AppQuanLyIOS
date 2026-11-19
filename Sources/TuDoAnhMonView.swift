@@ -89,7 +89,7 @@ struct TuDoAnhMonView: View {
         let s = suggest[sp.id]
         HStack(spacing: 10) {
             // Ảnh hiện tại (server, nhỏ)
-            if let ha = sp.hinhAnh, let url = URL(string: ha) {
+            if let ha = sp.anhNho, let url = URL(string: ha) {
                 AsyncImage(url: url) { $0.resizable().aspectRatio(contentMode: .fill) } placeholder: {
                     Color.textMuted.opacity(0.1)
                 }

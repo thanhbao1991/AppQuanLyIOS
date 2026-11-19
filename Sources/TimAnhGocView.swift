@@ -120,7 +120,7 @@ struct TimAnhGocView: View {
 
     @ViewBuilder
     private func anhServer(_ sp: SanPhamDto, size: CGFloat) -> some View {
-        if let ha = sp.hinhAnh, let url = URL(string: ha) {
+        if let ha = sp.anhNho, let url = URL(string: ha) {
             AsyncImage(url: url) { $0.resizable().aspectRatio(contentMode: .fill) } placeholder: {
                 Color.textMuted.opacity(0.1)
             }
@@ -135,7 +135,7 @@ struct TimAnhGocView: View {
                 HStack(alignment: .top, spacing: 10) {
                     VStack(spacing: 4) {
                         Text("Ảnh menu hiện tại").font(.caption).foregroundColor(.textMuted)
-                        if let ha = x.sp.hinhAnh, let url = URL(string: ha) {
+                        if let ha = x.sp.anhLon, let url = URL(string: ha) {
                             AsyncImage(url: url) { $0.resizable().aspectRatio(contentMode: .fit) } placeholder: { ProgressView() }
                                 .frame(maxHeight: 360)
                         }

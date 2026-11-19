@@ -136,7 +136,7 @@ struct DuyetAnhMenuSheet: View {
     private func dong(_ sp: SanPhamDto) -> some View {
         // 1 dòng/món (chủ quán 17/11: hiện được nhiều món nhất) — tên + nhóm cùng hàng, ảnh nhỏ.
         HStack(spacing: 10) {
-            AsyncImage(url: sp.hinhAnh.flatMap(URL.init(string:))) { phase in
+            AsyncImage(url: sp.anhNho.flatMap(URL.init(string:))) { phase in
                 if let img = phase.image { img.resizable().scaledToFill() } else { Color.appNen }
             }
             .frame(width: 24, height: 32)

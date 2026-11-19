@@ -120,7 +120,7 @@ struct SanPhamHinhAnhListView: View {
             sanPhams[idx] = SanPhamDto(
                 id: old.id, ten: old.ten, ngungBan: old.ngungBan, tenNhomSanPham: old.tenNhomSanPham,
                 thuTu: old.thuTu, bienThe: old.bienThe, timKiem: old.timKiem, hinhAnh: old.hinhAnh,
-                noiBat: newValue)
+                noiBat: newValue, hinhAnhNho: old.hinhAnhNho, hinhAnhGoc: old.hinhAnhGoc)
         } else {
             errorMessage = result.message ?? "Không cập nhật được."
         }
@@ -192,7 +192,7 @@ private struct SanPhamHinhAnhRow: View {
             .ignoresSafeArea()
         }
         .sheet(isPresented: $showFullImage) {
-            if let hinhAnh = sanPham.hinhAnh, let url = URL(string: hinhAnh) {
+            if let hinhAnh = sanPham.anhLon, let url = URL(string: hinhAnh) {
                 FullSizeImageView(url: url) { showFullImage = false }
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
@@ -202,7 +202,7 @@ private struct SanPhamHinhAnhRow: View {
 
     @ViewBuilder
     private var thumbnail: some View {
-        if let hinhAnh = sanPham.hinhAnh, let url = URL(string: hinhAnh) {
+        if let hinhAnh = sanPham.anhNho, let url = URL(string: hinhAnh) {
             Button {
                 showFullImage = true
             } label: {

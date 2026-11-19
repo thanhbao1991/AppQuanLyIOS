@@ -1186,6 +1186,12 @@ struct SanPhamDto: Decodable, Identifiable {
     /// Hiện trong dải "Món quán đề xuất" đầu tab Thực đơn của app khách — tối đa 5 món cùng lúc, đổi
     /// qua PATCH {id}/noi-bat (SanPhamCrudService.SetNoiBatAsync chặn số lượng ở server).
     let noiBat: Bool
+    /// Ảnh NHỎ server tạo sẵn (rộng 320px) cho thumbnail/danh sách, ảnh GỐC nét cho chỗ xem to (19/11/2026, chủ quán:
+    /// "chỗ nào hiển thị to thì dùng ảnh gốc, chỗ nào nhỏ thì ảnh nhỏ — không tải ảnh to rồi thu nhỏ"). Chỉ đọc từ server.
+    var hinhAnhNho: String? = nil
+    var hinhAnhGoc: String? = nil
+    var anhNho: String? { hinhAnhNho ?? hinhAnh }
+    var anhLon: String? { hinhAnhGoc ?? hinhAnh }
 }
 
 /// `Codable` (không chỉ Decodable) + `stt` để dùng chung cho cả chọn topping khi tạo hoá đơn
