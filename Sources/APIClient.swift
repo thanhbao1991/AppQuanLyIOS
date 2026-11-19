@@ -1399,6 +1399,14 @@ actor APIClient {
 
     func getAllKhachHang() async -> [KhachHangDto] { await getAllKhachHangOrNil() ?? [] }
 
+    /// Vân tay danh sách khách ở server (vài chục byte, ~10ms) — đồng bộ Danh bạ ngầm hỏi cái này trước, trùng lần đồng bộ
+    /// trước thì khỏi tải cả danh sách (~730KB). nil = lỗi mạng / backend chưa có → tải cả danh sách như cũ.
+    func getVanTayDanhBa() async -> String? {
+        let (data, _) = await send(makeRequest("/api/KhachHang/van-tay-danh-ba"))
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<String>.self, from: data), env.isSuccess else { return nil }
+        return env.data
+    }
+
     func searchKhachHang(_ q: String) async -> [KhachHangDto] {
         guard !q.trimmingCharacters(in: .whitespaces).isEmpty else { return [] }
         let query = q.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""

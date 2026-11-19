@@ -44,6 +44,8 @@ enum ContactSyncService {
     // gì, check được có thay đổi mới chạy thì tốt hơn").
 
     private static let khoaVanTay = "danhBa.vanTayDaDongBo"
+    /// Vân tay SERVER (/api/KhachHang/van-tay-danh-ba) ứng với lần đồng bộ thành công gần nhất.
+    private static let khoaVanTayServer = "danhBa.vanTayServerDaDongBo"
     @MainActor private static var dangChayNgam = false
 
     /// Gọi mỗi lần mở app / quay lại app. KHÔNG xin quyền (chưa cấp quyền thì bỏ qua — cấp bằng nút "Đồng bộ danh bạ" ở
@@ -53,18 +55,30 @@ enum ContactSyncService {
         guard CNContactStore.authorizationStatus(for: .contacts) == .authorized, !dangChayNgam else { return }
         dangChayNgam = true
         defer { dangChayNgam = false }
+        // 19/11/2026: hỏi vân tay server trước (~10ms). Trước đây mỗi lần mở app đều tải cả danh sách khách (~730KB, server
+        // mất 0,7–4s, ~110 lần/ngày) chỉ để thấy "không có thay đổi" — danh sách thật ra chỉ đổi ~10 lần/ngày.
+        let vanTayServer = await APIClient.shared.getVanTayDanhBa()
+        if let vanTayServer, UserDefaults.standard.string(forKey: khoaVanTayServer) == vanTayServer {
+            ghiLanChay("không có thay đổi")
+            return
+        }
         guard let khachHangs = await APIClient.shared.getAllKhachHangOrNil(), !khachHangs.isEmpty else {
             ghiLanChay("không tải được danh sách khách")
             return
         }
         let vanTay = vanTay(khachHangs)
         guard UserDefaults.standard.string(forKey: khoaVanTay) != vanTay else {
+            // Danh bạ đã khớp bản này → nhớ vân tay server (nil = server chưa có → xoá khoá, lần sau tải như cũ).
+            UserDefaults.standard.set(vanTayServer, forKey: khoaVanTayServer)
             ghiLanChay("không có thay đổi")
             return
         }
         do {
             let kq = try await sync(khachHangs: khachHangs)
-            if kq.failed == 0 { UserDefaults.standard.set(vanTay, forKey: khoaVanTay) }
+            if kq.failed == 0 {
+                UserDefaults.standard.set(vanTay, forKey: khoaVanTay)
+                UserDefaults.standard.set(vanTayServer, forKey: khoaVanTayServer)
+            }
             ghiLanChay(kq.summary.lowercased())
         } catch {
             ghiLanChay("lỗi: \(error.localizedDescription)")
@@ -93,6 +107,8 @@ enum ContactSyncService {
     /// Nút "Đồng bộ danh bạ" (đồng bộ đủ, không xét vân tay) — xong thì lưu vân tay để lần chạy ngầm sau khỏi làm lại.
     static func luuVanTay(_ khachHangs: [KhachHangDto]) {
         UserDefaults.standard.set(vanTay(khachHangs), forKey: khoaVanTay)
+        // Không biết vân tay server ứng với lần tải này → xoá; lần chạy ngầm sau tải 1 lần, thấy khớp rồi ghi lại.
+        UserDefaults.standard.removeObject(forKey: khoaVanTayServer)
     }
 
     static func requestAccess() async -> Bool {
