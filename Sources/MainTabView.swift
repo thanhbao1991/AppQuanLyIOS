@@ -357,11 +357,7 @@ private struct MoreMenuView: View {
                     } label: {
                         Label("Giá riêng", systemImage: "tag")
                     }
-                    NavigationLink {
-                        SanPhamHinhAnhListView()
-                    } label: {
-                        Label("Ảnh menu", systemImage: "photo")
-                    }
+                    // Ẩn "Ảnh menu" (user 19/11/2026): chỉ đổi ảnh menu qua màn duyệt ảnh ở tab Kê.
                 }
 
                 Section("Kho") {

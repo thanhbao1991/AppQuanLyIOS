@@ -347,15 +347,11 @@ struct HoaDonDetailView: View {
                 }
                 .frame(width: 36, height: 36)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
-                .contentShape(Rectangle())
-                .onTapGesture { if let sanPhamId { photoLibraryId = sanPhamId; showPhotoLibrary = true } }
             } else {
                 RoundedRectangle(cornerRadius: 8)
                     .fill(Color.textMuted.opacity(0.12))
                     .frame(width: 36, height: 36)
-                    .overlay(Image(systemName: "camera").font(.system(size: 16)).foregroundColor(.textMuted))
-                    .contentShape(Rectangle())
-                    .onTapGesture { if let sanPhamId { photoCameraId = sanPhamId } }
+                    // Không còn bấm để chụp/chọn ảnh món (user 19/11/2026): chỉ đổi ảnh menu qua màn duyệt ảnh ở tab Kê.
             }
         }
     }
