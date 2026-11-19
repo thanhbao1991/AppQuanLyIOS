@@ -396,15 +396,39 @@ final class BanDoTenDuongModel: ObservableObject {
 /// Chọn tên cho nét vừa vẽ: tìm trong danh sách tên đường sẵn có, hoặc thêm tên mới.
 /// Dùng chung cho bản đồ offline (BanDoOfflineView).
 struct ChonTenDuongSheet: View {
+    /// Tên đường gần khúc đang đặt tên (gần trước) — hiện lên đầu (19/11/2026, user yêu cầu).
+    let ganNhat: [TenDuongGan]
     let onChon: (_ id: String?, _ ten: String?) -> Void
     @ObservedObject private var cache = TenDuongCache.shared
     @State private var tim = ""
     @Environment(\.dismiss) private var dismiss
 
+    init(ganNhat: [TenDuongGan] = [], onChon: @escaping (_ id: String?, _ ten: String?) -> Void) {
+        self.ganNhat = ganNhat
+        self.onChon = onChon
+    }
+
     private var ketQua: [TenDuongDto] {
         let q = tim.boDauTimKiem
         let ds = cache.items.sorted { $0.ten.localizedCompare($1.ten) == .orderedAscending }
-        return q.isEmpty ? ds : ds.filter { $0.ten.boDauTimKiem.contains(q) }
+        guard !q.isEmpty else { return ds }
+        // Đang tìm: tên gần khúc này xếp trước.
+        let hang = Dictionary(ganNhat.enumerated().map { ($1.ten.boDauTimKiem, $0) }, uniquingKeysWith: { a, _ in a })
+        return ds.filter { $0.ten.boDauTimKiem.contains(q) }
+            .sorted { (hang[$0.ten.boDauTimKiem] ?? .max) < (hang[$1.ten.boDauTimKiem] ?? .max) }
+    }
+
+    private func chonGan(_ g: TenDuongGan) {
+        if let d = cache.items.first(where: { $0.ten.boDauTimKiem == g.ten.boDauTimKiem }) {
+            onChon(d.id, nil)
+        } else {
+            onChon(nil, g.ten)
+        }
+        dismiss()
+    }
+
+    private static func khoangCach(_ m: Double) -> String {
+        m < 1000 ? "\(Int((m / 10).rounded() * 10)) m" : String(format: "%.1f km", m / 1000)
     }
 
     private var tenMoi: String { tim.trimmingCharacters(in: .whitespaces) }
@@ -421,12 +445,30 @@ struct ChonTenDuongSheet: View {
                         Label("Thêm tên mới “\(tenMoi)”", systemImage: "plus.circle.fill")
                     }
                 }
-                ForEach(ketQua) { d in
-                    Button(d.ten) {
-                        onChon(d.id, nil)
-                        dismiss()
+                if tim.isEmpty && !ganNhat.isEmpty {
+                    Section("Gần khúc này") {
+                        ForEach(ganNhat, id: \.ten) { g in
+                            Button { chonGan(g) } label: {
+                                HStack {
+                                    Text(g.ten).foregroundColor(.primary)
+                                    Spacer()
+                                    Text(g.kc < 15 ? "ngay đây" : Self.khoangCach(g.kc))
+                                        .font(.footnote).foregroundColor(.secondary)
+                                }
+                            }
+                        }
                     }
-                    .foregroundColor(.primary)
+                }
+                Section {
+                    ForEach(ketQua) { d in
+                        Button(d.ten) {
+                            onChon(d.id, nil)
+                            dismiss()
+                        }
+                        .foregroundColor(.primary)
+                    }
+                } header: {
+                    if tim.isEmpty && !ganNhat.isEmpty { Text("Tất cả tên đường") }
                 }
             }
             .searchable(text: $tim, placement: .navigationBarDrawer(displayMode: .always), prompt: "Tìm hoặc nhập tên đường")

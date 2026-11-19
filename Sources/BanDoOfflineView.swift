@@ -16,7 +16,7 @@ struct BanDoOfflineView: View {
     var body: some View {
         hopThoaiDiaDanh(hopThoaiDuong(hopThoaiSoNha(khungBanDo)))
         .sheet(isPresented: $hienChonTenNhieu) {
-            ChonTenDuongSheet { id, ten in
+            ChonTenDuongSheet(ganNhat: m.tenGanNhieuKhuc) { id, ten in
                 Task { await m.ganTenNhieuKhuc(tenDuongId: id, ten: ten) }
             }
         }
@@ -170,7 +170,7 @@ struct BanDoOfflineView: View {
             Text(moTa(c))
         }
         .sheet(isPresented: $hienChonTen, onDismiss: { m.boChon() }) {
-            ChonTenDuongSheet { id, ten in
+            ChonTenDuongSheet(ganNhat: m.chon?.tenGan ?? []) { id, ten in
                 if let c = m.chon {
                     Task { await m.ganTen(c, tenDuongId: id, ten: ten, khongTen: false) }
                 }
@@ -428,6 +428,14 @@ struct DuongDangChon: Equatable {
     let nguon: String?
     /// Khác nil = đường nhân viên tự vẽ (OSM thiếu) → xoá được.
     var duongVeId: String? = nil
+    /// Tên đường gần chỗ chạm nhất — màn chọn tên đưa lên đầu.
+    var tenGan: [TenDuongGan] = []
+}
+
+/// 1 tên đường gần khúc đang đặt tên + khoảng cách (m).
+struct TenDuongGan: Equatable, Hashable {
+    let ten: String
+    let kc: Double
 }
 
 // MARK: - Model
@@ -495,6 +503,10 @@ final class BanDoOfflineModel: ObservableObject {
     private(set) var wayAnTenOsm: [Int64] = []
     /// way id (âm) của đường tự vẽ → id bản ghi (để xoá).
     private(set) var duongVeTheoWay: [Int64: String] = [:]
+    /// Tên → hình các khúc mang tên đó (tay + tự đoán) — tìm tên gần chỗ chạm.
+    private var hinhTheoTen: [String: [[CLLocationCoordinate2D]]] = [:]
+    /// Chỗ chạm gần nhất ở chế độ "Nhiều khúc" — gợi ý tên gần khi đặt tên.
+    private(set) var diemNhieuKhuc: CLLocationCoordinate2D?
 
     var chuKy: String {
         "\(hienDiaPhuong)|\(hienMuaVu)|\(hienDoiThu)|\(hienTenDuong)|\(hienDiaDanh)|\(anBanKinh)|\(banKinhKm)|\(phienBanDuLieu)|\(chon?.wayId ?? 0)|\(cheDoNhieuKhuc)|\(soKhucChon)|\(phienYeuCau)|\(cheDoVe)|\(soDiemVe)"
@@ -572,6 +584,7 @@ final class BanDoOfflineModel: ObservableObject {
         var map: [Int64: (ten: String, nguon: String)] = [:]
         var an: [Int64] = []
         var ve: [Int64: String] = [:]
+        var hinh: [String: [[CLLocationCoordinate2D]]] = [:]
         if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
             for f in (obj["features"] as? [[String: Any]]) ?? [] {
                 guard let p = f["properties"] as? [String: Any],
@@ -582,15 +595,47 @@ final class BanDoOfflineModel: ObservableObject {
                 }
                 guard let n = p["n"] as? String else { continue }
                 map[w] = (n, (p["g"] as? String) ?? "tu")
+                if let g = f["geometry"] as? [String: Any], let cs = g["coordinates"] as? [[Double]] {
+                    let line = cs.compactMap { $0.count >= 2 ? CLLocationCoordinate2D(latitude: $0[1], longitude: $0[0]) : nil }
+                    if !line.isEmpty { hinh[n, default: []].append(line) }
+                }
             }
             an = ((obj["an"] as? [NSNumber]) ?? []).map { $0.int64Value }
         }
         tenTheoWay = map
         wayAnTenOsm = an
         duongVeTheoWay = ve
+        hinhTheoTen = hinh
     }
 
-    func chonDuong(wayId: Int64, tenOsm: String?) {
+    /// Các tên đường có khúc trong 2km quanh điểm, gần trước (tối đa 8).
+    func tenGanNhat(_ c: CLLocationCoordinate2D) -> [TenDuongGan] {
+        let kx = cos(c.latitude * .pi / 180) * 111_320, ky = 110_574.0
+        func xy(_ q: CLLocationCoordinate2D) -> (Double, Double) { ((q.longitude - c.longitude) * kx, (q.latitude - c.latitude) * ky) }
+        var ds: [TenDuongGan] = []
+        for (ten, lines) in hinhTheoTen {
+            var best = Double.infinity
+            for line in lines {
+                if line.count == 1 { let a = xy(line[0]); best = min(best, hypot(a.0, a.1)); continue }
+                for i in 0..<(line.count - 1) {
+                    let a = xy(line[i]), b = xy(line[i + 1])
+                    let dx = b.0 - a.0, dy = b.1 - a.1
+                    let len2 = dx * dx + dy * dy
+                    let t = len2 == 0 ? 0 : max(0, min(1, -(a.0 * dx + a.1 * dy) / len2))
+                    best = min(best, hypot(a.0 + t * dx, a.1 + t * dy))
+                }
+            }
+            if best <= 2000 { ds.append(TenDuongGan(ten: ten, kc: best)) }
+        }
+        return Array(ds.sorted { $0.kc < $1.kc }.prefix(8))
+    }
+
+    func chonDuong(wayId: Int64, tenOsm: String?, tai diem: CLLocationCoordinate2D? = nil) {
+        chonDuongKhongGoiY(wayId: wayId, tenOsm: tenOsm)
+        if let diem { chon?.tenGan = tenGanNhat(diem) }
+    }
+
+    private func chonDuongKhongGoiY(wayId: Int64, tenOsm: String?) {
         if let t = tenTheoWay[wayId] {
             chon = DuongDangChon(wayId: wayId, ten: t.ten, nguon: t.nguon)
         } else if wayAnTenOsm.contains(wayId) {
@@ -719,10 +764,16 @@ final class BanDoOfflineModel: ObservableObject {
         cheDoNhieuKhuc = false
     }
 
-    func batTatKhuc(_ wayId: Int64, shape: MLNShape) {
-        if khucChon.removeValue(forKey: wayId) == nil { khucChon[wayId] = shape }
+    func batTatKhuc(_ wayId: Int64, shape: MLNShape, tai diem: CLLocationCoordinate2D? = nil) {
+        if khucChon.removeValue(forKey: wayId) == nil {
+            khucChon[wayId] = shape
+            if let diem { diemNhieuKhuc = diem }
+        }
         soKhucChon = khucChon.count
     }
+
+    /// Tên gần khúc vừa chọn ở chế độ "Nhiều khúc".
+    var tenGanNhieuKhuc: [TenDuongGan] { diemNhieuKhuc.map { self.tenGanNhat($0) } ?? [] }
 
     func timKhucTaiCho() {
         guard let vt = viTri.hienTai else {
@@ -922,7 +973,7 @@ private struct BanDoMapLibreView: UIViewRepresentable {
             } : []
             (style.source(withIdentifier: "doithu") as? MLNShapeSource)?.shape = MLNShapeCollectionFeature(shapes: doiThu)
 
-            for id in ["ten-diem", "ten-diem-tay", "ten-khu", "so-nha", "goi-y", "goi-y-ten"] {
+            for id in ["duong-mau", "ten-diem", "ten-diem-tay", "ten-khu", "so-nha", "goi-y", "goi-y-ten"] {
                 style.layer(withIdentifier: id)?.isVisible = m.hienTenDuong
             }
             for id in ["dd-osm", "dd-tay"] {
@@ -973,10 +1024,10 @@ private struct BanDoMapLibreView: UIViewRepresentable {
                     return
                 }
                 if self.m.cheDoNhieuKhuc, let shape = tot.f as? MLNShape {
-                    if self.m.khucChon[w] == nil { self.m.batTatKhuc(w, shape: shape) }
+                    if self.m.khucChon[w] == nil { self.m.batTatKhuc(w, shape: shape, tai: toaDo) }
                     return
                 }
-                self.m.chonDuong(wayId: w, tenOsm: tot.f.attribute(forKey: "n") as? String)
+                self.m.chonDuong(wayId: w, tenOsm: tot.f.attribute(forKey: "n") as? String, tai: toaDo)
                 if let shape = tot.f as? MLNShape, let style = map.style {
                     (style.source(withIdentifier: "chon") as? MLNShapeSource)?.shape = shape
                 }
@@ -1074,11 +1125,12 @@ private struct BanDoMapLibreView: UIViewRepresentable {
                 if !m.cheDoNhieuKhuc { m.boChon() }
                 return
             }
+            let diemCham = map.convert(p, toCoordinateFrom: map)
             if m.cheDoNhieuKhuc {
-                if let shape = f as? MLNShape { m.batTatKhuc(w, shape: shape) }
+                if let shape = f as? MLNShape { m.batTatKhuc(w, shape: shape, tai: diemCham) }
                 return
             }
-            m.chonDuong(wayId: w, tenOsm: f.attribute(forKey: "n") as? String)
+            m.chonDuong(wayId: w, tenOsm: f.attribute(forKey: "n") as? String, tai: diemCham)
             if let shape = f as? MLNShape, let style = map.style {
                 (style.source(withIdentifier: "chon") as? MLNShapeSource)?.shape = shape
             }
@@ -1140,6 +1192,11 @@ private let styleJSON = #"""
     {"id": "duong-ve", "type": "line", "source": "ten", "filter": ["==", ["get", "g"], "ve"],
      "layout": {"line-cap": "round", "line-join": "round"},
      "paint": {"line-color": "#FFFFFF", "line-width": ["interpolate", ["exponential", 1.6], ["zoom"], 12, 0.8, 18, 13]}},
+    {"id": "duong-mau", "type": "line", "source": "ten",
+     "filter": ["all", ["has", "m"], ["in", ["get", "g"], ["literal", ["tay", "tu", "mau-osm"]]]],
+     "layout": {"line-cap": "round", "line-join": "round"},
+     "paint": {"line-color": ["get", "m"], "line-opacity": ["match", ["get", "g"], "tu", 0.45, 0.8],
+               "line-width": ["interpolate", ["exponential", 1.6], ["zoom"], 12, 1.6, 18, 9]}},
     {"id": "goi-y", "type": "line", "source": "ten", "minzoom": 14, "filter": ["==", ["get", "g"], "gy"],
      "layout": {"line-cap": "round", "line-join": "round"},
      "paint": {"line-color": "#F08A00", "line-opacity": 0.85, "line-dasharray": [1.5, 1.2],
@@ -1189,14 +1246,14 @@ private let styleJSON = #"""
                 "text-font": ["Noto Sans Regular"],
                 "text-size": ["interpolate", ["linear"], ["zoom"], 12, 6.5, 14, 8, 16, 9.5, 18, 12],
                 "text-rotate": ["get", "r"], "text-rotation-alignment": "map", "text-allow-overlap": true},
-     "paint": {"text-color": ["match", ["get", "g"], "nhand-osm", "#555555", "#9A9A9A"],
+     "paint": {"text-color": ["coalesce", ["get", "m"], ["match", ["get", "g"], "nhand-osm", "#555555", "#9A9A9A"]],
                "text-halo-color": "#FFFFFF", "text-halo-width": 1.5}},
     {"id": "ten-diem-tay", "type": "symbol", "source": "ten", "minzoom": 12,
      "filter": ["==", ["get", "g"], "nhand-tay"],
      "layout": {"text-field": ["get", "n"], "text-font": ["Noto Sans Bold"],
                 "text-size": ["interpolate", ["linear"], ["zoom"], 12, 6.5, 14, 8, 16, 9.5, 18, 12],
                 "text-rotate": ["get", "r"], "text-rotation-alignment": "map", "text-allow-overlap": true},
-     "paint": {"text-color": "#1B6B5F", "text-halo-color": "#FFFFFF", "text-halo-width": 1.5}},
+     "paint": {"text-color": ["coalesce", ["get", "m"], "#1B6B5F"], "text-halo-color": "#FFFFFF", "text-halo-width": 1.5}},
     {"id": "dd-osm", "type": "symbol", "source": "nen", "minzoom": 12.5, "filter": ["==", ["get", "k"], "dd"],
      "layout": {"icon-image": ["concat", "dd-", ["get", "l"]], "icon-size": ["interpolate", ["linear"], ["zoom"], 12.5, 0.7, 16, 1],
                 "text-field": ["step", ["zoom"], "", 14.5, ["get", "n"]], "text-font": ["Noto Sans Regular"], "text-size": 10.5,
