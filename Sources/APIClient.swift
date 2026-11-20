@@ -1314,9 +1314,9 @@ actor APIClient {
         return env.data ?? []
     }
 
-    func ganAnhChoDuyet(ma: String, sanPhamId: String) async -> ActionResult {
+    func ganAnhChoDuyet(ma: String, sanPhamIds: [String]) async -> ActionResult {
         let req = makeRequest("/api/SanPham/anh-cho-duyet/\(ma)/gan", method: "POST",
-                              body: try? JSONSerialization.data(withJSONObject: ["sanPhamId": sanPhamId]))
+                              body: try? JSONSerialization.data(withJSONObject: ["sanPhamIds": sanPhamIds]))
         return await executeAction(req)
     }
 

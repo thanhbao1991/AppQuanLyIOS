@@ -1169,6 +1169,8 @@ struct SanPhamBienTheDto: Decodable, Identifiable, Hashable {
 struct AnhChoDuyetDto: Decodable, Identifiable {
     let ma: String
     let url: String
+    /// Có = ảnh ĐƯA LẠI để duyệt lại (tên ảnh đang dùng) — tick sẵn các món đang dùng ảnh đó.
+    var nguon: String? = nil
     var id: String { ma }
 }
 

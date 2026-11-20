@@ -28,11 +28,13 @@ struct DuyetAnhMenuSheet: View {
     init(anh: AnhChoDuyetDto, model: DuyetAnhMenuModel) {
         _anh = State(initialValue: anh)
         self.model = model
+        _daChon = State(initialValue: Self.tickSan(anh, model.sanPhams))
     }
 
     @Environment(\.dismiss) private var dismiss
     @State private var timKiem = ""
-    @State private var daChon: SanPhamDto?
+    /// Id các món được tick — 1 ảnh áp cho NHIỀU món (20/11/2026).
+    @State private var daChon: Set<String> = []
     @State private var xacNhan = false
     @State private var xacNhanBo = false
     @State private var dangLuu = false
@@ -61,7 +63,7 @@ struct DuyetAnhMenuSheet: View {
                     .listRowSeparator(.hidden)
 
                 ForEach(dsMon) { sp in
-                    Button { daChon = sp } label: { dong(sp) }
+                    Button { if daChon.contains(sp.id) { daChon.remove(sp.id) } else { daChon.insert(sp.id) } } label: { dong(sp) }
                         .buttonStyle(.plain)
                         .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
                 }
@@ -105,12 +107,12 @@ struct DuyetAnhMenuSheet: View {
                     Button {
                         xacNhan = true
                     } label: {
-                        Text(dangLuu ? "Đang lưu..." : "Duyệt").fontWeight(.bold).frame(maxWidth: .infinity)
+                        Text(dangLuu ? "Đang lưu..." : (daChon.count > 1 ? "Duyệt (\(daChon.count) món)" : "Duyệt")).fontWeight(.bold).frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(.brandPrimary)
                     .controlSize(.large)
-                    .disabled(daChon == nil || dangLuu)
+                    .disabled(daChon.isEmpty || dangLuu)
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 6)
@@ -118,7 +120,7 @@ struct DuyetAnhMenuSheet: View {
                 .background(Color(.systemBackground))
                 .overlay(Divider(), alignment: .top)
             }
-            .confirmationDialog("Dùng ảnh này cho \(daChon?.ten ?? "")?", isPresented: $xacNhan, titleVisibility: .visible) {
+            .confirmationDialog(tieuDeXacNhan, isPresented: $xacNhan, titleVisibility: .visible) {
                 Button("Duyệt") { Task { await duyet() } }
                 Button("Không", role: .cancel) {}
             } message: {
@@ -131,6 +133,18 @@ struct DuyetAnhMenuSheet: View {
                 Text("Ảnh sẽ bỏ khỏi danh sách chờ (máy chủ vẫn giữ bản sao).")
             }
         }
+    }
+
+    private var tieuDeXacNhan: String {
+        let ten = model.sanPhams.filter { daChon.contains($0.id) }.map(\.ten).sorted()
+        if ten.count == 1 { return "Dùng ảnh này cho \(ten[0])?" }
+        return "Dùng ảnh này cho \(ten.count) món?"
+    }
+
+    /// Ảnh đưa lại để duyệt lại: tick sẵn các món đang dùng đúng ảnh đó (tên ảnh nằm trong URL hinhAnh).
+    static func tickSan(_ anh: AnhChoDuyetDto, _ sanPhams: [SanPhamDto]) -> Set<String> {
+        guard let nguon = anh.nguon, !nguon.isEmpty else { return [] }
+        return Set(sanPhams.filter { ($0.hinhAnh ?? "").contains("/\(nguon).") }.map(\.id))
     }
 
     private func dong(_ sp: SanPhamDto) -> some View {
@@ -146,16 +160,16 @@ struct DuyetAnhMenuSheet: View {
             if let nhom = sp.tenNhomSanPham, !nhom.isEmpty {
                 Text(nhom).font(.caption).foregroundColor(.textMuted).lineLimit(1)
             }
-            if daChon?.id == sp.id {
-                Image(systemName: "checkmark.circle.fill").foregroundColor(.brandPrimary).font(.title3)
-            }
+            Image(systemName: daChon.contains(sp.id) ? "checkmark.circle.fill" : "circle")
+                .foregroundColor(daChon.contains(sp.id) ? .brandPrimary : .textMuted).font(.title3)
         }
         .contentShape(Rectangle())
     }
 
     private func duyet() async {
-        guard let sp = daChon else { return }
-        await xuLy { await APIClient.shared.ganAnhChoDuyet(ma: anh.ma, sanPhamId: sp.id) }
+        let ids = Array(daChon)
+        guard !ids.isEmpty else { return }
+        await xuLy { await APIClient.shared.ganAnhChoDuyet(ma: anh.ma, sanPhamIds: ids) }
     }
 
     /// "Ko dùng" (chủ quán 17/11/2026: không phải ảnh nào cũng dùng) — server dời ảnh vào backup.
@@ -174,7 +188,7 @@ struct DuyetAnhMenuSheet: View {
             dangLuu = false
             if let ke = model.items.first {
                 anh = ke
-                daChon = nil
+                daChon = Self.tickSan(ke, model.sanPhams)
                 timKiem = ""
             } else {
                 dismiss()
