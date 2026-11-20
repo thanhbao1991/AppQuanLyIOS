@@ -329,6 +329,13 @@ private struct MoreMenuView: View {
         NavigationStack {
             List {
                 Section {
+                    // Công tắc đứng đầu Menu, trên Trợ lý ảo (chủ quán chốt 20/11/2026).
+                    NavigationLink {
+                        CongTacView()
+                    } label: {
+                        Label("Công tắc", systemImage: "lightbulb")
+                    }
+
                     NavigationLink {
                         TroLyView()
                     } label: {
@@ -412,12 +419,6 @@ private struct MoreMenuView: View {
                 // Các màn chỉ để xem (Bản đồ, Bão hoà, Tính lương, Giờ vắng khách, Phiên bản app khách, Số dư AI, Số dư Zalo) đã
                 // dời sang Trợ lý ảo (28/10/2026) — Menu giữ việc sửa/cấu hình.
                 Section("Công cụ") {
-                    NavigationLink {
-                        CongTacView()
-                    } label: {
-                        Label("Công tắc", systemImage: "lightbulb")
-                    }
-
                     NavigationLink {
                         TtsSoundsView()
                     } label: {
