@@ -305,6 +305,22 @@ struct MainTabView: View {
     }
 }
 
+/// Dòng Menu có biểu tượng màu thương hiệu ĐẶT CỨNG. Trước đây biểu tượng chỉ nhận màu từ `.tint(.brandPrimary)` gắn ngoài List,
+/// nhưng List tạo dòng lười (lúc cuộn tới) và đôi lúc dòng mới tạo chưa nhận tint → hiện xanh dương mặc định của iOS cho tới khi
+/// List vẽ lại (20/11/2026, chủ quán gửi 2 ảnh lệch màu).
+private struct MenuLabel: View {
+    let tieuDe: String
+    let icon: String
+    init(_ tieuDe: String, _ icon: String) { self.tieuDe = tieuDe; self.icon = icon }
+    var body: some View {
+        Label {
+            Text(tieuDe)
+        } icon: {
+            Image(systemName: icon).foregroundStyle(Color.brandPrimary)
+        }
+    }
+}
+
 private struct MoreMenuView: View {
     @Binding var isLoggedIn: Bool
     @State private var isSyncingContacts = false
@@ -333,13 +349,13 @@ private struct MoreMenuView: View {
                     NavigationLink {
                         CongTacView()
                     } label: {
-                        Label("Công tắc", systemImage: "lightbulb")
+                        MenuLabel("Công tắc", "lightbulb")
                     }
 
                     NavigationLink {
                         TroLyView()
                     } label: {
-                        Label("Trợ lý ảo", systemImage: "sparkles")
+                        MenuLabel("Trợ lý ảo", "sparkles")
                     }
                 }
 
@@ -347,22 +363,22 @@ private struct MoreMenuView: View {
                     NavigationLink {
                         SanPhamListView()
                     } label: {
-                        Label("Sản phẩm", systemImage: "cup.and.saucer")
+                        MenuLabel("Sản phẩm", "cup.and.saucer")
                     }
                     NavigationLink {
                         ToppingListView()
                     } label: {
-                        Label("Topping", systemImage: "birthday.cake")
+                        MenuLabel("Topping", "birthday.cake")
                     }
                     NavigationLink {
                         CongThucListView()
                     } label: {
-                        Label("Công thức", systemImage: "list.clipboard")
+                        MenuLabel("Công thức", "list.clipboard")
                     }
                     NavigationLink {
                         GiaRiengListView()
                     } label: {
-                        Label("Giá riêng", systemImage: "tag")
+                        MenuLabel("Giá riêng", "tag")
                     }
                     // Ẩn "Ảnh menu" (user 19/11/2026): chỉ đổi ảnh menu qua màn duyệt ảnh ở tab Kê.
                 }
@@ -371,12 +387,12 @@ private struct MoreMenuView: View {
                     NavigationLink {
                         GiaNguyenLieuView()
                     } label: {
-                        Label("Nguyên liệu & giá", systemImage: "leaf")
+                        MenuLabel("Nguyên liệu & giá", "leaf")
                     }
                     NavigationLink {
                         TonKhoListView()
                     } label: {
-                        Label("Tồn kho", systemImage: "shippingbox")
+                        MenuLabel("Tồn kho", "shippingbox")
                     }
                 }
 
@@ -384,27 +400,27 @@ private struct MoreMenuView: View {
                     NavigationLink {
                         KhachHangListView()
                     } label: {
-                        Label("Khách hàng", systemImage: "person.2")
+                        MenuLabel("Khách hàng", "person.2")
                     }
                     NavigationLink {
                         TenDuongListView()
                     } label: {
-                        Label("Tên đường", systemImage: "signpost.right")
+                        MenuLabel("Tên đường", "signpost.right")
                     }
                     NavigationLink {
                         VoucherListView()
                     } label: {
-                        Label("Voucher", systemImage: "ticket")
+                        MenuLabel("Voucher", "ticket")
                     }
                     NavigationLink {
                         ThongBaoQuanListView()
                     } label: {
-                        Label("Thông báo/Khuyến mãi", systemImage: "megaphone")
+                        MenuLabel("Thông báo/Khuyến mãi", "megaphone")
                     }
                     NavigationLink {
                         GamificationConfigView()
                     } label: {
-                        Label("Cấu hình App khách", systemImage: "gift")
+                        MenuLabel("Cấu hình App khách", "gift")
                     }
                 }
 
@@ -412,7 +428,7 @@ private struct MoreMenuView: View {
                     NavigationLink {
                         CauHinhAppNhanVienView()
                     } label: {
-                        Label("Cấu hình App nhân viên", systemImage: "bell.badge")
+                        MenuLabel("Cấu hình App nhân viên", "bell.badge")
                     }
                 }
 
@@ -422,13 +438,13 @@ private struct MoreMenuView: View {
                     NavigationLink {
                         TtsSoundsView()
                     } label: {
-                        Label("Âm báo đã tải", systemImage: "speaker.wave.2")
+                        MenuLabel("Âm báo đã tải", "speaker.wave.2")
                     }
 
                     NavigationLink {
                         FacebookReelsView()
                     } label: {
-                        Label("Reels Giả thuyết Kiến trúc", systemImage: "play.rectangle.on.rectangle")
+                        MenuLabel("Reels Giả thuyết Kiến trúc", "play.rectangle.on.rectangle")
                     }
                 }
 
@@ -454,7 +470,7 @@ private struct MoreMenuView: View {
                     NavigationLink {
                         DeviceSessionsView()
                     } label: {
-                        Label("Thiết bị đăng nhập", systemImage: "iphone")
+                        MenuLabel("Thiết bị đăng nhập", "iphone")
                     }
                     Button {
                         Task { await syncContacts() }
@@ -468,7 +484,7 @@ private struct MoreMenuView: View {
                                     }
                                 }
                             } icon: {
-                                Image(systemName: "person.crop.rectangle.stack")
+                                Image(systemName: "person.crop.rectangle.stack").foregroundStyle(Color.brandPrimary)
                             }
                             Spacer()
                             if isSyncingContacts {
@@ -480,7 +496,7 @@ private struct MoreMenuView: View {
                     Button(role: .destructive) {
                         showLogoutConfirm = true
                     } label: {
-                        Label("Đăng xuất", systemImage: "rectangle.portrait.and.arrow.right")
+                        MenuLabel("Đăng xuất", "rectangle.portrait.and.arrow.right")
                     }
                 } footer: {
                     Text("Đưa tên khách vào Danh bạ để hiện tên khi gọi đến.\nPhiên bản \(appVersionString)")
