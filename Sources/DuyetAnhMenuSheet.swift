@@ -143,8 +143,10 @@ struct DuyetAnhMenuSheet: View {
 
     /// Ảnh đưa lại để duyệt lại: tick sẵn các món đang dùng đúng ảnh đó (tên ảnh nằm trong URL hinhAnh).
     static func tickSan(_ anh: AnhChoDuyetDto, _ sanPhams: [SanPhamDto]) -> Set<String> {
-        guard let nguon = anh.nguon, !nguon.isEmpty else { return [] }
-        return Set(sanPhams.filter { ($0.hinhAnh ?? "").contains("/\(nguon).") }.map(\.id))
+        // nguon có thể nhiều tên ảnh cách dấu phẩy (ảnh trùng nhau đã gộp làm 1).
+        let ten = (anh.nguon ?? "").split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        guard !ten.isEmpty else { return [] }
+        return Set(sanPhams.filter { sp in ten.contains { (sp.hinhAnh ?? "").contains("/\($0).") } }.map(\.id))
     }
 
     private func dong(_ sp: SanPhamDto) -> some View {
