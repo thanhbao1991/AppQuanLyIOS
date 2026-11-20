@@ -414,29 +414,6 @@ struct HoaDonDetailView: View {
         let choNhanDon = d.phanLoai == "AppDatHang" && d.conLai > 0 && !daNhanDon
 
         return VStack(spacing: 8) {
-            // Hàng trên: 4 nút nhỏ Gửi Bill · F1 Tiền mặt · Gửi link · F4 Chuyển khoản (20/11/2026 — trước
-            // là 2 hàng nút to). Đã thu đủ thì F1/F4 mờ đi, giữ nguyên vị trí.
-            LazyVGrid(columns: fourColumns, spacing: 6) {
-                ActionButtonView(
-                    icon: copiedFeedback ? AppIcon.daCopy : AppIcon.bill, code: nil,
-                    caption: copiedFeedback ? "Đã copy" : "Gửi Bill", color: .brandPrimary, compact: true
-                ) {
-                    Task { await copyBillImage(d) }
-                }
-                ActionButtonView(icon: AppIcon.tienMat, code: "F1", caption: "Tiền mặt", color: .successColor, compact: true, disabled: d.conLai <= 0) {
-                    pendingAction = .tienMat
-                }
-                ActionButtonView(
-                    icon: linkCopiedFeedback ? AppIcon.daCopy : AppIcon.link, code: nil,
-                    caption: linkCopiedFeedback ? "Đã copy" : "Gửi link", color: .brandPrimary, compact: true
-                ) {
-                    copyPaymentLink(d)
-                }
-                ActionButtonView(icon: AppIcon.chuyenKhoan, code: "F4", caption: "Chuyển khoản", color: .brandPrimary, compact: true, disabled: d.conLai <= 0) {
-                    pendingAction = .chuyenKhoan
-                }
-            }
-
             // 8 ô cố định 4 cột, LUÔN hiển thị đủ ở
             // mọi hoá đơn — nút nào không áp dụng thì mờ đi + không bấm được (disabled) thay vì
             // ẩn/để trống, vừa giữ đúng vị trí từng nút vừa không còn chỗ trống trong grid. Thứ tự
@@ -484,14 +461,37 @@ struct HoaDonDetailView: View {
             let doiPhanLoaiIcon = AppIcon.phanLoai(doiPhanLoaiDich)
             let doiPhanLoaiColor = HoaDonFormatting.phanLoaiColor(doiPhanLoaiDich)
 
-            // Thứ tự theo yêu cầu: hàng 1 = Esc/F12/Sửa/Del (thao tác trên đơn), hàng 2 = Đổi phân
-            // loại/Đổi phương thức/Hoàn tác (thao tác trên thanh toán), ô cuối = Nhận đơn (đơn app).
+            // Hàng 1: Esc Đi Ship · F1 Tiền mặt · F4 Chuyển khoản · F12 Ghi nợ (20/11/2026 — theo thứ tự
+            // phím tắt). Đã thu đủ thì F1/F4 mờ đi, giữ nguyên vị trí.
             LazyVGrid(columns: fourColumns, spacing: 6) {
                 ActionButtonView(icon: AppIcon.ship, code: "Esc", caption: "Đi Ship", color: .pinkColor, compact: true, disabled: !showShip) {
                     showShipperPicker = true
                 }
+                ActionButtonView(icon: AppIcon.tienMat, code: "F1", caption: "Tiền mặt", color: .successColor, compact: true, disabled: d.conLai <= 0) {
+                    pendingAction = .tienMat
+                }
+                ActionButtonView(icon: AppIcon.chuyenKhoan, code: "F4", caption: "Chuyển khoản", color: .brandPrimary, compact: true, disabled: d.conLai <= 0) {
+                    pendingAction = .chuyenKhoan
+                }
                 ActionButtonView(icon: AppIcon.ghiNo, code: "F12", caption: "Ghi nợ", color: .dangerColor, compact: true, disabled: !showGhiNo) {
                     pendingAction = .ghiNo
+                }
+            }
+
+            // Hàng 2 = Gửi Bill/Gửi link/Sửa đơn/Del, hàng 3 = Đổi phân loại/Đổi phương thức/Xoá thanh
+            // toán/Nhận đơn (giữ nguyên).
+            LazyVGrid(columns: fourColumns, spacing: 6) {
+                ActionButtonView(
+                    icon: copiedFeedback ? AppIcon.daCopy : AppIcon.bill, code: nil,
+                    caption: copiedFeedback ? "Đã copy" : "Gửi Bill", color: .brandPrimary, compact: true
+                ) {
+                    Task { await copyBillImage(d) }
+                }
+                ActionButtonView(
+                    icon: linkCopiedFeedback ? AppIcon.daCopy : AppIcon.link, code: nil,
+                    caption: linkCopiedFeedback ? "Đã copy" : "Gửi link", color: .brandPrimary, compact: true
+                ) {
+                    copyPaymentLink(d)
                 }
                 ActionButtonView(icon: AppIcon.sua, code: nil, caption: "Sửa đơn", color: .warningColor, compact: true, disabled: !showSua) {
                     showEditForm = true
