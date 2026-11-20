@@ -126,25 +126,32 @@ struct CongTacView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button(dangLayViTri ? "Đang lấy…" : "Đặt = nơi tôi đang đứng") {
+                if nha.viTriNha == nil {
+                    Button(dangLayViTri ? "Đang lấy…" : "Đặt = nơi tôi đang đứng") {
+                        Task {
+                            dangLayViTri = true
+                            khongLayDuocViTri = !(await nha.datNhaTaiViTriHienTai())
+                            dangLayViTri = false
+                        }
+                    }
+                    .font(.footnote.weight(.semibold))
+                    .disabled(dangLayViTri)
+                } else {
+                    Label("Đã khoá", systemImage: "lock.fill").font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+            // Đã có vị trí nhà thì khoá hẳn (chủ quán chốt 20/11/2026) — chỉ còn nút lấy từ máy chủ khi chưa có (vd cài lại app).
+            if nha.viTriNha == nil {
+                Button("Dùng vị trí nhà đã lưu trên máy chủ") {
                     Task {
                         dangLayViTri = true
-                        khongLayDuocViTri = !(await nha.datNhaTaiViTriHienTai())
+                        khongLayDuocViTri = !(await nha.datNhaTuMayChu())
                         dangLayViTri = false
                     }
                 }
                 .font(.footnote.weight(.semibold))
                 .disabled(dangLayViTri)
             }
-            Button("Dùng vị trí nhà đã lưu trên máy chủ") {
-                Task {
-                    dangLayViTri = true
-                    khongLayDuocViTri = !(await nha.datNhaTuMayChu())
-                    dangLayViTri = false
-                }
-            }
-            .font(.footnote.weight(.semibold))
-            .disabled(dangLayViTri)
             if khongLayDuocViTri {
                 Text("Không lấy được vị trí nhà. Kiểm tra quyền Vị trí / mạng rồi thử lại.").font(.caption).foregroundStyle(.red)
             }

@@ -69,6 +69,7 @@ final class NhaGeofence: NSObject, ObservableObject, CLLocationManagerDelegate {
 
     /// Lấy vị trí hiện tại làm nhà (đứng tại nhà bấm). false = không lấy được vị trí.
     func datNhaTaiViTriHienTai() async -> Bool {
+        guard viTriNha == nil else { return false } // đã khoá — không cho đổi vị trí nhà nữa
         if quyen == .notDetermined { manager.requestAlwaysAuthorization() }
         manager.desiredAccuracy = kCLLocationAccuracyBest
         guard let vt = await layViTriMotLan() else { return false }
@@ -78,6 +79,7 @@ final class NhaGeofence: NSObject, ObservableObject, CLLocationManagerDelegate {
 
     /// Dùng toạ độ nhà do máy chủ giữ (không cần đứng tại nhà). false = máy chủ chưa cài hoặc không có mạng.
     func datNhaTuMayChu() async -> Bool {
+        guard viTriNha == nil else { return false }
         guard let vt = await APIClient.shared.getViTriNha() else { return false }
         datNha(CLLocationCoordinate2D(latitude: vt.lat, longitude: vt.long))
         return true
