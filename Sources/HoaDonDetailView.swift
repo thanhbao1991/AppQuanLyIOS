@@ -409,17 +409,13 @@ struct HoaDonDetailView: View {
         // hôm nay thì server chặn sửa món/tiền — ẩn nút thay vì để bấm xong mới báo lỗi.
         let canEdit = payments.isEmpty || (d.ngayGio?.hasPrefix(DateNavFormat.queryDate.string(from: Date())) ?? true)
 
-        // Đơn khách đặt qua app mà quán chưa nhận → nút "Nhận đơn" lớn trên cùng (khách đang thấy
-        // "Chờ xác nhận" trong app). Khớp laChoXacNhan ở HoaDonListView.
-        let choNhanDon = d.phanLoai == "AppDatHang" && d.conLai > 0 && (d.ngayXacNhanOnline?.isEmpty ?? true)
+        // Nút "Nhận đơn" (ô cuối grid 4 cột, luôn hiện): chỉ bấm được với đơn khách đặt qua app mà quán
+        // chưa nhận (khách đang thấy "Chờ xác nhận") — khớp laChoXacNhan ở HoaDonListView. Đã nhận rồi
+        // (thường Desktop tự nhận khi mở đơn) hoặc không phải đơn app thì mờ đi.
+        let daNhanDon = !(d.ngayXacNhanOnline?.isEmpty ?? true)
+        let choNhanDon = d.phanLoai == "AppDatHang" && d.conLai > 0 && !daNhanDon
 
         return VStack(spacing: 8) {
-            if choNhanDon {
-                ActionButtonView(icon: AppIcon.nhanDon, code: nil, caption: "Nhận đơn", color: .warningColor, prominent: true) {
-                    Task { await run { await APIClient.shared.nhanDonApp(hoaDonId: hoaDonId) } }
-                }
-            }
-
             HStack(spacing: 8) {
                 ActionButtonView(
                     icon: copiedFeedback ? AppIcon.daCopy : AppIcon.bill, code: nil,
@@ -495,7 +491,7 @@ struct HoaDonDetailView: View {
             let doiPhanLoaiColor = HoaDonFormatting.phanLoaiColor(doiPhanLoaiDich)
 
             // Thứ tự theo yêu cầu: hàng 1 = Esc/F12/Sửa/Del (thao tác trên đơn), hàng 2 = Đổi phân
-            // loại/Đổi phương thức/Hoàn tác (thao tác trên thanh toán), ô cuối để trống.
+            // loại/Đổi phương thức/Hoàn tác (thao tác trên thanh toán), ô cuối = Nhận đơn (đơn app).
             LazyVGrid(columns: fourColumns, spacing: 6) {
                 ActionButtonView(icon: AppIcon.ship, code: "Esc", caption: "Đi Ship", color: .pinkColor, compact: true, disabled: !showShip) {
                     showShipperPicker = true
@@ -518,6 +514,9 @@ struct HoaDonDetailView: View {
                 }
                 ActionButtonView(icon: "xmark.circle", code: nil, caption: "Xoá thanh toán", color: .warningColor, compact: true, disabled: !showHoanTac) {
                     pendingAction = .rollback
+                }
+                ActionButtonView(icon: AppIcon.nhanDon, code: nil, caption: daNhanDon && d.phanLoai == "AppDatHang" ? "Đã nhận đơn" : "Nhận đơn", color: .successColor, compact: true, disabled: !choNhanDon) {
+                    Task { await run { await APIClient.shared.nhanDonApp(hoaDonId: hoaDonId) } }
                 }
             }
         }
