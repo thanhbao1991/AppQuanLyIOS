@@ -1,19 +1,17 @@
-import PhotosUI
 import SwiftUI
 
-/// Màn "Ảnh menu" — cho nhân viên đổi/thêm ảnh món ăn cho AppDatHangIOS (app khách đặt hàng), vì
-/// menu chỉ tự khớp sẵn 92/233 món (tên trùng với ảnh có sẵn ở AppShippingBackend lúc seed), phần
-/// còn lại + món đổi ảnh về sau phải cập nhật tay qua đây. Vào từ tab Menu > "Ảnh menu". Cũng là nơi
-/// chọn món "Nổi bật" (dải quảng bá đầu tab Thực đơn app khách, thứ tự hiện random mỗi lần tải, không
-/// giới hạn số lượng) — cùng chỗ với ảnh vì cả 2 đều là "cấu hình món hiện thế nào cho app khách".
+/// Màn "Ảnh menu" — ảnh món cho app khách + chọn món "Nổi bật". Vào từ tab Menu > "Ảnh menu".
+/// 20/11/2026 chủ quán: KHÔNG chụp/chọn ảnh từ thư viện nữa (ảnh menu phải là ảnh đã tách nền do quán làm) —
+/// chỉ cho món dùng chung ảnh của món khác (POST /api/SanPham/{id}/dung-anh-cua/{nguonId}).
 struct SanPhamHinhAnhListView: View {
     @State private var sanPhams: [SanPhamDto] = []
     @State private var loading = true
     @State private var loadFailed = false
     @State private var query = ""
-    @State private var uploadingId: String?
+    @State private var dangDoiId: String?
     @State private var togglingNoiBatId: String?
     @State private var errorMessage: String?
+    @State private var monCanAnh: SanPhamDto?
 
     private var filtered: [SanPhamDto] {
         sanPhams
@@ -37,10 +35,9 @@ struct SanPhamHinhAnhListView: View {
                     ForEach(filtered) { sp in
                         SanPhamHinhAnhRow(
                             sanPham: sp,
-                            uploading: uploadingId == sp.id,
+                            dangDoi: dangDoiId == sp.id,
                             togglingNoiBat: togglingNoiBatId == sp.id,
-                            onPicked: { data, mime in Task { await upload(id: sp.id, data: data, mime: mime) } },
-                            onLoi: { errorMessage = $0 },
+                            onChonMonKhac: { monCanAnh = sp },
                             onToggleNoiBat: { Task { await toggleNoiBat(sp) } }
                         )
                     }
@@ -58,18 +55,13 @@ struct SanPhamHinhAnhListView: View {
         .toolbarBackground(Color.brandGradient, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Menu {
-                    NavigationLink("Tìm ảnh gốc (ly Cảm ơn To)") { TimAnhGocView() }
-                    NavigationLink("Tự dò ảnh món") { TuDoAnhMonView() }
-                    NavigationLink("Lọc ảnh không người") { LocAnhKhongNguoiView() }
-                } label: {
-                    Image(systemName: "wand.and.stars")
-                }
+        .task { await load() }
+        .sheet(item: $monCanAnh) { dich in
+            ChonAnhMonKhacSheet(dich: dich, sanPhams: sanPhams) { nguon in
+                monCanAnh = nil
+                Task { await dungAnh(dich: dich, nguon: nguon) }
             }
         }
-        .task { await load() }
         .popupHost { host in
             host.alert("Lỗi", isPresented: Binding(
                 get: { errorMessage != nil },
@@ -89,23 +81,14 @@ struct SanPhamHinhAnhListView: View {
         loading = false
     }
 
-    private func upload(id: String, data: Data, mime: String) async {
-        uploadingId = id
-        defer { uploadingId = nil }
-        let (url, message) = await APIClient.shared.uploadSanPhamHinhAnh(id: id, imageData: data, mimeType: mime)
-        if let url {
-            if let idx = sanPhams.firstIndex(where: { $0.id == id }) {
-                let old = sanPhams[idx]
-                // Backend giữ nguyên tên file (id.ext) mỗi lần đổi ảnh nên URL không đổi —
-                // gắn query cache-bust để AsyncImage tải lại ngay, không phải thoát vào lại màn hình.
-                let bustedUrl = url + "?v=\(Int(Date().timeIntervalSince1970))"
-                sanPhams[idx] = SanPhamDto(
-                    id: old.id, ten: old.ten, ngungBan: old.ngungBan, tenNhomSanPham: old.tenNhomSanPham,
-                    thuTu: old.thuTu, bienThe: old.bienThe, timKiem: old.timKiem, hinhAnh: bustedUrl,
-                    noiBat: old.noiBat)
-            }
+    private func dungAnh(dich: SanPhamDto, nguon: SanPhamDto) async {
+        dangDoiId = dich.id
+        defer { dangDoiId = nil }
+        let kq = await APIClient.shared.dungAnhCuaMonKhac(id: dich.id, nguonId: nguon.id)
+        if kq.success {
+            await load()   // server trả URL mới (?v=) + ảnh nhỏ/gốc — tải lại cho đúng
         } else {
-            errorMessage = message ?? "Không cập nhật được ảnh."
+            errorMessage = kq.message ?? "Không đổi được ảnh."
         }
     }
 
@@ -129,14 +112,11 @@ struct SanPhamHinhAnhListView: View {
 
 private struct SanPhamHinhAnhRow: View {
     let sanPham: SanPhamDto
-    let uploading: Bool
+    let dangDoi: Bool
     let togglingNoiBat: Bool
-    let onPicked: (Data, String) -> Void
-    let onLoi: (String) -> Void
+    let onChonMonKhac: () -> Void
     let onToggleNoiBat: () -> Void
 
-    @State private var showPicker = false
-    @State private var showCamera = false
     @State private var showFullImage = false
 
     var body: some View {
@@ -151,46 +131,24 @@ private struct SanPhamHinhAnhRow: View {
                 }
                 .buttonStyle(.borderless)
             }
-            thumbnail
+            AnhMonThumb(sanPham: sanPham) { showFullImage = true }
             Text(sanPham.ten)
                 .font(.subheadline)
             Spacer()
-            if uploading {
-                ProgressView().frame(width: 28, height: 28)
+            if dangDoi {
+                ProgressView().frame(width: 36, height: 36)
             } else {
                 // .borderless để nhiều nút trong cùng dòng List nhận tap riêng, không bị gộp cả dòng.
-                Button {
-                    showPicker = true
-                } label: {
-                    Image(systemName: "photo")
+                Button(action: onChonMonKhac) {
+                    Image(systemName: "photo.on.rectangle.angled")
                         .font(.system(size: 18))
                         .frame(width: 36, height: 36)
                 }
                 .buttonStyle(.borderless)
-                Button {
-                    showCamera = true
-                } label: {
-                    Image(systemName: "camera")
-                        .font(.system(size: 18))
-                        .frame(width: 36, height: 36)
-                }
-                .buttonStyle(.borderless)
+                .accessibilityLabel("Dùng ảnh của món khác")
             }
         }
         .padding(.vertical, 4)
-        // Picker chuẩn iOS (mở "Gần đây").
-        .menuPhotoPicker(isPresented: $showPicker, onPicked: { data in
-            onPicked(data, "image/jpeg")
-        }, onLoi: onLoi)
-        .fullScreenCover(isPresented: $showCamera) {
-            CameraPicker { image in
-                showCamera = false
-                guard let image else { return }
-                let kq = image.menuUploadJPEG()
-                if let data = kq.data { onPicked(data, "image/jpeg") } else { onLoi(kq.loi ?? "Ảnh không dùng được.") }
-            }
-            .ignoresSafeArea()
-        }
         .sheet(isPresented: $showFullImage) {
             if let hinhAnh = sanPham.anhLon, let url = URL(string: hinhAnh) {
                 FullSizeImageView(url: url) { showFullImage = false }
@@ -199,25 +157,30 @@ private struct SanPhamHinhAnhRow: View {
             }
         }
     }
+}
 
-    @ViewBuilder
-    private var thumbnail: some View {
+/// Ảnh nhỏ 48x48 của món (bấm để xem to nếu có `onTap`); chưa có ảnh thì hiện chữ cái đầu.
+private struct AnhMonThumb: View {
+    let sanPham: SanPhamDto
+    var onTap: (() -> Void)?
+
+    var body: some View {
         if let hinhAnh = sanPham.anhNho, let url = URL(string: hinhAnh) {
-            Button {
-                showFullImage = true
-            } label: {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image.resizable().aspectRatio(contentMode: .fill)
-                    default:
-                        Color.textMuted.opacity(0.12)
-                    }
+            let anh = AsyncImage(url: url) { phase in
+                switch phase {
+                case .success(let image):
+                    image.resizable().aspectRatio(contentMode: .fill)
+                default:
+                    Color.textMuted.opacity(0.12)
                 }
-                .frame(width: 48, height: 48)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
             }
-            .buttonStyle(.borderless)
+            .frame(width: 48, height: 48)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            if let onTap {
+                Button(action: onTap) { anh }.buttonStyle(.borderless)
+            } else {
+                anh
+            }
         } else {
             RoundedRectangle(cornerRadius: 8)
                 .fill(Color.textMuted.opacity(0.12))
@@ -230,6 +193,76 @@ private struct SanPhamHinhAnhRow: View {
         }
     }
 }
+
+/// Chọn món nguồn để món `dich` dùng chung ảnh — chỉ liệt kê món đã có ảnh, bấm 1 món thì hỏi lại trước khi đổi.
+private struct ChonAnhMonKhacSheet: View {
+    let dich: SanPhamDto
+    let sanPhams: [SanPhamDto]
+    let onChon: (SanPhamDto) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
+    @State private var monXacNhan: SanPhamDto?
+
+    private var dsCoAnh: [SanPhamDto] {
+        sanPhams
+            .filter { $0.id != dich.id && $0.anhNho != nil && $0.ten.matchesSearch(query) }
+            .sorted { $0.ten.localizedStandardCompare($1.ten) == .orderedAscending }
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                SearchBar(text: $query, placeholder: "Tìm món có ảnh...")
+                List {
+                    Section {
+                        ForEach(dsCoAnh) { sp in
+                            Button {
+                                monXacNhan = sp
+                            } label: {
+                                HStack(spacing: 12) {
+                                    AnhMonThumb(sanPham: sp)
+                                    Text(sp.ten)
+                                        .font(.subheadline)
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                }
+                            }
+                        }
+                    } header: {
+                        Text("Chọn món để \"\(dich.ten)\" dùng chung ảnh")
+                    }
+                }
+                .listStyle(.insetGrouped)
+                .scrollContentBackground(.hidden)
+                .background(Color.appNen)
+            }
+            .navigationTitle("Ảnh từ món khác")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.brandGradient, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Đóng") { dismiss() }
+                }
+            }
+            .popupHost { host in
+                host.confirmationDialog(
+                    "Dùng ảnh của \"\(monXacNhan?.ten ?? "")\" cho \"\(dich.ten)\"?",
+                    isPresented: Binding(get: { monXacNhan != nil }, set: { if !$0 { monXacNhan = nil } }),
+                    titleVisibility: .visible
+                ) {
+                    Button("Dùng ảnh này") {
+                        if let sp = monXacNhan { onChon(sp) }
+                    }
+                    Button("Huỷ", role: .cancel) {}
+                }
+            }
+        }
+    }
+}
+
 
 /// Xem ảnh món đúng kích thước gốc (không co giãn theo màn hình) — sheet medium/large giống
 /// "Thêm hoá đơn", vuốt xuống để đóng như sheet thường (không cần gesture tự chế). Pinch để zoom

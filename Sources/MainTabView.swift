@@ -380,7 +380,12 @@ private struct MoreMenuView: View {
                     } label: {
                         MenuLabel("Giá riêng", "tag")
                     }
-                    // Ẩn "Ảnh menu" (user 19/11/2026): chỉ đổi ảnh menu qua màn duyệt ảnh ở tab Kê.
+                    // "Ảnh menu" hiện lại 20/11/2026: chỉ lấy ảnh của món khác (không chụp/chọn từ thư viện).
+                    NavigationLink {
+                        SanPhamHinhAnhListView()
+                    } label: {
+                        MenuLabel("Ảnh menu", "photo")
+                    }
                 }
 
                 Section("Kho") {

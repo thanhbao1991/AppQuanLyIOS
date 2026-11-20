@@ -315,6 +315,12 @@ actor APIClient {
 
     /// Bật/tắt "Nổi bật" cho món (dải "Món quán đề xuất" đầu tab Thực đơn app khách, thứ tự hiện
     /// random mỗi lần tải) — trả cả message để hiện lỗi nếu server từ chối.
+    /// Món `id` dùng chung ảnh của món `nguonId` (server chép cả ảnh gốc/nền/tách nền; có tách nền thì Store tự đổi ảnh).
+    func dungAnhCuaMonKhac(id: String, nguonId: String) async -> ActionResult {
+        let req = makeRequest("/api/SanPham/\(id)/dung-anh-cua/\(nguonId)", method: "POST")
+        return await executeAction(req)
+    }
+
     func setSanPhamNoiBat(id: String, value: Bool) async -> ActionResult {
         let req = makeRequest("/api/SanPham/\(id)/noi-bat?value=\(value)", method: "PATCH")
         return await executeAction(req)
