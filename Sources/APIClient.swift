@@ -223,6 +223,16 @@ actor APIClient {
         return env.isSuccess ? (env.data, nil) : (nil, env.message ?? "Không lấy được công tắc.")
     }
 
+    struct ViTriNhaDto: Decodable { let lat: Double; let long: Double }
+
+    /// Toạ độ nhà do máy chủ giữ (repo app công khai nên không ghi trong code) — nil nếu chưa cài.
+    func getViTriNha() async -> ViTriNhaDto? {
+        let req = makeRequest("/api/cong-tac/vi-tri-nha")
+        let (data, _) = await send(req)
+        guard let data, let env = try? JSONDecoder().decode(ApiEnvelope<ViTriNhaDto>.self, from: data), env.isSuccess else { return nil }
+        return env.data
+    }
+
     private struct DieuKhienCongTacBody: Encodable { let deviceId: String; let ma: String?; let bat: Bool }
 
     /// Bật/tắt 1 nút (ma = "switch_N") hoặc cả bảng (ma = nil).

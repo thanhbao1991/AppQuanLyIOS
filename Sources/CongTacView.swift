@@ -136,8 +136,17 @@ struct CongTacView: View {
                 .font(.footnote.weight(.semibold))
                 .disabled(dangLayViTri)
             }
+            Button("Dùng vị trí nhà đã lưu trên máy chủ") {
+                Task {
+                    dangLayViTri = true
+                    khongLayDuocViTri = !(await nha.datNhaTuMayChu())
+                    dangLayViTri = false
+                }
+            }
+            .font(.footnote.weight(.semibold))
+            .disabled(dangLayViTri)
             if khongLayDuocViTri {
-                Text("Không lấy được vị trí. Kiểm tra quyền Vị trí cho ĐENN rồi thử lại.").font(.caption).foregroundStyle(.red)
+                Text("Không lấy được vị trí nhà. Kiểm tra quyền Vị trí / mạng rồi thử lại.").font(.caption).foregroundStyle(.red)
             }
             if nha.bat && !nha.duQuyen {
                 VStack(alignment: .leading, spacing: 6) {

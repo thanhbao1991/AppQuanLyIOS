@@ -68,11 +68,22 @@ final class NhaGeofence: NSObject, ObservableObject, CLLocationManagerDelegate {
         if quyen == .notDetermined { manager.requestAlwaysAuthorization() }
         manager.desiredAccuracy = kCLLocationAccuracyBest
         guard let vt = await layViTriMotLan() else { return false }
-        viTriNha = vt.coordinate
-        defaults.set(vt.coordinate.latitude, forKey: Key.lat)
-        defaults.set(vt.coordinate.longitude, forKey: Key.lon)
-        capNhatGiamSat()
+        datNha(vt.coordinate)
         return true
+    }
+
+    /// Dùng toạ độ nhà do máy chủ giữ (không cần đứng tại nhà). false = máy chủ chưa cài hoặc không có mạng.
+    func datNhaTuMayChu() async -> Bool {
+        guard let vt = await APIClient.shared.getViTriNha() else { return false }
+        datNha(CLLocationCoordinate2D(latitude: vt.lat, longitude: vt.long))
+        return true
+    }
+
+    private func datNha(_ c: CLLocationCoordinate2D) {
+        viTriNha = c
+        defaults.set(c.latitude, forKey: Key.lat)
+        defaults.set(c.longitude, forKey: Key.lon)
+        capNhatGiamSat()
     }
 
     private func layViTriMotLan() async -> CLLocation? {
