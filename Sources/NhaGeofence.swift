@@ -5,6 +5,8 @@ import UserNotifications
 /// Tự bật Nút 2 Phòng Khách khi vào vòng 100m quanh nhà (20/11/2026). iOS theo dõi "vùng" (region monitoring) ngay cả khi
 /// app đã tắt — chạm vòng thì đánh thức app vài chục giây, app gọi backend /api/cong-tac/dieu-khien. Chỉ BẬT, không tự tắt.
 ///
+/// Chỉ chạy từ 17:00 (giờ VN) đến hết ngày; vào vùng nhà trước 17:00 thì bỏ qua.
+///
 /// Giới hạn của iOS cần biết: vòng nhỏ hơn ~100m không chính xác, thực tế báo "đã vào" thường trễ vài chục mét; cần quyền
 /// Vị trí "Luôn luôn". Khoảng nghỉ 30 phút giữa hai lần chạy để không bật lặp khi đứng lưng chừng ranh vòng.
 /// Cài đặt (bật/tắt + toạ độ nhà) nằm riêng từng máy, lưu UserDefaults — chỉ máy của chủ quán bật thì chỉ máy đó chạy.
@@ -17,6 +19,8 @@ final class NhaGeofence: NSObject, ObservableObject, CLLocationManagerDelegate {
     private static let maNut = "switch_2"
     private static let regionId = "nha-bat-cong-tac"
     private static let nghiGiay: TimeInterval = 30 * 60
+    /// Chỉ bật từ giờ này trở đi (giờ Việt Nam) — trước đó vào vùng nhà thì bỏ qua, không báo gì.
+    static let gioBatDau = 17
 
     private enum Key {
         static let bat = "nha_geofence_bat"
@@ -124,7 +128,7 @@ final class NhaGeofence: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
 
     func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
-        guard region.identifier == Self.regionId, bat else { return }
+        guard region.identifier == Self.regionId, bat, Self.daDenGioBat() else { return }
         let truoc = defaults.double(forKey: Key.lanCuoi)
         if Date().timeIntervalSince1970 - truoc < Self.nghiGiay { return }
 
@@ -143,6 +147,12 @@ final class NhaGeofence: NSObject, ObservableObject, CLLocationManagerDelegate {
             await Self.baoNguoiDung(thanhCong: kq.success, loi: kq.message)
             await MainActor.run { UIApplication.shared.endBackgroundTask(tacVu) }
         }
+    }
+
+    private static func daDenGioBat(luc: Date = Date()) -> Bool {
+        var lich = Calendar(identifier: .gregorian)
+        lich.timeZone = TimeZone(identifier: "Asia/Ho_Chi_Minh") ?? .current
+        return lich.component(.hour, from: luc) >= gioBatDau
     }
 
     private static func baoNguoiDung(thanhCong: Bool, loi: String?) async {

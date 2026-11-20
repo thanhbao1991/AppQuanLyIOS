@@ -114,7 +114,7 @@ struct CongTacView: View {
             Toggle(isOn: Binding(get: { nha.bat }, set: { nha.datBat($0) })) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Bật \(NhaGeofence.tenNut)").font(.subheadline.weight(.semibold))
-                    Text("khi còn cách nhà \(Int(NhaGeofence.banKinh))m").font(.caption).foregroundStyle(.secondary)
+                    Text("khi còn cách nhà \(Int(NhaGeofence.banKinh))m, chỉ từ \(NhaGeofence.gioBatDau)h00").font(.caption).foregroundStyle(.secondary)
                 }
             }
             .disabled(nha.viTriNha == nil)
@@ -158,7 +158,7 @@ struct CongTacView: View {
                     .font(.footnote.weight(.semibold))
                 }
             }
-            Text("Chỉ bật, không tự tắt. iOS báo \"đã vào vùng\" thường trễ vài chục mét; mỗi lần chạy cách nhau tối thiểu 30 phút.")
+            Text("Chỉ bật (không tự tắt), chỉ từ \(NhaGeofence.gioBatDau)h00 tối; vào vùng nhà trước giờ đó thì bỏ qua. iOS báo \"đã vào vùng\" thường trễ vài chục mét; mỗi lần chạy cách nhau tối thiểu 30 phút.")
                 .font(.caption2).foregroundStyle(.secondary)
         }
         .padding(16)
