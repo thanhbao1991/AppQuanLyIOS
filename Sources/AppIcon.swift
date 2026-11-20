@@ -26,6 +26,7 @@ enum AppIcon {
     static let bill = "doc.text.image"
     static let link = "link"
     static let daCopy = "checkmark"
+    static let nhanDon = "checkmark.seal.fill"
 
     /// Theo mã PhanLoai trên HoaDon ("Ship", "Tại Chỗ", "Mv", "Mh", "App", "AppDatHang"); lạ → Ship.
     static func phanLoai(_ phanLoai: String?) -> String {

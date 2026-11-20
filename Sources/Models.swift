@@ -143,6 +143,8 @@ struct HoaDonDetailDto: Decodable {
     let ghiChuShipper: String?
     let nguoiShip: String?
     let ngayNo: String?
+    /// Lúc quán bấm "Nhận đơn" cho đơn AppDatHang (PUT xac-nhan-online) — null = khách đang chờ quán nhận.
+    let ngayXacNhanOnline: String?
     let tongTien: Double
     let giamGia: Double
     /// Nguồn gốc khoản giảm (voucher/5% tự động/nhập tay) — Backend suy ra, null với backend cũ.

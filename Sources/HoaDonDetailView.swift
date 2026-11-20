@@ -409,7 +409,17 @@ struct HoaDonDetailView: View {
         // hôm nay thì server chặn sửa món/tiền — ẩn nút thay vì để bấm xong mới báo lỗi.
         let canEdit = payments.isEmpty || (d.ngayGio?.hasPrefix(DateNavFormat.queryDate.string(from: Date())) ?? true)
 
+        // Đơn khách đặt qua app mà quán chưa nhận → nút "Nhận đơn" lớn trên cùng (khách đang thấy
+        // "Chờ xác nhận" trong app). Khớp laChoXacNhan ở HoaDonListView.
+        let choNhanDon = d.phanLoai == "AppDatHang" && d.conLai > 0 && (d.ngayXacNhanOnline?.isEmpty ?? true)
+
         return VStack(spacing: 8) {
+            if choNhanDon {
+                ActionButtonView(icon: AppIcon.nhanDon, code: nil, caption: "Nhận đơn", color: .warningColor, prominent: true) {
+                    Task { await run { await APIClient.shared.nhanDonApp(hoaDonId: hoaDonId) } }
+                }
+            }
+
             HStack(spacing: 8) {
                 ActionButtonView(
                     icon: copiedFeedback ? AppIcon.daCopy : AppIcon.bill, code: nil,

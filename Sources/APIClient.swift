@@ -1220,6 +1220,13 @@ actor APIClient {
         return await executeAction(req)
     }
 
+    /// Quán nhận đơn khách đặt qua app (AppDatHang) — Backend ghi NgayXacNhanOnline + push "Quán đã nhận
+    /// đơn" cho khách, y như nút xác nhận bên Desktop.
+    func nhanDonApp(hoaDonId: String) async -> ActionResult {
+        let req = makeRequest("/api/HoaDon/\(hoaDonId)/xac-nhan-online", method: "PUT")
+        return await executeAction(req)
+    }
+
     func doiPhanLoaiHoaDon(hoaDonId: String) async -> ActionResult {
         let req = makeRequest("/api/HoaDon/\(hoaDonId)/doi-phan-loai", method: "PUT")
         return await executeAction(req)
