@@ -212,6 +212,26 @@ actor APIClient {
         return env.data
     }
 
+    /// Công tắc thông minh Tuya/Smart Life (màn Công tắc ở Menu). nil = tải lỗi (message ở getCongTacLoi).
+    func getCongTac() async -> (data: [CongTacThietBiDto]?, loi: String?) {
+        let req = makeRequest("/api/cong-tac")
+        let (data, _) = await send(req)
+        guard let data else { return (nil, "Không có phản hồi từ server.") }
+        guard let env = try? JSONDecoder().decode(ApiEnvelope<[CongTacThietBiDto]>.self, from: data) else {
+            return (nil, "Không đọc được dữ liệu công tắc.")
+        }
+        return env.isSuccess ? (env.data, nil) : (nil, env.message ?? "Không lấy được công tắc.")
+    }
+
+    private struct DieuKhienCongTacBody: Encodable { let deviceId: String; let ma: String?; let bat: Bool }
+
+    /// Bật/tắt 1 nút (ma = "switch_N") hoặc cả bảng (ma = nil).
+    func dieuKhienCongTac(deviceId: String, ma: String?, bat: Bool) async -> ActionResult {
+        let req = makeRequest("/api/cong-tac/dieu-khien", method: "POST",
+                              body: jsonBody(DieuKhienCongTacBody(deviceId: deviceId, ma: ma, bat: bat)))
+        return await executeAction(req)
+    }
+
     /// nil = tải LỖI, khác với [] = ngày đó không có thanh toán nào (xem getHoaDonListByDay).
     func getThanhToanByDay(_ dateIso: String) async -> [ChiTietHoaDonThanhToanDto]? {
         let req = makeRequest("/api/ChiTietHoaDonThanhToan?ngay=\(dateIso)")

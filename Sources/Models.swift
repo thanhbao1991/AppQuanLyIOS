@@ -1324,3 +1324,18 @@ struct AiBalanceDto: Decodable {
     let remaining: Double
     let modelUsages: [AiModelUsageDto]
 }
+
+// ---- Công tắc thông minh Tuya/Smart Life — GET /api/cong-tac (màn "Công tắc" ở Menu) ----
+
+struct CongTacNutDto: Decodable, Hashable {
+    let ma: String   // "switch_1"... — gửi nguyên lên backend khi bật/tắt
+    let so: Int
+    var bat: Bool
+}
+
+struct CongTacThietBiDto: Decodable, Identifiable, Hashable {
+    let id: String
+    let ten: String
+    let online: Bool
+    var nuts: [CongTacNutDto]
+}

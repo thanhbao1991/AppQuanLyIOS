@@ -413,6 +413,12 @@ private struct MoreMenuView: View {
                 // dời sang Trợ lý ảo (28/10/2026) — Menu giữ việc sửa/cấu hình.
                 Section("Công cụ") {
                     NavigationLink {
+                        CongTacView()
+                    } label: {
+                        Label("Công tắc", systemImage: "lightbulb")
+                    }
+
+                    NavigationLink {
                         TtsSoundsView()
                     } label: {
                         Label("Âm báo đã tải", systemImage: "speaker.wave.2")
