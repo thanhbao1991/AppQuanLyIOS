@@ -400,9 +400,7 @@ struct HoaDonDetailView: View {
         let chuaGhiNo = d.ngayNo?.isEmpty ?? true
         let payments = d.payments ?? []
         let singlePaymentBank = payments.count == 1 ? payments[0].phuongThucThanhToanId.lowercased() == PaymentMethod.chuyenKhoanId : nil
-        let twoColumns = [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)]
-        // Nhóm nút phụ (Sửa/Xoá/Ship/Ghi nợ/Đổi phương thức/Hoàn tác/Đổi phân loại) co còn ~nửa cỡ,
-        // xếp 4 cột thay vì 2 — chỉ Tiền mặt/Chuyển khoản (2 nút thu tiền chính) giữ nguyên cỡ lớn.
+        // Mọi nút thao tác đều cỡ nhỏ, 4 cột (20/11/2026 gộp cả Gửi Bill/F1/Gửi link/F4 vào 1 hàng).
         let fourColumns = [GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6)]
 
         // Khớp guard UpdateAsync (Backend, HoaDonCrudService): đã có thanh toán VÀ không phải đơn
@@ -416,34 +414,30 @@ struct HoaDonDetailView: View {
         let choNhanDon = d.phanLoai == "AppDatHang" && d.conLai > 0 && !daNhanDon
 
         return VStack(spacing: 8) {
-            HStack(spacing: 8) {
+            // Hàng trên: 4 nút nhỏ Gửi Bill · F1 Tiền mặt · Gửi link · F4 Chuyển khoản (20/11/2026 — trước
+            // là 2 hàng nút to). Đã thu đủ thì F1/F4 mờ đi, giữ nguyên vị trí.
+            LazyVGrid(columns: fourColumns, spacing: 6) {
                 ActionButtonView(
                     icon: copiedFeedback ? AppIcon.daCopy : AppIcon.bill, code: nil,
-                    caption: copiedFeedback ? "Đã copy" : "Gửi Bill", color: .brandPrimary
+                    caption: copiedFeedback ? "Đã copy" : "Gửi Bill", color: .brandPrimary, compact: true
                 ) {
                     Task { await copyBillImage(d) }
                 }
-
+                ActionButtonView(icon: AppIcon.tienMat, code: "F1", caption: "Tiền mặt", color: .successColor, compact: true, disabled: d.conLai <= 0) {
+                    pendingAction = .tienMat
+                }
                 ActionButtonView(
                     icon: linkCopiedFeedback ? AppIcon.daCopy : AppIcon.link, code: nil,
-                    caption: linkCopiedFeedback ? "Đã copy" : "Gửi link thanh toán", color: .brandPrimary
+                    caption: linkCopiedFeedback ? "Đã copy" : "Gửi link", color: .brandPrimary, compact: true
                 ) {
                     copyPaymentLink(d)
                 }
-            }
-
-            if d.conLai > 0 {
-                HStack(spacing: 8) {
-                    ActionButtonView(icon: AppIcon.tienMat, code: "F1", caption: "Tiền mặt", color: .successColor, prominent: true) {
-                        pendingAction = .tienMat
-                    }
-                    ActionButtonView(icon: AppIcon.chuyenKhoan, code: "F4", caption: "Chuyển khoản", color: .brandPrimary, prominent: true) {
-                        pendingAction = .chuyenKhoan
-                    }
+                ActionButtonView(icon: AppIcon.chuyenKhoan, code: "F4", caption: "Chuyển khoản", color: .brandPrimary, compact: true, disabled: d.conLai <= 0) {
+                    pendingAction = .chuyenKhoan
                 }
             }
 
-            // 7 ô cố định 4 cột (co nửa cỡ so với Tiền mặt/Chuyển khoản ở trên), LUÔN hiển thị đủ ở
+            // 8 ô cố định 4 cột, LUÔN hiển thị đủ ở
             // mọi hoá đơn — nút nào không áp dụng thì mờ đi + không bấm được (disabled) thay vì
             // ẩn/để trống, vừa giữ đúng vị trí từng nút vừa không còn chỗ trống trong grid. Thứ tự
             // ưu tiên nút hay áp dụng lên trên-trái: Sửa/Xoá → Ship/Ghi nợ → Đổi phương thức/Hoàn
