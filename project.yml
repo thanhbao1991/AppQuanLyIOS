@@ -44,7 +44,8 @@ targets:
           - UIInterfaceOrientationPortrait
         UIRequiresFullScreen: true
         ITSAppUsesNonExemptEncryption: false
-        NSLocationWhenInUseUsageDescription: Bản đồ khách hàng — đứng tại nhà khách để gán số nhà và xác nhận tên khúc đường đang đứng.
+        NSLocationWhenInUseUsageDescription: Bản đồ khách hàng — đứng tại nhà khách để gán số nhà và xác nhận tên khúc đường đang đứng; đặt vị trí nhà để tự bật công tắc.
+        NSLocationAlwaysAndWhenInUseUsageDescription: Tự bật công tắc (Nút 2 Phòng Khách) khi bạn còn cách nhà 100m, kể cả lúc đã tắt app.
         NSContactsUsageDescription: Đồng bộ tên khách hàng vào Danh bạ để hiện tên khi khách gọi đến.
         NSCameraUsageDescription: Chụp ảnh hoá đơn mua hàng để đọc tự động vào Chi tiêu, và chụp ảnh món cho menu.
         NSMicrophoneUsageDescription: Bộ đàm quầy — giữ nút hoặc nghe cuộc gọi để nói chuyện với máy quầy.

@@ -9,6 +9,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         UNUserNotificationCenter.current().delegate = self
         // Phải có ngay lúc mở app — app bị VoIP push (quầy gọi) đánh thức thì nhận push qua registry này.
         CuocGoiQuay.shared.batDau()
+        // Vùng 100m quanh nhà (tự bật công tắc): iOS đánh thức app đã tắt khi chạm vòng, delegate phải có sẵn từ lúc mở.
+        if !RuntimeEnv.isRunningUnitTests { NhaGeofence.shared.khoiDong() }
         return true
     }
 

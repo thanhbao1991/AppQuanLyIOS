@@ -12,6 +12,10 @@ struct CongTacView: View {
     /// Khoá "deviceId|ma" (ma rỗng = cả bảng) đang chờ Tuya phản hồi — chặn bấm dồn.
     @State private var dangGui: Set<String> = []
     @State private var baoLoi: String?
+    @ObservedObject private var nha = NhaGeofence.shared
+    @State private var dangLayViTri = false
+    @State private var khongLayDuocViTri = false
+    @Environment(\.openURL) private var openURL
 
     private static let mauNut: [Color] = [
         Color(red: 0.31, green: 0.76, blue: 0.97), // xanh dương
@@ -31,6 +35,7 @@ struct CongTacView: View {
                     ProgressView().padding(.top, 60)
                 }
                 ForEach(thietBis) { tb in card(tb) }
+                tuDongCard
             }
             .padding(16)
         }
@@ -99,6 +104,57 @@ struct CongTacView: View {
         }
         .buttonStyle(.plain)
         .disabled(!tb.online || dangGui.contains(khoa(tb.id, nut.ma)) || dangGui.contains(khoa(tb.id, nil)))
+    }
+
+    // MARK: - Tự động hoá: còn 100m tới nhà thì bật Nút 2 Phòng Khách
+
+    private var tuDongCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Tự động hoá").font(.headline)
+            Toggle(isOn: Binding(get: { nha.bat }, set: { nha.datBat($0) })) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Bật \(NhaGeofence.tenNut)").font(.subheadline.weight(.semibold))
+                    Text("khi còn cách nhà \(Int(NhaGeofence.banKinh))m").font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            .disabled(nha.viTriNha == nil)
+
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Vị trí nhà").font(.subheadline.weight(.semibold))
+                    Text(nha.viTriNha.map { String(format: "%.5f, %.5f", $0.latitude, $0.longitude) } ?? "Chưa đặt")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button(dangLayViTri ? "Đang lấy…" : "Đặt = nơi tôi đang đứng") {
+                    Task {
+                        dangLayViTri = true
+                        khongLayDuocViTri = !(await nha.datNhaTaiViTriHienTai())
+                        dangLayViTri = false
+                    }
+                }
+                .font(.footnote.weight(.semibold))
+                .disabled(dangLayViTri)
+            }
+            if khongLayDuocViTri {
+                Text("Không lấy được vị trí. Kiểm tra quyền Vị trí cho ĐENN rồi thử lại.").font(.caption).foregroundStyle(.red)
+            }
+            if nha.bat && !nha.duQuyen {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Cần quyền Vị trí \"Luôn luôn\" thì app mới tự chạy khi đã tắt. Vào Cài đặt → ĐENN → Vị trí → Luôn luôn.")
+                        .font(.caption).foregroundStyle(.orange)
+                    Button("Mở Cài đặt") {
+                        if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                    }
+                    .font(.footnote.weight(.semibold))
+                }
+            }
+            Text("Chỉ bật, không tự tắt. iOS báo \"đã vào vùng\" thường trễ vài chục mét; mỗi lần chạy cách nhau tối thiểu 30 phút.")
+                .font(.caption2).foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Color(.secondarySystemGroupedBackground)))
     }
 
     // MARK: - Dữ liệu
