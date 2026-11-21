@@ -194,7 +194,7 @@ struct CongThucSizeSheet: View {
             } message: {
                 Text("Xoá khỏi mọi size, có hiệu lực khi bấm Lưu.")
             }
-            .confirmationDialog("Lưu và duyệt công thức (tenSanPham)?", isPresented: $xacNhanLuu, titleVisibility: .visible) {
+            .confirmationDialog("Lưu và duyệt công thức \(tenSanPham)?", isPresented: $xacNhanLuu, titleVisibility: .visible) {
                 Button("Lưu & duyệt") { Task { await save(duyet: true) } }
                 Button("Không", role: .cancel) {}
             } message: {
