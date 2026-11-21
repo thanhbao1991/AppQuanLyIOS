@@ -629,9 +629,20 @@ private struct HoaDonRowView: View {
         (item.phanLoai == "Ship" || item.phanLoai == "AppDatHang") && item.ghiChuShipper == "Tí nữa chuyển khoản" && item.conLai > 0
     }
 
+    private var avatarShipper: String? {
+        guard item.phanLoai == "Ship" || item.phanLoai == "AppDatHang",
+              let n = item.nguoiShip, !n.isEmpty else { return nil }
+        return n
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            IconBadge(symbol: AppIcon.phanLoai(item.phanLoai), color: HoaDonFormatting.phanLoaiColor(item.phanLoai))
+            // 21/11/2026: đơn đã có shipper → avatar shipper thay icon loại đơn (bỏ avatar nhỏ ở dòng tiêu đề).
+            if let nguoiShip = avatarShipper {
+                ShipperAvatarView(name: nguoiShip, size: 36)
+            } else {
+                IconBadge(symbol: AppIcon.phanLoai(item.phanLoai), color: HoaDonFormatting.phanLoaiColor(item.phanLoai))
+            }
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
@@ -646,9 +657,6 @@ private struct HoaDonRowView: View {
                     // Mua hộ shipper tự đặt qua app — phân biệt với Mua hộ nhân viên nhập ở quầy.
                     if item.phanLoai == "Mh", item.datQuaApp == true {
                         Image(systemName: AppIcon.appDatHang).font(.caption2)
-                    }
-                    if (item.phanLoai == "Ship" || item.phanLoai == "AppDatHang"), let nguoiShip = item.nguoiShip, !nguoiShip.isEmpty {
-                        ShipperAvatarView(name: nguoiShip, size: 16)
                     }
                     Spacer(minLength: 0)
                     if let waitingMinutes {
