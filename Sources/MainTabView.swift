@@ -140,14 +140,17 @@ struct MainTabView: View {
         }
     }
 
-    /// Kê + Việc phải duyệt xong mới vào (user 22/11/2026: bỏ "Duyệt sau", thêm Việc); Đơn, Tiền, Nợ, Chi,
-    /// Menu vào thẳng (04/11/2026).
-    private static let tabCanDuyet: Set<MainTab> = [.thongKe, .congViec]
+    /// Kê + Chi + Việc phải duyệt xong mới vào (user 22/11/2026: bỏ "Duyệt sau"); mỗi lần duyệt mở khoá cả 3 tab 1 giờ.
+    /// Đơn, Tiền, Nợ, Menu vào thẳng (04/11/2026).
+    private static let tabCanDuyet: Set<MainTab> = [.thongKe, .chiTieu, .congViec]
+    private static let moKhoaKey = "duyetCongThucMoKhoaDen"
+    private static let moKhoaGiay: TimeInterval = 3600
+    private var dangMoKhoa: Bool { Date().timeIntervalSince1970 < UserDefaults.standard.double(forKey: Self.moKhoaKey) }
 
     /// Bấm tab Kê: còn món chưa duyệt thì mở bảng duyệt món đầu (vừa bán gần nhất),
     /// duyệt xong mới chuyển tab. Tải lỗi / hết món thì vào thẳng — đừng khoá nhân viên vì mạng.
     private func chonTab(_ tab: MainTab) {
-        guard Self.tabCanDuyet.contains(tab), tab != selection else {
+        guard Self.tabCanDuyet.contains(tab), tab != selection, !dangMoKhoa else {
             selection = tab
             return
         }
@@ -181,7 +184,10 @@ struct MainTabView: View {
         guard let tab = tabChoDuyet, let monId = monVuaMo else { return }
         tabChoDuyet = nil
         monVuaMo = nil
-        if !duyetCongThuc.monChuaDuyet.contains(where: { $0.id == monId }) { selection = tab }
+        if !duyetCongThuc.monChuaDuyet.contains(where: { $0.id == monId }) {
+            UserDefaults.standard.set(Date().timeIntervalSince1970 + Self.moKhoaGiay, forKey: Self.moKhoaKey)
+            selection = tab
+        }
     }
 
     /// Sheet ảnh đóng: chỉ cho vào tab khi đã duyệt HẾT ảnh chờ (chủ quán 17/11/2026). Bấm Huỷ giữa chừng = ở lại.
