@@ -155,6 +155,16 @@ struct CongThucSizeSheet: View {
             }
             .safeAreaInset(edge: .bottom) {
                 HStack(spacing: 12) {
+                    // "Duyệt sau" (22/11/2026): vẫn hiện nhưng khoá — buộc duyệt xong mới vào tab Kê/Việc.
+                    if coDuyet {
+                        Button {} label: {
+                            Text("Duyệt sau").fontWeight(.bold).frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(.brandPrimary)
+                        .controlSize(.large)
+                        .disabled(true)
+                    }
                     Button {
                         if coDuyet { xacNhanLuu = true } else { Task { await save(duyet: false) } }
                     } label: {
