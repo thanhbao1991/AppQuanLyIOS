@@ -27,8 +27,6 @@ struct CongThucSizeSheet: View {
     let tenSanPham: String
     let allNguyenLieu: [NguyenLieuBanHangDto]
     let onSaved: () async -> Void
-    /// Lưu thành công mà chưa duyệt (nút "Duyệt sau") — cổng tab dùng để vẫn cho vào tab.
-    var onLuuChuaDuyet: (() -> Void)?
 
     @Environment(\.dismiss) private var dismiss
     private let cots: [Cot]
@@ -157,18 +155,6 @@ struct CongThucSizeSheet: View {
             }
             .safeAreaInset(edge: .bottom) {
                 HStack(spacing: 12) {
-                    // "Duyệt sau" (user 01/11/2026): lưu số đang sửa, chưa ghi duyệt — món sẽ hiện lại lần sau.
-                    if coDuyet {
-                        Button {
-                            Task { await save(duyet: false) }
-                        } label: {
-                            Text("Duyệt sau").fontWeight(.bold).frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
-                        .tint(.brandPrimary)
-                        .controlSize(.large)
-                        .disabled(saving || luuDoDang)
-                    }
                     Button {
                         if coDuyet { xacNhanLuu = true } else { Task { await save(duyet: false) } }
                     } label: {
@@ -248,7 +234,7 @@ struct CongThucSizeSheet: View {
         .frame(maxWidth: .infinity)
     }
 
-    /// `duyet`: false = chỉ lưu định lượng (nút "Duyệt sau" hoặc màn Công thức), true = lưu xong ghi duyệt size L/XL.
+    /// `duyet`: false = chỉ lưu định lượng (màn Công thức), true = lưu xong ghi duyệt size L/XL.
     private func save(duyet: Bool) async {
         errorMessage = nil
         // Size cần duyệt, hoặc đã có công thức, thì phải còn ít nhất 1 nguyên liệu — muốn bỏ hẳn
@@ -270,7 +256,6 @@ struct CongThucSizeSheet: View {
         }
 
         await onSaved()
-        if !duyet, loi == 0 { onLuuChuaDuyet?() }
         if loi > 0 {
             luuDoDang = true
             errorMessage = "\(loi) thao tác chưa lưu — Huỷ rồi mở lại để kiểm tra."
@@ -330,6 +315,5 @@ func duyetCongThucMonSheet(mon: MonDuyetCongThuc, model: DuyetCongThucSizeModel)
     var sheet = CongThucSizeSheet(tenSanPham: mon.tenSanPham, cots: cots, dinhLuongAll: model.dinhLuongAll,
                                   allNguyenLieu: model.allNguyenLieu, dienSanTuCotDau: true,
                                   onSaved: { _ = await model.load() })
-    sheet.onLuuChuaDuyet = { model.duyetSau = true }
     return sheet
 }

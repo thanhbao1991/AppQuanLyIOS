@@ -140,9 +140,9 @@ struct MainTabView: View {
         }
     }
 
-    /// Chỉ Kê — Đơn, Tiền, Nợ, Chi, Việc, Menu vào thẳng (user 04/11/2026, trước đó 01/11/2026 áp cho
-    /// cả Tiền/Việc).
-    private static let tabCanDuyet: Set<MainTab> = [.thongKe]
+    /// Kê + Việc phải duyệt xong mới vào (user 22/11/2026: bỏ "Duyệt sau", thêm Việc); Đơn, Tiền, Nợ, Chi,
+    /// Menu vào thẳng (04/11/2026).
+    private static let tabCanDuyet: Set<MainTab> = [.thongKe, .congViec]
 
     /// Bấm tab Kê: còn món chưa duyệt thì mở bảng duyệt món đầu (vừa bán gần nhất),
     /// duyệt xong mới chuyển tab. Tải lỗi / hết món thì vào thẳng — đừng khoá nhân viên vì mạng.
@@ -176,14 +176,12 @@ struct MainTabView: View {
     }
 
     /// Sheet duyệt đóng: món vừa mở đã hết trong danh sách chưa duyệt (Lưu & duyệt gọi load lại trước
-    /// khi đóng) hoặc vừa bấm "Duyệt sau" thì cho vào tab; bấm Huỷ thì ở lại tab cũ.
+    /// khi đóng) thì cho vào tab; bấm Huỷ thì ở lại tab cũ.
     private func xongDuyetCongThuc() {
         guard let tab = tabChoDuyet, let monId = monVuaMo else { return }
         tabChoDuyet = nil
         monVuaMo = nil
-        let duyetSau = duyetCongThuc.duyetSau
-        duyetCongThuc.duyetSau = false
-        if duyetSau || !duyetCongThuc.monChuaDuyet.contains(where: { $0.id == monId }) { selection = tab }
+        if !duyetCongThuc.monChuaDuyet.contains(where: { $0.id == monId }) { selection = tab }
     }
 
     /// Sheet ảnh đóng: chỉ cho vào tab khi đã duyệt HẾT ảnh chờ (chủ quán 17/11/2026). Bấm Huỷ giữa chừng = ở lại.
