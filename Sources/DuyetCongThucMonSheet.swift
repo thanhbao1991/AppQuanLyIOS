@@ -198,7 +198,7 @@ struct CongThucSizeSheet: View {
                 Button("Lưu & duyệt") { Task { await save(duyet: true) } }
                 Button("Không", role: .cancel) {}
             } message: {
-                Text("Sau 120 phút bắt buộc duyệt món tiếp theo.")
+                Text("Sau 90 phút bắt buộc duyệt món tiếp theo.")
             }
             .sheet(isPresented: $dangChonNguyenLieu) {
                 NguyenLieuBanHangPickerSheet(items: allNguyenLieu.filter { $0.laVatTu != true }) { picked in
