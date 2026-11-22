@@ -140,9 +140,9 @@ struct MainTabView: View {
         }
     }
 
-    /// Kê + Chi + Việc phải duyệt xong mới vào (user 22/11/2026: bỏ "Duyệt sau"); mỗi lần duyệt mở khoá cả 3 tab 90 phút.
-    /// Đơn, Tiền, Nợ, Menu vào thẳng (04/11/2026).
-    private static let tabCanDuyet: Set<MainTab> = [.thongKe, .chiTieu, .congViec]
+    /// Kê + Việc phải duyệt xong mới vào (user 22/11/2026: bỏ "Duyệt sau"; Chi bỏ cổng cùng ngày); mỗi lần duyệt mở khoá 90 phút.
+    /// Đơn, Tiền, Nợ, Chi, Menu vào thẳng.
+    private static let tabCanDuyet: Set<MainTab> = [.thongKe, .congViec]
     private static let moKhoaKey = "duyetCongThucMoKhoaDen"
     private static let moKhoaGiay: TimeInterval = 5400
     private var dangMoKhoa: Bool { Date().timeIntervalSince1970 < UserDefaults.standard.double(forKey: Self.moKhoaKey) }
