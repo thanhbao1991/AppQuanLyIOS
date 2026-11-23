@@ -1,83 +1,98 @@
 import SwiftUI
 
 /// SQL nhanh (chỉ Admin, SELECT-only — backend tự chặn ghi/DDL) dùng khi cần tra dữ liệu gấp trên
-/// điện thoại, không cần SSH/SSMS. Dùng chung JWT đang đăng nhập app (AppQuanLyIOS), khỏi đăng nhập
-/// riêng như bản web wwwroot/admin-query.
+/// điện thoại, không cần SSH/SSMS. Dùng chung JWT đang đăng nhập app.
+/// Kết quả hiện mỗi dòng 1 nhóm "tên cột — giá trị" (bảng ngang trên điện thoại phải cuộn 2 chiều, khó đọc).
+/// Số/ngày do backend định dạng sẵn (1,035,000; 2026-11-23).
 struct AdminQueryView: View {
     @State private var sql: String = "SELECT TOP 20 * FROM ChiTieuHangNgays ORDER BY Ngay DESC"
     @State private var result: AdminQueryResultDto?
     @State private var loi: String?
     @State private var dangChay = false
+    @FocusState private var dangGo: Bool
+
+    private var sqlRong: Bool { sql.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
     var body: some View {
-        VStack(spacing: 10) {
-            TextEditor(text: $sql)
-                .font(.system(.body, design: .monospaced))
-                .frame(height: 100)
-                .padding(6)
-                .background(Color(.secondarySystemBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.textMuted.opacity(0.3)))
+        List {
+            Section {
+                TextEditor(text: $sql)
+                    .font(.system(.callout, design: .monospaced))
+                    .frame(minHeight: 100)
+                    .focused($dangGo)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
 
-            Button {
-                Task { await chay() }
-            } label: {
-                if dangChay {
-                    ProgressView()
-                } else {
-                    Text("Chạy").frame(maxWidth: .infinity)
+                Button {
+                    Task { await chay() }
+                } label: {
+                    HStack {
+                        Spacer()
+                        if dangChay {
+                            ProgressView().tint(.white)
+                        } else {
+                            Text("Chạy").font(.body.weight(.semibold))
+                        }
+                        Spacer()
+                    }
+                    .foregroundColor(.white)
                 }
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(.brandPrimary)
-            .disabled(dangChay || sql.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-
-            if let loi {
-                Text(loi).font(.caption).foregroundStyle(.red)
+                .listRowBackground(sqlRong ? Color.textMuted : Color.brandPrimary)
+                .disabled(dangChay || sqlRong)
+            } footer: {
+                if let loi {
+                    Text(loi).foregroundStyle(.red)
+                } else if let result {
+                    Text("\(result.rows.count) dòng" + (result.coBiCat ? " (đã cắt, còn nhiều hơn)" : ""))
+                }
             }
 
             if let result {
-                HStack {
-                    Text("\(result.rows.count) dòng" + (result.coBiCat ? " (đã cắt, còn nhiều hơn)" : ""))
-                        .font(.caption).foregroundStyle(.secondary)
-                    Spacer()
+                if result.rows.isEmpty {
+                    Section { Text("Không có dòng nào").foregroundStyle(.secondary) }
                 }
-                ScrollView([.horizontal, .vertical]) {
-                    bang(result)
+                ForEach(Array(result.rows.enumerated()), id: \.offset) { i, row in
+                    Section(result.rows.count > 1 ? "Dòng \(i + 1)" : "Kết quả") {
+                        ForEach(result.columns, id: \.self) { cot in
+                            oKetQua(cot: cot, giaTri: row[cot].flatMap { $0 })
+                        }
+                    }
                 }
-            } else {
-                Spacer()
             }
         }
-        .padding()
+        .scrollDismissesKeyboard(.interactively)
         .navigationTitle("SQL nhanh")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color.brandGradient, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
-    }
-
-    private func bang(_ result: AdminQueryResultDto) -> some View {
-        Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 6) {
-            GridRow {
-                ForEach(result.columns, id: \.self) { c in
-                    Text(c).font(.caption.weight(.bold)).foregroundStyle(Color.brandPrimary)
-                }
-            }
-            Divider().gridCellColumns(result.columns.count)
-            ForEach(Array(result.rows.enumerated()), id: \.offset) { _, row in
-                GridRow {
-                    ForEach(result.columns, id: \.self) { c in
-                        Text(row[c].flatMap { $0 } ?? "")
-                            .font(.caption)
-                            .lineLimit(1)
-                    }
-                }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Xong") { dangGo = false }
             }
         }
     }
 
+    private func oKetQua(cot: String, giaTri: String?) -> some View {
+        // Dồn hết về trái (chủ quán 24/11/2026): tên cột cột cố định bên trái, giá trị ngay sau.
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text(cot)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .frame(width: 120, alignment: .leading)
+            Text(giaTri ?? "NULL")
+                .font(.subheadline.weight(.medium).monospacedDigit())
+                .foregroundStyle(giaTri == nil ? Color.textMuted : Color.primary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .textSelection(.enabled)
+        }
+    }
+
     private func chay() async {
+        dangGo = false
         let cau = sql.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cau.isEmpty else { return }
         dangChay = true
