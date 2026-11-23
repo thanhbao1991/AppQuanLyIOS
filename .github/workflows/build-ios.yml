@@ -12,6 +12,12 @@ on:
         description: "Ký thật + đẩy lên TestFlight (mặc định false = bản unsigned sideload cũ)"
         type: boolean
         default: false
+      runner:
+        # 24/11/2026: máy macOS arm64 của GitHub quá tải ("not acquired by Runner... capacity"), job testflight
+        # xếp hàng 15 phút rồi bị huỷ → cho chọn máy khác (vd macos-15-intel) như AppDatHangIOS.
+        description: "Máy chạy job testflight (macos-latest | macos-15-intel | macos-26)"
+        type: string
+        default: macos-latest
 
 jobs:
   test:
@@ -128,7 +134,7 @@ jobs:
   # copy từ AppDatHangIOS — xem memory project_appdathangios_testflight_ci.
   testflight:
     if: ${{ inputs.release }}
-    runs-on: macos-latest
+    runs-on: ${{ inputs.runner || 'macos-latest' }}
     steps:
       - uses: actions/checkout@v4
 
