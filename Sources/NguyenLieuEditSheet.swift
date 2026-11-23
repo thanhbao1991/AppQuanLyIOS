@@ -6,6 +6,10 @@ enum PhanLoaiNguyenLieu: Int, CaseIterable, Identifiable {
     case vatLieu = 2
     case chiPhiKhac = 3
     case vatTu = 4
+    /// Máy chủ, tên miền, Apple Developer, Zalo OA, AI, mạng… (tách khỏi Chi phí khác 24/11/2026).
+    case congNghe = 5
+    /// Quảng cáo Facebook, App Shipping, card visit… (tách khỏi Chi phí khác 24/11/2026).
+    case quangCao = 6
 
     var id: Int { rawValue }
 
@@ -15,6 +19,8 @@ enum PhanLoaiNguyenLieu: Int, CaseIterable, Identifiable {
         case .vatLieu: return "Vật liệu"
         case .chiPhiKhac: return "Chi phí khác"
         case .vatTu: return "Vật tư"
+        case .congNghe: return "Công nghệ"
+        case .quangCao: return "Quảng cáo"
         }
     }
 
@@ -24,6 +30,8 @@ enum PhanLoaiNguyenLieu: Int, CaseIterable, Identifiable {
         case .vatLieu: return .blue
         case .chiPhiKhac: return .textMuted
         case .vatTu: return .orange
+        case .congNghe: return .purple
+        case .quangCao: return .pink
         }
     }
 
@@ -34,6 +42,8 @@ enum PhanLoaiNguyenLieu: Int, CaseIterable, Identifiable {
         case .vatLieu: return "Giá vật liệu"
         case .chiPhiKhac: return "Giá chi phí khác"
         case .vatTu: return "Giá vật tư"
+        case .congNghe: return "Giá công nghệ"
+        case .quangCao: return "Giá quảng cáo"
         }
     }
 
