@@ -246,6 +246,8 @@ private struct SanPhamEditSheet: View {
     @State private var nhomSanPhamId: String?
     @State private var ngungBan: Bool
     @State private var khongLenStore: Bool
+    /// Đơn vị tính khi đếm trong đơn ("điếu", "gói"…). Để trống = "ly". Backend ghép tên đơn "Mv 2 ly + 4 điếu".
+    @State private var donViTinh: String
     @State private var bienThe: [BienTheEditRow]
     @State private var saving = false
     @State private var errorMessage: String?
@@ -265,6 +267,7 @@ private struct SanPhamEditSheet: View {
         _nhomSanPhamId = State(initialValue: existing?.nhomSanPhamId)
         _ngungBan = State(initialValue: existing?.ngungBan ?? false)
         _khongLenStore = State(initialValue: existing?.khongLenStore ?? false)
+        _donViTinh = State(initialValue: existing?.donViTinh ?? "")
         _bienThe = State(initialValue: existing?.bienThe.isEmpty == false
             ? existing!.bienThe
                 .sorted { $0.macDinh && !$1.macDinh }
@@ -283,6 +286,11 @@ private struct SanPhamEditSheet: View {
                         ForEach(nhoms) { nhom in
                             Text(nhom.ten).tag(String?.some(nhom.id))
                         }
+                    }
+                    LabeledContent("Đơn vị tính") {
+                        TextField("ly", text: $donViTinh)
+                            .multilineTextAlignment(.trailing)
+                            .textInputAutocapitalization(.never)
                     }
                 }
 
@@ -448,6 +456,8 @@ private struct SanPhamEditSheet: View {
             thuTu: thuTu,
             ngungBan: ngungBan,
             khongLenStore: khongLenStore,
+            // Luôn gửi chuỗi (kể cả "") — backend hiểu null là "client cũ, giữ nguyên", "" là xoá về "ly".
+            donViTinh: donViTinh.trimmingCharacters(in: .whitespaces),
             nhomSanPhamId: nhomSanPhamId,
             tenNhomSanPham: nil,
             storeStatus: nil,

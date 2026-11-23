@@ -1234,6 +1234,8 @@ struct SanPhamAdminDto: Codable, Identifiable {
     var thuTu: Int
     var ngungBan: Bool
     var khongLenStore: Bool
+    /// null/"" = "ly". Xem SanPhamDto.DonViTinh (Backend).
+    var donViTinh: String?
     var nhomSanPhamId: String?
     var tenNhomSanPham: String?
     var storeStatus: String?
