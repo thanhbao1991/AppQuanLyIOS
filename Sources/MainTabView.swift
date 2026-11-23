@@ -455,6 +455,15 @@ private struct MoreMenuView: View {
                     } label: {
                         MenuLabel("Reels Giả thuyết Kiến trúc", "play.rectangle.on.rectangle")
                     }
+
+                    // Chỉ Admin dùng được (backend tự chặn role khác) — vẫn hiện link cho mọi tài
+                    // khoản, bấm vào mới báo lỗi nếu không phải Admin (giống các màn khác, không gài
+                    // thêm cổng client-side).
+                    NavigationLink {
+                        AdminQueryView()
+                    } label: {
+                        MenuLabel("SQL nhanh", "terminal")
+                    }
                 }
 
                 Section {

@@ -223,6 +223,17 @@ actor APIClient {
         return env.isSuccess ? (env.data, nil) : (nil, env.message ?? "Không lấy được công tắc.")
     }
 
+    /// SQL nhanh (chỉ Admin, SELECT-only, chặn ở backend) — màn "SQL nhanh" ở Menu > Công cụ.
+    func runAdminQuery(sql: String) async -> (result: AdminQueryResultDto?, loi: String?) {
+        let req = makeRequest("/api/admin/query", method: "POST", body: jsonBody(AdminQueryRequestDto(sql: sql)))
+        let (data, _) = await send(req)
+        guard let data else { return (nil, "Không có phản hồi từ server.") }
+        guard let env = try? JSONDecoder().decode(ApiEnvelope<AdminQueryResultDto>.self, from: data) else {
+            return (nil, "Không đọc được dữ liệu trả về.")
+        }
+        return env.isSuccess ? (env.data, nil) : (nil, env.message ?? "Chạy câu lệnh thất bại.")
+    }
+
     struct ViTriNhaDto: Decodable { let lat: Double; let long: Double }
 
     /// Toạ độ nhà do máy chủ giữ (repo app công khai nên không ghi trong code) — nil nếu chưa cài.

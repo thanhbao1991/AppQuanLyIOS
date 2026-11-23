@@ -1342,3 +1342,13 @@ struct CongTacThietBiDto: Decodable, Identifiable, Hashable {
     let online: Bool
     var nuts: [CongTacNutDto]
 }
+
+// ---- SQL nhanh (chỉ Admin) — POST /api/admin/query (màn "SQL nhanh" ở Menu > Công cụ) ----
+
+struct AdminQueryRequestDto: Encodable { let sql: String }
+
+struct AdminQueryResultDto: Decodable {
+    let columns: [String]
+    let rows: [[String: String?]]
+    let coBiCat: Bool
+}
