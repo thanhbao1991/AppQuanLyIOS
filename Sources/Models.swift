@@ -1222,7 +1222,6 @@ struct SanPhamBienTheAdminDto: Codable, Identifiable, Hashable {
     var tenBienThe: String
     var giaBan: Double
     var macDinh: Bool
-    var dinhLuong: String?
 }
 
 /// DTO đầy đủ cho màn quản trị Sản phẩm (SanPhamListView) — khác SanPhamDto (nhẹ, chỉ đọc, dùng

@@ -230,7 +230,6 @@ private struct BienTheEditRow: Identifiable {
     var tenBienThe: String
     var giaBan: Double
     var macDinh: Bool
-    var dinhLuong: String?
     var id: UUID { localId }
 }
 
@@ -271,7 +270,7 @@ private struct SanPhamEditSheet: View {
         _bienThe = State(initialValue: existing?.bienThe.isEmpty == false
             ? existing!.bienThe
                 .sorted { $0.macDinh && !$1.macDinh }
-                .map { BienTheEditRow(serverId: $0.id, tenBienThe: $0.tenBienThe, giaBan: $0.giaBan, macDinh: $0.macDinh, dinhLuong: $0.dinhLuong) }
+                .map { BienTheEditRow(serverId: $0.id, tenBienThe: $0.tenBienThe, giaBan: $0.giaBan, macDinh: $0.macDinh) }
             : [BienTheEditRow(tenBienThe: "Size chuẩn", giaBan: 0, macDinh: true)])
     }
 
@@ -390,10 +389,6 @@ private struct SanPhamEditSheet: View {
             HStack {
                 TextField("Giá bán", value: row.giaBan, format: .number)
                     .keyboardType(.numberPad)
-                TextField("Định lượng (tuỳ chọn)", text: Binding(
-                    get: { row.wrappedValue.dinhLuong ?? "" },
-                    set: { row.wrappedValue.dinhLuong = $0.isEmpty ? nil : $0 }
-                ))
                 // Toggle "Mặc định" đã BỎ 28/9 — macDinh giờ tự động gán cho biến thể rẻ nhất lúc
                 // save() (xem comment ở đó), staff không tự chọn tay được nữa để tránh gán nhầm.
             }
@@ -444,7 +439,7 @@ private struct SanPhamEditSheet: View {
             for i in finalBienThe.indices { finalBienThe[i].macDinh = (i == cheapestIdx) }
         }
         let bienTheDtos = finalBienThe.map {
-            SanPhamBienTheAdminDto(id: $0.serverId, tenBienThe: $0.tenBienThe.trimmingCharacters(in: .whitespaces), giaBan: $0.giaBan, macDinh: $0.macDinh, dinhLuong: $0.dinhLuong)
+            SanPhamBienTheAdminDto(id: $0.serverId, tenBienThe: $0.tenBienThe.trimmingCharacters(in: .whitespaces), giaBan: $0.giaBan, macDinh: $0.macDinh)
         }
 
         let thuTu = existing?.thuTu ?? ((allItems.map(\.thuTu).max() ?? 0) + 1)
