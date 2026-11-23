@@ -50,13 +50,10 @@ struct AdminQueryView: View {
             if let result {
                 if result.rows.isEmpty {
                     Section { Text("Không có dòng nào").foregroundStyle(.secondary) }
-                }
-                ForEach(Array(result.rows.enumerated()), id: \.offset) { i, row in
-                    Section(result.rows.count > 1 ? "Dòng \(i + 1)" : "Kết quả") {
-                        ForEach(result.columns, id: \.self) { cot in
-                            oKetQua(cot: cot, giaTri: row[cot].flatMap { $0 })
-                        }
-                    }
+                } else if let doRong = doRongBang(result) {
+                    bang(result, doRong: doRong)
+                } else {
+                    theTungDong(result)
                 }
             }
         }
@@ -70,6 +67,66 @@ struct AdminQueryView: View {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
                 Button("Xong") { dangGo = false }
+            }
+        }
+    }
+
+    // MARK: - Dạng bảng (vừa màn hình)
+
+    /// Độ rộng từng cột nếu cả bảng vừa bề ngang màn hình; nil = quá rộng → dùng dạng thẻ từng dòng.
+    private func doRongBang(_ r: AdminQueryResultDto) -> [CGFloat]? {
+        let kyTu: CGFloat = 8.6
+        let tho = r.columns.map { cot -> CGFloat in
+            let dai = r.rows.prefix(200).map { ($0[cot].flatMap { $0 } ?? "NULL").count }.max() ?? 0
+            return CGFloat(max(cot.count, dai)) * kyTu + 14
+        }
+        let coSan = UIScreen.main.bounds.width - 72
+        let tong = tho.reduce(0, +)
+        guard tong <= coSan else { return nil }
+        let them = (coSan - tong) / CGFloat(tho.count)
+        return tho.map { $0 + them }
+    }
+
+    private func cotLaSo(_ r: AdminQueryResultDto) -> [Bool] {
+        r.columns.map { cot in
+            let giaTri = r.rows.compactMap { $0[cot].flatMap { $0 } }
+            return !giaTri.isEmpty && giaTri.allSatisfy { $0.range(of: "^-?[0-9,]+(\\.[0-9]+)?$", options: .regularExpression) != nil }
+        }
+    }
+
+    private func bang(_ r: AdminQueryResultDto, doRong: [CGFloat]) -> some View {
+        let laSo = cotLaSo(r)
+        return Section {
+            hangBang(r.columns.map { Optional($0) }, doRong: doRong, laSo: laSo, tieuDe: true)
+            ForEach(Array(r.rows.enumerated()), id: \.offset) { _, row in
+                hangBang(r.columns.map { row[$0].flatMap { $0 } }, doRong: doRong, laSo: laSo, tieuDe: false)
+            }
+        }
+    }
+
+    private func hangBang(_ o: [String?], doRong: [CGFloat], laSo: [Bool], tieuDe: Bool) -> some View {
+        HStack(spacing: 0) {
+            ForEach(o.indices, id: \.self) { i in
+                Text(o[i] ?? "NULL")
+                    .font(tieuDe ? .subheadline.weight(.semibold) : .subheadline.weight(.medium).monospacedDigit())
+                    .foregroundStyle(tieuDe ? Color.brandPrimary : (o[i] == nil ? Color.textMuted : Color.primary))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                    .frame(width: doRong[i], alignment: laSo[i] ? .trailing : .leading)
+            }
+        }
+        .textSelection(.enabled)
+    }
+
+    // MARK: - Dạng thẻ (quá nhiều cột)
+
+    @ViewBuilder
+    private func theTungDong(_ result: AdminQueryResultDto) -> some View {
+        ForEach(Array(result.rows.enumerated()), id: \.offset) { i, row in
+            Section(result.rows.count > 1 ? "Dòng \(i + 1)" : "Kết quả") {
+                ForEach(result.columns, id: \.self) { cot in
+                    oKetQua(cot: cot, giaTri: row[cot].flatMap { $0 })
+                }
             }
         }
     }
