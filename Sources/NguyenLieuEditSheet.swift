@@ -10,6 +10,14 @@ enum PhanLoaiNguyenLieu: Int, CaseIterable, Identifiable {
     case congNghe = 5
     /// Quảng cáo Facebook, App Shipping, card visit… (tách khỏi Chi phí khác 24/11/2026).
     case quangCao = 6
+    /// Ứng lương, xăng, ăn uống nhân viên (tách khỏi Chi phí khác 24/11/2026).
+    case nhanVien = 7
+    /// Chủ rút/chi cá nhân: ĐENN, Shopee A Ty, xăng chủ.
+    case caNhanChu = 8
+    /// Điện, nước, rác.
+    case dienNuoc = 9
+    /// Máy móc, dụng cụ, camera, UPS…
+    case thietBi = 10
 
     var id: Int { rawValue }
 
@@ -21,6 +29,10 @@ enum PhanLoaiNguyenLieu: Int, CaseIterable, Identifiable {
         case .vatTu: return "Vật tư"
         case .congNghe: return "Công nghệ"
         case .quangCao: return "Quảng cáo"
+        case .nhanVien: return "Nhân viên"
+        case .caNhanChu: return "Cá nhân chủ"
+        case .dienNuoc: return "Điện nước"
+        case .thietBi: return "Thiết bị"
         }
     }
 
@@ -32,6 +44,10 @@ enum PhanLoaiNguyenLieu: Int, CaseIterable, Identifiable {
         case .vatTu: return .orange
         case .congNghe: return .purple
         case .quangCao: return .pink
+        case .nhanVien: return .teal
+        case .caNhanChu: return .red
+        case .dienNuoc: return .cyan
+        case .thietBi: return .brown
         }
     }
 
@@ -44,6 +60,10 @@ enum PhanLoaiNguyenLieu: Int, CaseIterable, Identifiable {
         case .vatTu: return "Giá vật tư"
         case .congNghe: return "Giá công nghệ"
         case .quangCao: return "Giá quảng cáo"
+        case .nhanVien: return "Chi nhân viên"
+        case .caNhanChu: return "Chi cá nhân chủ"
+        case .dienNuoc: return "Giá điện nước"
+        case .thietBi: return "Giá thiết bị"
         }
     }
 
