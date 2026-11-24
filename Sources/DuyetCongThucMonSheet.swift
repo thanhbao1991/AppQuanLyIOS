@@ -16,12 +16,20 @@ struct CongThucSizeSheet: View {
         let canDuyet: Bool
     }
 
+    /// 1 dòng = 1 nguyên liệu + 1 cách dùng. Cùng nguyên liệu khác cách dùng là 2 dòng riêng (DB khoá trùng theo
+    /// CongThuc + NguyenLieu + GhiChu — vd Bánh Orio "xay" và "để trên"). Ghi chú chung cho mọi size, chỉ số khác.
     private struct Dong: Identifiable {
         let id = UUID()
         let nguyenLieuId: String
         let ten: String
+        /// Ghi chú đang lưu trên server — khoá để khớp dòng cũ lúc lưu (nil = dòng mới thêm).
+        let ghiChuGoc: String?
+        var ghiChu: String
         /// Số theo từng cột, cùng thứ tự `cots`.
         var soLuong: [Double]
+
+        var khoa: String { nguyenLieuId + "|" + Dong.chuan(ghiChu) }
+        static func chuan(_ s: String?) -> String { (s ?? "").trimmingCharacters(in: .whitespacesAndNewlines) }
     }
 
     let tenSanPham: String
@@ -62,21 +70,29 @@ struct CongThucSizeSheet: View {
             cot.congThucId.map { id in dinhLuongAll.filter { $0.congThucId == id } } ?? []
         }
         self.linesCu = linesTheoCot
-        var thuTu: [String] = []
+        // Gom theo (nguyên liệu, ghi chú): mỗi cặp 1 dòng trên bảng.
+        struct Khoa: Hashable { let nl: String; let ghiChu: String }
+        func khoa(_ l: SuDungNguyenLieuDto) -> Khoa { Khoa(nl: l.nguyenLieuId, ghiChu: Dong.chuan(l.ghiChu)) }
+        var thuTu: [Khoa] = []
         var ten: [String: String] = [:]
-        for l in linesTheoCot.flatMap({ $0 }) where ten[l.nguyenLieuId] == nil {
-            thuTu.append(l.nguyenLieuId)
+        for l in linesTheoCot.flatMap({ $0 }) where !thuTu.contains(khoa(l)) {
+            thuTu.append(khoa(l))
             ten[l.nguyenLieuId] = l.tenNguyenLieu ?? "?"
         }
-        thuTu.sort { (ten[$0] ?? "").localizedStandardCompare(ten[$1] ?? "") == .orderedAscending }
-        _dongs = State(initialValue: thuTu.map { nl in
-            let dau = linesTheoCot.first?.first { $0.nguyenLieuId == nl }?.soLuong ?? 0
+        thuTu.sort {
+            let c = (ten[$0.nl] ?? "").localizedStandardCompare(ten[$1.nl] ?? "")
+            return c != .orderedSame ? c == .orderedAscending : $0.ghiChu.localizedStandardCompare($1.ghiChu) == .orderedAscending
+        }
+        _dongs = State(initialValue: thuTu.map { k in
+            let dau = linesTheoCot.first?.first { khoa($0) == k }?.soLuong ?? 0
             return Dong(
-                nguyenLieuId: nl,
-                ten: ten[nl] ?? "?",
+                nguyenLieuId: k.nl,
+                ten: ten[k.nl] ?? "?",
+                ghiChuGoc: k.ghiChu,
+                ghiChu: k.ghiChu,
                 soLuong: linesTheoCot.enumerated().map { i, lines in
                     if dienSanTuCotDau && i > 0 && cots[i].congThucId == nil { return dau }
-                    return lines.first { $0.nguyenLieuId == nl }?.soLuong ?? 0
+                    return lines.first { khoa($0) == k }?.soLuong ?? 0
                 })
         })
     }
@@ -120,6 +136,19 @@ struct CongThucSizeSheet: View {
                                         oSoLuong($dong.soLuong[i], tat: cots[i].bienTheId == nil)
                                     }
                                 }
+                                // Ghi chú/cách dùng: 1 ô trải cả các cột — mọi size dùng giống nhau, chỉ khác số.
+                                HStack(spacing: 8) {
+                                    Image(systemName: "text.bubble")
+                                        .font(.footnote)
+                                        .foregroundColor(.secondary)
+                                    TextField("Cách dùng (vd: xay, rắc lên trên…)", text: $dong.ghiChu, axis: .vertical)
+                                        .font(.subheadline.weight(.medium))
+                                        .lineLimit(1...3)
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 8)
+                                .background(Color(.secondarySystemBackground))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
                             }
                             .padding(.vertical, 4)
                         }
@@ -183,7 +212,7 @@ struct CongThucSizeSheet: View {
                 .background(Color(.systemBackground))
                 .overlay(Divider(), alignment: .top)
             }
-            .confirmationDialog("Xoá \(dongCanXoa?.ten ?? "nguyên liệu") khỏi công thức?",
+            .confirmationDialog("Xoá \(dongCanXoa.map(tenDong) ?? "nguyên liệu") khỏi công thức?",
                                 isPresented: Binding(get: { dongCanXoa != nil }, set: { if !$0 { dongCanXoa = nil } }),
                                 titleVisibility: .visible) {
                 Button("Xoá", role: .destructive) {
@@ -202,8 +231,8 @@ struct CongThucSizeSheet: View {
             }
             .sheet(isPresented: $dangChonNguyenLieu) {
                 NguyenLieuBanHangPickerSheet(items: allNguyenLieu.filter { $0.laVatTu != true }) { picked in
-                    guard !dongs.contains(where: { $0.nguyenLieuId == picked.id }) else { return }
-                    dongs.append(Dong(nguyenLieuId: picked.id, ten: picked.ten,
+                    // Cho thêm trùng nguyên liệu (cách dùng khác) — lúc lưu mới kiểm trùng ghi chú.
+                    dongs.append(Dong(nguyenLieuId: picked.id, ten: picked.ten, ghiChuGoc: nil, ghiChu: "",
                                       soLuong: Array(repeating: 0, count: cots.count)))
                 }
             }
@@ -255,6 +284,13 @@ struct CongThucSizeSheet: View {
             errorMessage = "\(c.ten) chưa có nguyên liệu nào > 0."
             return
         }
+        // 2 dòng cùng nguyên liệu phải khác cách dùng (DB khoá trùng CongThuc + NguyenLieu + GhiChu).
+        let dangDung = dongs.filter { $0.soLuong.contains { $0 > 0 } }
+        var daGap = Set<String>()
+        for d in dangDung where !daGap.insert(d.khoa).inserted {
+            errorMessage = "\(d.ten) có 2 dòng cùng cách dùng — ghi cách dùng khác nhau cho từng dòng."
+            return
+        }
         saving = true
         defer { saving = false }
 
@@ -285,29 +321,48 @@ struct CongThucSizeSheet: View {
         return result.success ? result.id : nil
     }
 
-    /// Đồng bộ dòng nguyên liệu 1 size theo cột `cot` — trả số thao tác lỗi. API Update chỉ sửa
-    /// SoLuong (khớp CongThucEditSheet.save).
+    private func tenDong(_ d: Dong) -> String {
+        let g = Dong.chuan(d.ghiChu)
+        return g.isEmpty ? d.ten : "\(d.ten) (\(g))"
+    }
+
+    /// Đồng bộ dòng nguyên liệu 1 size theo cột `cot` — trả số thao tác lỗi. Khớp dòng cũ theo
+    /// (nguyên liệu, ghi chú gốc). Thứ tự xoá → sửa → thêm: xoá trước để dòng mới trùng khoá với dòng vừa
+    /// bỏ (cùng nguyên liệu + ghi chú) không đụng khoá trùng trong DB.
     private func luuDinhLuong(congThucId: String, cot: Int, cu: [SuDungNguyenLieuDto]) async -> Int {
-        var loi = 0
         var conLai = cu
+        var xoa: [String] = []
+        var sua: [SuDungNguyenLieuDto] = []
+        var them: [SuDungNguyenLieuDto] = []
         for dong in dongs {
             let moi = dong.soLuong[cot]
-            if let idx = conLai.firstIndex(where: { $0.nguyenLieuId == dong.nguyenLieuId }) {
+            let ghiChu = Dong.chuan(dong.ghiChu)
+            if let goc = dong.ghiChuGoc,
+               let idx = conLai.firstIndex(where: { $0.nguyenLieuId == dong.nguyenLieuId && Dong.chuan($0.ghiChu) == goc }) {
                 let line = conLai.remove(at: idx)
                 if moi <= 0 {
-                    if !(await APIClient.shared.deleteSuDungNguyenLieu(id: line.id)).success { loi += 1 }
-                } else if moi != line.soLuong {
-                    let dto = SuDungNguyenLieuDto(id: line.id, congThucId: congThucId, nguyenLieuId: line.nguyenLieuId, soLuong: moi)
-                    if !(await APIClient.shared.updateSuDungNguyenLieu(id: line.id, dto)).success { loi += 1 }
+                    xoa.append(line.id)
+                } else if moi != line.soLuong || ghiChu != Dong.chuan(line.ghiChu) {
+                    sua.append(SuDungNguyenLieuDto(id: line.id, congThucId: congThucId, nguyenLieuId: line.nguyenLieuId,
+                                                   soLuong: moi, ghiChu: ghiChu))
                 }
             } else if moi > 0 {
-                let dto = SuDungNguyenLieuDto(congThucId: congThucId, nguyenLieuId: dong.nguyenLieuId, soLuong: moi)
-                if !(await APIClient.shared.createSuDungNguyenLieu(dto)).success { loi += 1 }
+                them.append(SuDungNguyenLieuDto(congThucId: congThucId, nguyenLieuId: dong.nguyenLieuId,
+                                                soLuong: moi, ghiChu: ghiChu))
             }
         }
-        // Dòng trùng nguyên liệu còn sót trong công thức cũ (lỡ nhập trùng) — xoá cho khỏi trừ kho 2 lần.
-        for line in conLai {
-            if !(await APIClient.shared.deleteSuDungNguyenLieu(id: line.id)).success { loi += 1 }
+        // Dòng cũ không còn trên bảng (đã xoá) — xoá cho khỏi trừ kho.
+        xoa += conLai.map(\.id)
+
+        var loi = 0
+        for id in xoa {
+            if !(await APIClient.shared.deleteSuDungNguyenLieu(id: id)).success { loi += 1 }
+        }
+        for dto in sua {
+            if !(await APIClient.shared.updateSuDungNguyenLieu(id: dto.id, dto)).success { loi += 1 }
+        }
+        for dto in them {
+            if !(await APIClient.shared.createSuDungNguyenLieu(dto)).success { loi += 1 }
         }
         return loi
     }

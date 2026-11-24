@@ -439,6 +439,9 @@ struct SuDungNguyenLieuDto: Codable, Identifiable {
     var soLuong: Double
     var tenNguyenLieu: String?
     var donViTinh: String?
+    /// Ghi chú/cách dùng ("xay", "để trên"…) — 1 công thức có thể có 2 dòng cùng nguyên liệu khác ghi chú.
+    /// nil khi gửi = backend giữ nguyên (CongThucEditSheet cũ không đụng tới).
+    var ghiChu: String?
 }
 
 /// Nguyên liệu NHẬP (mục để chi, vd "Shoppee A ty") — /api/NguyenLieu, khác hẳn NguyenLieuBanHangDto
